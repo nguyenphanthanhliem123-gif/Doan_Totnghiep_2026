@@ -8,7 +8,6 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Lắng nghe dữ liệu thay đổi từ ViewModel thông qua context.watch
     final user = context.watch<ProfileViewModel>().currentUser;
 
     return Scaffold(
@@ -57,10 +56,12 @@ class ProfileScreen extends StatelessWidget {
           Expanded(
             child: ListView(
               children: [
-                _buildOptionItem(Icons.person_outline, 'Hồ sơ cá nhân'),
-                _buildOptionItem(Icons.health_and_safety_outlined, 'Hồ sơ sức khỏe'),
-                _buildOptionItem(Icons.payment, 'Phương thức thanh toán'),
-                _buildOptionItem(Icons.lock_outline, 'Quản lý mật khẩu'),
+                _buildOptionItem(Icons.person_outline, 'Hồ sơ cá nhân', true),
+                _buildOptionItem(Icons.health_and_safety_outlined, 'Hồ sơ sức khỏe', true),
+                _buildOptionItem(Icons.payment, 'Phương thức thanh toán', true),
+                _buildOptionItem(Icons.lock_outline, 'Quản lý mật khẩu', true),
+                _buildOptionItem(Icons.person_remove, 'Xóa tài khoản', false),
+                _buildOptionItem(Icons.logout, 'Đăng xuất', false)
               ],
             ),
           ),
@@ -69,7 +70,7 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildOptionItem(IconData icon, String title) {
+  Widget _buildOptionItem(IconData icon, String title, bool turnOnArr) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       child: Row(
@@ -79,9 +80,10 @@ class ProfileScreen extends StatelessWidget {
             decoration: const BoxDecoration(color: kPrimaryColor, shape: BoxShape.circle),
             child: Icon(icon, color: Colors.white, size: 20),
           ),
-          const SizedBox(width: 15),
-          Expanded(child: Text(title, style: kLabelTextStyle)),
-          const Icon(Icons.arrow_forward_ios, size: 15, color: kGreyTextColor),
+            const SizedBox(width: 15),
+            Expanded(child: Text(title, style: kLabelTextStyle)),
+          if(turnOnArr)
+            const Icon(Icons.arrow_forward_ios, size: 15, color: kGreyTextColor),
         ],
       ),
     );

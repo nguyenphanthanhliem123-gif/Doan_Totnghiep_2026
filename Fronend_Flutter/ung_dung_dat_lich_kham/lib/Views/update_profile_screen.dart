@@ -70,6 +70,9 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
                   const SizedBox(height: 20),
                   const Text('Địa chỉ', style: kLabelTextStyle), const SizedBox(height: 8),
                   _buildTextField(_addressController),
+                  const SizedBox(height: 20),
+                  const Text('Giới tính', style: kLabelTextStyle), const SizedBox(height: 8),
+                  _buildGenderComboBox()
                 ],
               ),
             ),
@@ -112,6 +115,32 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
         suffixIcon: icon != null ? Icon(icon, color: kGreyTextColor) : null,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
       ),
+    );
+  }
+
+  Widget _buildGenderComboBox() {
+    return DropdownButtonFormField<String>(
+      value: _selectedGender,
+      decoration: InputDecoration(
+        fillColor: kInputBackgroundColor,
+        filled: true,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide.none,
+        ),
+      ),
+      icon: const Icon(Icons.keyboard_arrow_down, color: kGreyTextColor),
+      items: <String>['Nam', 'Nữ', 'Khác'].map((String value) {
+        return DropdownMenuItem<String>(
+          value: value,
+          child: Text(value, style: kInputTextStyle),
+        );
+      }).toList(),
+      onChanged: (String? newValue) {
+        setState(() {
+          _selectedGender = newValue!;
+        });
+      },
     );
   }
 }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:ung_dung_dat_lich_kham/Constants/ui_constants.dart';
 import 'profile_screen.dart';
 import 'update_profile_screen.dart';
 import 'change_password_screen.dart';
@@ -16,6 +17,7 @@ class _MainScreenState extends State<MainScreen> {
     const ProfileScreen(),
     const UpdateProfileScreen(),
     const ChangePasswordScreen(),
+    const Scaffold(body: Center(child: Text('Màn hình Lịch khám (Chưa cấu hình)'))),
   ];
 
   @override
@@ -25,10 +27,15 @@ class _MainScreenState extends State<MainScreen> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (index) => setState(() => _currentIndex = index),
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: kPrimaryColor,   // Màu xanh khi được chọn
+        unselectedItemColor: kGreyTextColor, // Màu xám khi không chọn
+        backgroundColor: Colors.white,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Thông tin'),
-          BottomNavigationBarItem(icon: Icon(Icons.edit), label: 'Cập nhật'),
-          BottomNavigationBarItem(icon: Icon(Icons.lock), label: 'Mật khẩu'),
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Trang chủ'),
+          BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), label: 'Tin nhắn'),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Cá nhân'),
+          BottomNavigationBarItem(icon: Icon(Icons.calendar_month), label: 'Lịch'),
         ],
       ),
     );
