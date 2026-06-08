@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ung_dung_dat_lich_kham/Constants/ui_constants.dart';
+import 'package:ung_dung_dat_lich_kham/Views/health_record_menu_screen.dart';
+import 'package:ung_dung_dat_lich_kham/Views/update_health_record_screen.dart';
 import 'profile_screen.dart';
 import 'update_profile_screen.dart';
 import 'change_password_screen.dart';
@@ -14,10 +16,13 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
   final List<Widget> _screens = [
-    const ProfileScreen(),
+    const HealthRecordMenuScreen(),
+    //const HealthRecordMenuScreen(),
+    //const ProfileScreen(),
     const UpdateProfileScreen(),
     const ChangePasswordScreen(),
-    const Scaffold(body: Center(child: Text('Màn hình Lịch khám (Chưa cấu hình)'))),
+    const UpdateHealthRecordScreen(),
+    //const Scaffold(body: Center(child: Text('Màn hình Lịch khám (Chưa cấu hình)'))),
   ];
 
   @override
