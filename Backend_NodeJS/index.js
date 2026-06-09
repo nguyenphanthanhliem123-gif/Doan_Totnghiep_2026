@@ -5,6 +5,8 @@ import cors from 'cors';
 
 //Import Routes
 import userRoutes from './routes/userRoutes.js';
+import adminRoutes from "./routes/adminRoutes.js";
+import profileRoutes from "./routes/profileRoutes.js";
 
 const app = express();
 app.use(bodyParser.json());
@@ -14,7 +16,9 @@ app.use(cors({ origin: '*' }));
 app.get('/',(req,res) => {
     res.json({message: "Server API running"});
 });
+app.use('/api/admin', adminRoutes);
 app.use('/api/auth', userRoutes);
+app.use('/api/profile', profileRoutes);
 
 //app.use("/",userRoutes);
 app.use((req,res,next)=>{

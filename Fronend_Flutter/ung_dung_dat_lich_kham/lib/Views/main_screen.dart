@@ -33,8 +33,8 @@ class _MainScreenState extends State<MainScreen> {
         currentIndex: _currentIndex,
         onTap: (index) => setState(() => _currentIndex = index),
         type: BottomNavigationBarType.fixed,
-        selectedItemColor: kPrimaryColor,   // Màu xanh khi được chọn
-        unselectedItemColor: kGreyTextColor, // Màu xám khi không chọn
+        selectedItemColor: kPrimaryColor,
+        unselectedItemColor: kGreyTextColor,
         backgroundColor: Colors.white,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Trang chủ'),

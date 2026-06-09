@@ -10,6 +10,15 @@ export default class userModel {
         }
     }
 
+    static async findById(ma_nguoi_dung){
+        try {
+            const [rows] = await execute("SELECT * FROM nguoi_dung WHERE Ma_nguoi_dung = ? LIMIT 1", [ma_nguoi_dung]);
+            return rows[0] ?? null;
+        } catch (error) {
+            throw new Error("Lỗi Database: " + error.message);
+        }
+    }
+
     // Đã thêm fullName và sửa lại tên các cột cho chuẩn SQL
     static async create({ email, phoneNumber, hashedPassword, fullName }) {
         try {
