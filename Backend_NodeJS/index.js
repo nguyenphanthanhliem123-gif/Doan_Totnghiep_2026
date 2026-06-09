@@ -10,6 +10,8 @@ import profileRoutes from "./routes/profileRoutes.js";
 
 const app = express();
 app.use(bodyParser.json());
+// THÊM DÒNG NÀY: Để Node.js đọc được dữ liệu từ Form HTML gửi lên
+app.use(express.urlencoded({ extended: true })); 
 app.use(cors({ origin: '*' }));
 
 //Routes
@@ -20,10 +22,8 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/auth', userRoutes);
 app.use('/api/profile', profileRoutes);
 
-//app.use("/",userRoutes);
 app.use((req,res,next)=>{
     res.status(404).json({message: 'Endpoint not found'});
-
 });
 
 //Custom error handler
@@ -33,7 +33,6 @@ app.use((err,req,res,next)=>{
 
     if(process.env.NODE_ENV === 'production'){
         return res.status(500).json({message: 'Something went wrong!'});
-
     }
     else return res.status(500).json({
         message: err.message,

@@ -1,45 +1,209 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthViewModel extends ChangeNotifier {
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
-  // Dữ liệu mẫu ban đầu để test
-  final String _dummyEmail = "abc";
-  final String _dummyPass = "123";
+  // Điểm cấu hình URL của API Backend Node.js
+  final String _baseUrl = "http://localhost:3001/api/auth";
 
-  // Hàm giả lập đăng nhập
-  Future<bool> login(String email, String password) async {
+  // Hàm kết nối API Đăng nhập
+  Future<Map<String, dynamic>> login(String email, String password) async {
+    // 1. Bật trạng thái Loading để giao diện hiển thị vòng xoay
     _isLoading = true;
     notifyListeners();
 
-    // Giả lập thời gian chờ của API
-    await Future.delayed(const Duration(seconds: 1));
+    final url = Uri.parse('$_baseUrl/login');
 
-    _isLoading = false;
-    notifyListeners();
+    try {
+      // 2. Gửi request POST kèm theo body là JSON chứa thông tin tài khoản
+      final response = await http.post(
+        url,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: jsonEncode({
+          "email": email,
+          "password": password,
+        }),
+      );
 
-    // Kiểm tra dữ liệu mẫu
-    if (email == _dummyEmail && password == _dummyPass) {
-      return true; // Đăng nhập thành công
+      // 3. Giải mã dữ liệu JSON trả về từ Node.js
+      final responseData = jsonDecode(response.body);
+
+      print("BACKEND TRA VE CUC NAY: $responseData");
+
+      _isLoading = false;
+      notifyListeners();
+
+      // 4. Kiểm tra mã trạng thái HTTP trả về từ Backend (200 OK)
+      if (response.statusCode == 200 && responseData['succeeded'] == true) {
+        final prefs = await SharedPreferences.getInstance();
+                
+          // Lấy mã người dùng từ JSON trả về của Backend. 
+          // Hãy chắc chắn Backend của bạn trả về trường id (ví dụ: responseData['user']['id'] hoặc responseData['userId'])
+          String maNguoiDung = responseData['id']?.toString() ?? responseData['userId']?.toString() ?? '';
+          
+          if (maNguoiDung.isNotEmpty) {
+            await prefs.setString('ma_nguoi_dung', maNguoiDung);
+            print("Lưu ma_nguoi_dung thành công: $maNguoiDung"); // Log ra màn hình để bạn dễ debug
+          }
+        // Trả về kết quả thành công và kèm theo token nếu cần lưu trữ sau này
+        return {
+          "success": true,
+          "message": "Đăng nhập thành công",
+          "token": responseData['token'],
+          "role": responseData['role']
+        };
+      } else {
+        // Trả về thông báo lỗi từ Backend (Ví dụ: "Email hoặc mật khẩu không đúng")
+        return {
+          "success": false,
+          "message": responseData['message'] ?? "Đăng nhập thất bại"
+        };
+      }
+    } catch (error) {
+      // Bắt các lỗi mất kết nối mạng, server sập...
+      _isLoading = false;
+      notifyListeners();
+      return {
+        "success": false,
+        "message": "Không thể kết nối đến máy chủ. Vui lòng thử lại sau!"
+      };
     }
-    return false; // Sai email hoặc mật khẩu
   }
 
-  // Hàm giả lập đăng ký
-  Future<bool> register(String email, String phoneNumber, String password, String confirmPassword) async {
-    if (password != confirmPassword || password.isEmpty) {
-      return false; // Mật khẩu không khớp
+  Future<Map<String, dynamic>> register(String fullName, String phone, String email, String password, String confirmPassword) async {
+    // Kiểm tra cơ bản ở Frontend trước khi gửi lên Server
+    if (password != confirmPassword) {
+      return {"success": false, "message": "Mật khẩu xác nhận không khớp!"};
+    }
+    // Đã thêm điều kiện kiểm tra fullName
+    if (fullName.isEmpty || password.isEmpty || email.isEmpty || phone.isEmpty) {
+      return {"success": false, "message": "Vui lòng điền đầy đủ thông tin!"};
     }
 
     _isLoading = true;
     notifyListeners();
 
-    await Future.delayed(const Duration(seconds: 1));
+    // Tạm thời gọi vào API register cũ để lưu DB. 
+    // Mấy hôm nữa làm xong OTP bên Node.js, bạn chỉ cần đổi chỗ này thành /send-otp là xong!
+    final url = Uri.parse('$_baseUrl/register'); 
 
-    _isLoading = false;
+    try {
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "fullName": fullName, // <-- Nhận tên thật từ tham số truyền vào
+          "phoneNumber": phone,
+          "email": email,
+          "password": password,
+          "role": "Benh_nhan"
+        }),
+      );
+
+      final responseData = jsonDecode(response.body);
+      _isLoading = false;
+      notifyListeners();
+
+      // Kiểm tra HTTP Status (200 OK hoặc 201 Created)
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {"success": true, "message": "Đăng ký thành công!"};
+      } else {
+        return {
+          "success": false, 
+          "message": responseData['message'] ?? "Đăng ký thất bại"
+        };
+      }
+    } catch (error) {
+      _isLoading = false;
+      notifyListeners();
+      return {"success": false, "message": "Lỗi kết nối máy chủ. Vui lòng thử lại!"};
+    }
+  }
+  // Giúp các màn hình khác sau này muốn lấy ID chỉ cần gọi hàm này
+  Future<String?> getSavedUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('ma_nguoi_dung');
+  }
+
+  // Hàm xóa ID khi người dùng bấm Đăng xuất (Logout)
+  Future<void> logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('ma_nguoi_dung');
     notifyListeners();
-    
-    return true; // Giả lập đăng ký thành công
+  }
+
+  Future<Map<String, dynamic>> verifyOTP(String email, String otp) async {
+    _isLoading = true;
+    notifyListeners();
+
+    // Gọi đến route /verify-otp mà bạn vừa tạo ở Node.js
+    final url = Uri.parse('$_baseUrl/verify-otp'); 
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "email": email, // Backend cần biết email nào đang gửi mã
+          "otp": otp      // Và mã 6 số là gì
+        }),
+      );
+
+      final responseData = jsonDecode(response.body);
+      _isLoading = false;
+      notifyListeners();
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {"success": true, "message": responseData['message'] ?? "Xác thực thành công!"};
+      } else {
+        return {
+          "success": false, 
+          "message": responseData['message'] ?? "Xác thực thất bại"
+        };
+      }
+    } catch (error) {
+      _isLoading = false;
+      notifyListeners();
+      return {"success": false, "message": "Lỗi kết nối máy chủ. Vui lòng thử lại!"};
+    }
+  }
+
+  // Hàm kết nối API Quên Mật Khẩu
+  Future<Map<String, dynamic>> forgotPassword(String email) async {
+    _isLoading = true;
+    notifyListeners();
+
+    final url = Uri.parse('$_baseUrl/forgot-password');
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"email": email}),
+      );
+
+      final responseData = jsonDecode(response.body);
+      _isLoading = false;
+      notifyListeners();
+
+      if (response.statusCode == 200 && responseData['succeeded'] == true) {
+        return {"success": true, "message": responseData['message'] ?? "Đã gửi liên kết khôi phục!"};
+      } else {
+        return {
+          "success": false,
+          "message": responseData['message'] ?? "Không thể gửi yêu cầu"
+        };
+      }
+    } catch (error) {
+      _isLoading = false;
+      notifyListeners();
+      return {"success": false, "message": "Lỗi kết nối máy chủ. Vui lòng thử lại sau!"};
+    }
   }
 }

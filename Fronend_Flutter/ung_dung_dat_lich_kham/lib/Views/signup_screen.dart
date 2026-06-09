@@ -11,7 +11,7 @@ class SignupScreen extends StatefulWidget {
 }
 
 class _SignupScreenState extends State<SignupScreen> {
-  // Thay _nameController thành _phoneController
+  final TextEditingController _nameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passController = TextEditingController();
@@ -26,6 +26,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
   @override
   void dispose() {
+    _nameController.dispose();
     _phoneController.dispose();
     _emailController.dispose();
     _passController.dispose();
@@ -58,8 +59,17 @@ class _SignupScreenState extends State<SignupScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const SizedBox(height: 10),
+
+            _buildLabel('Họ và tên'),
+            _buildTextField(
+              controller: _nameController,
+              hintText: 'Nhập đầy đủ họ tên của bạn',
+              keyboardType: TextInputType.name,
+              textCapitalization: TextCapitalization.words, // Tự viết hoa chữ cái đầu
+            ),
+
+            const SizedBox(height: 16),
             
-            // Đã thay đổi thành Số điện thoại
             _buildLabel('Số điện thoại'),
             _buildTextField(
               controller: _phoneController,
@@ -114,26 +124,28 @@ class _SignupScreenState extends State<SignupScreen> {
               onPressed: authVM.isLoading
                   ? null
                   : () async {
-                      // Lưu ý: Cần cập nhật hàm register trong AuthViewModel để nhận số điện thoại
-                      bool success = await authVM.register(
-                        _phoneController.text,
-                        _emailController.text,
+                      // Nhận kết quả Map từ API
+                      final result = await authVM.register(
+                        _nameController.text.trim(),
+                        _phoneController.text.trim(),
+                        _emailController.text.trim(),
                         _passController.text,
                         _confirmPassController.text,
                       );
                       
-                      if (success) {
+                      if (result['success'] == true) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Vui lòng xác thực tài khoản!')));
+                            const SnackBar(content: Text('Đăng ký thành công! Vui lòng xác thực.')));
                         
-                        // Thay vì Navigator.pop, ta sẽ chuyển sang trang nhập mã OTP
+                        // Chuyển sang trang nhập OTP
                         Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => OtpVerificationScreen(
-                          verificationTarget: _phoneController.text, // Lấy SĐT từ ô nhập
-                          isSms: false, // Kích hoạt giao diện SMS
+                          verificationTarget: _emailController.text.trim(), 
+                          isSms: false, 
                         )));
                       } else {
+                        // Hiển thị lỗi chính xác từ Node.js trả về
                         ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Thông tin không hợp lệ hoặc mật khẩu không khớp!')));
+                            SnackBar(content: Text(result['message'])));
                       }
                     },
               style: ElevatedButton.styleFrom(
@@ -189,6 +201,7 @@ class _SignupScreenState extends State<SignupScreen> {
     bool obscureText = false,
     Widget? suffixIcon,
     TextInputType? keyboardType,
+    TextCapitalization textCapitalization = TextCapitalization.none, // Mặc định là không viết hoa
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -199,6 +212,7 @@ class _SignupScreenState extends State<SignupScreen> {
         controller: controller,
         obscureText: obscureText,
         keyboardType: keyboardType,
+        textCapitalization: textCapitalization, // Truyền tham số vào TextField
         style: TextStyle(color: primaryColor, fontWeight: FontWeight.w500),
         decoration: InputDecoration(
           hintText: hintText,

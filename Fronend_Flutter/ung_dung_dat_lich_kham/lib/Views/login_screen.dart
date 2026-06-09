@@ -90,23 +90,29 @@ class _LoginScreenState extends State<LoginScreen> {
               onPressed: authVM.isLoading
                   ? null
                   : () async {
-                      bool success = await authVM.login(
-                        _emailController.text,
+                      // Gọi hàm login kết nối API thật
+                      final result = await authVM.login(
+                        _emailController.text.trim(),
                         _passController.text,
                       );
-                      if (success) {
-                        // Hiện thông báo thành công
+
+                      // Kiểm tra kết quả xử lý trả về từ ViewModel
+                      if (result['success'] == true) {
+                        // Hiện thông báo thành công lấy từ Backend
                         ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Đăng nhập thành công!')));
+                          const SnackBar(content: Text('Đăng nhập thành công!')),
+                        );
                         
-                        // Chuyển hướng
+                        // Điều hướng sang màn hình chính
                         Navigator.pushReplacement(
                           context,
                           MaterialPageRoute(builder: (context) => const MainScreen()),
                         );
                       } else {
+                        // Hiện thông báo lỗi chi tiết (Ví dụ: "Sai email...", "Thiếu trường...")
                         ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Sai email hoặc mật khẩu!')));
+                          SnackBar(content: Text(result['message'])),
+                        );
                       }
                     },
               style: ElevatedButton.styleFrom(

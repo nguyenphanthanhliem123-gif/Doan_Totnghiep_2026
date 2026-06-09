@@ -19,7 +19,6 @@ export default class userModel {
         }
     }
 
-    // Đã thêm fullName và sửa lại tên các cột cho chuẩn SQL
     static async create({ email, phoneNumber, hashedPassword, fullName }) {
         try {
             const [result] = await execute(
@@ -29,6 +28,19 @@ export default class userModel {
             return result.affectedRows > 0 ? result.insertId : null;
         } catch(error) {
             throw new Error(error.message);
+        }
+    }
+
+    // ĐÃ THÊM: Hàm cập nhật mật khẩu mới
+    static async updatePassword(email, newHashedPassword) {
+        try {
+            const [result] = await execute(
+                'UPDATE nguoi_dung SET Mat_khau = ? WHERE Email = ?',
+                [newHashedPassword, email]
+            );
+            return result.affectedRows > 0;
+        } catch (error) {
+            throw new Error("Lỗi Database: " + error.message);
         }
     }
 }
