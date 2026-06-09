@@ -1,18 +1,38 @@
-// import 'package:flutter/material.dart';
-// import '../Models/user_model.dart';
+import 'package:flutter/material.dart';
+import '../Models/user_model.dart';
+import '../Services/profile_service.dart';
 
-// class ProfileViewModel extends ChangeNotifier {
-//   // Dữ liệu mẫu ban đầu
-//   final UserModel _currentUser = UserModel(
-//     fullName: 'Jane Doe',
-//     email: 'Janedoe@example.com',
-//     phone: '+123 567 89000',
-//   );
+class ProfileViewModel extends ChangeNotifier {
+  final APIProfileService _apiProfileService = APIProfileService();
 
-//   UserModel get currentUser => _currentUser;
+  UserModel? _userModel;
+  bool _isLoading = false;
+  String _errorMessage = '';
 
-//   void updateProfile(String newName) {
-//     _currentUser.fullName = newName;
+
+  UserModel? get userProfile => _userModel;
+  bool get isLoading => _isLoading;
+  String get errorMessage => _errorMessage;
+
+  Future<void> getUserProfile(int ma_nguoi_dung) async {
+    _isLoading = true;
+    _errorMessage = '';
+    notifyListeners();
+
+    try{
+      _userModel = await _apiProfileService.fecthProfile(ma_nguoi_dung);
+    }
+    catch(e){
+      _errorMessage = e.toString();
+    }
+    finally{
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  void updateProfile(String newName) {
+    //_currentUser.fullName = newName;
 
 //     notifyListeners(); // Thông báo cho tất cả các View cập nhật giao diện
 //   }

@@ -2,13 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../constants/ui_constants.dart';
 import '../viewmodels/profile_viewmodel.dart';
+import '../Config/USER_ID.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget{
   const ProfileScreen({super.key});
 
   @override
+  State<ProfileScreen> createState() => _ProfileScreen();
+}
+
+class _ProfileScreen extends State<ProfileScreen> {
+  
+
+  @override
   Widget build(BuildContext context) {
-    final user = context.watch<ProfileViewModel>().currentUser;
+    late user = Provider.of<ProfileViewModel>(context).getUserProfile(ma_nguoi_dung);
 
     return Scaffold(
       appBar: PreferredSize(
