@@ -4,17 +4,17 @@ import bodyParser from 'body-parser';
 import cors from 'cors';
 
 //Import Routes
-
-
+import userRoutes from './routes/userRoutes.js';
 
 const app = express();
 app.use(bodyParser.json());
-app.use(cors({origin: 'http://localhost:3000'}));
+app.use(cors({ origin: '*' }));
 
 //Routes
 app.get('/',(req,res) => {
     res.json({message: "Server API running"});
 });
+app.use('/api/auth', userRoutes);
 
 //app.use("/",userRoutes);
 app.use((req,res,next)=>{

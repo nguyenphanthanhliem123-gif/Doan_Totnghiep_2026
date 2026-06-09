@@ -1,0 +1,25 @@
+import { execute } from "../config/db.js";
+
+export default class userModel {
+    static async findByEmail(email) {
+        try {
+            const [rows] = await execute("SELECT * FROM nguoi_dung WHERE Email = ? LIMIT 1", [email]);
+            return rows[0] ?? null;
+        } catch (error) {
+            throw new Error("Lỗi Database: " + error.message);
+        }
+    }
+
+    // Đã thêm fullName và sửa lại tên các cột cho chuẩn SQL
+    static async create({ email, phoneNumber, hashedPassword, fullName }) {
+        try {
+            const [result] = await execute(
+                'INSERT INTO `nguoi_dung`(`Ten_nguoi_dung`, `Email`, `Dien_thoai`, `Mat_khau`, `Phan_quyen`) VALUES (?, ?, ?, ?, ?)',
+                [fullName, email, phoneNumber, hashedPassword, 'Benh_nhan']
+            );
+            return result.affectedRows > 0 ? result.insertId : null;
+        } catch(error) {
+            throw new Error(error.message);
+        }
+    }
+}
