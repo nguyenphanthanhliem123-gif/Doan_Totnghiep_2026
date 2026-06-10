@@ -2,14 +2,14 @@ class UserModel {
   final int id;
   final String fullName;
   final String email;
-  final String phone;
+  final String? phone;
   final String? avatar;
 
   UserModel({
     required this.id,
     required this.fullName,
     required this.email,
-    required this.phone,
+    this.phone,
     this.avatar
   });
 

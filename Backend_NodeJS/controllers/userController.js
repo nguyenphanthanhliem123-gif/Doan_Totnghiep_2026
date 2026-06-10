@@ -38,12 +38,13 @@ export default class userController {
         return true;
     }
 
-    // API BƯỚC 1: ĐĂNG KÝ VÀ GỬI MÃ OTP (CHƯA LƯU DATABASE)
+    // API Đăng ký - Gửi OTP qua Email
     static async register(req, res) {
         try {
-            const { email, phoneNumber, password, fullName } = req.body;
+            // Đã xóa phoneNumber khỏi yêu cầu
+            const { email, password, fullName } = req.body;
 
-            if (!email || !phoneNumber || !password || !fullName) {
+            if (!email || !password || !fullName) {
                 return res.status(400).json({ succeeded: false, message: 'Vui lòng điền đầy đủ thông tin' });
             }
 
@@ -64,7 +65,7 @@ export default class userController {
             
             otpStorage.set(email, {
                 otp: otpCode,
-                userData: { email, phoneNumber, hashedPassword, fullName },
+                userData: { email, hashedPassword, fullName }, // Không lưu phoneNumber nữa
                 expiresAt: Date.now() + 5 * 60 * 1000
             });
 
@@ -82,7 +83,7 @@ export default class userController {
         }
     }
 
-    // API BƯỚC 2: XÁC THỰC MÃ OTP VÀ LƯU VÀO DATABASE
+    // API Xác thực OTP và hoàn tất đăng ký
     static async verifyOTPAndRegister(req, res) {
         try {
             const { email, otp } = req.body;
@@ -106,11 +107,10 @@ export default class userController {
                 return res.status(400).json({ succeeded: false, message: "Mã OTP không chính xác" });
             }
 
-            const { phoneNumber, hashedPassword, fullName } = storedData.userData;
+            const { hashedPassword, fullName } = storedData.userData; // Không lấy phoneNumber nữa
 
             const newId = await userModel.create({ 
                 email, 
-                phoneNumber, 
                 hashedPassword,
                 fullName
             });

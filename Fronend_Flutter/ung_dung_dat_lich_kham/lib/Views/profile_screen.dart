@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../constants/ui_constants.dart';
 import '../viewmodels/profile_viewmodel.dart';
 import '../viewmodels/auth_viewmodel.dart';
+import 'login_screen.dart'; // Import thêm màn hình đăng nhập để điều hướng
 
 class ProfileScreen extends StatefulWidget{
   const ProfileScreen({super.key});
@@ -99,8 +100,6 @@ class _ProfileScreen extends State<ProfileScreen> {
                                 // Đổ tên, số điện thoại và email động từ model
                                 Text(user.fullName, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                                 const SizedBox(height: 5),
-                                Text(user.phone, style: const TextStyle(color: kGreyTextColor, fontSize: 14)),
-                                const SizedBox(height: 2),
                                 Text(user.email, style: const TextStyle(color: kGreyTextColor, fontSize: 14)),
                               ],
                             ),
@@ -190,12 +189,24 @@ class _ProfileScreen extends State<ProfileScreen> {
                   const SizedBox(width: 15),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () {
+                      onPressed: () async {
                         Navigator.pop(ctx);
                         if (isDeleteAccount) {
                           print("Thực hiện logic Xóa tài khoản");
                         } else {
                           print("Thực hiện logic Đăng xuất");
+                          
+                          // 1. Gọi hàm logout xóa sạch SharedPreferences dữ liệu phiên đăng nhập cũ
+                          await Provider.of<AuthViewModel>(context, listen: false).logout();
+                          
+                          if (!context.mounted) return;
+                          
+                          // 2. Điều hướng đưa người dùng bay thẳng về màn hình Đăng nhập, đồng thời xóa sạch các stack cũ
+                          Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(builder: (context) => const LoginScreen()),
+                            (route) => false,
+                          );
                         }
                       },
                       style: ElevatedButton.styleFrom(

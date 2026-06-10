@@ -12,7 +12,7 @@ class SignupScreen extends StatefulWidget {
 
 class _SignupScreenState extends State<SignupScreen> {
   final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _phoneController = TextEditingController();
+  // Đã xóa _phoneController
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passController = TextEditingController();
   final TextEditingController _confirmPassController = TextEditingController();
@@ -27,7 +27,6 @@ class _SignupScreenState extends State<SignupScreen> {
   @override
   void dispose() {
     _nameController.dispose();
-    _phoneController.dispose();
     _emailController.dispose();
     _passController.dispose();
     _confirmPassController.dispose();
@@ -65,16 +64,7 @@ class _SignupScreenState extends State<SignupScreen> {
               controller: _nameController,
               hintText: 'Nhập đầy đủ họ tên của bạn',
               keyboardType: TextInputType.name,
-              textCapitalization: TextCapitalization.words, // Tự viết hoa chữ cái đầu
-            ),
-
-            const SizedBox(height: 16),
-            
-            _buildLabel('Số điện thoại'),
-            _buildTextField(
-              controller: _phoneController,
-              hintText: 'Nhập số điện thoại',
-              keyboardType: TextInputType.phone, // Gọi bàn phím số
+              textCapitalization: TextCapitalization.words, 
             ),
             
             const SizedBox(height: 16),
@@ -127,7 +117,6 @@ class _SignupScreenState extends State<SignupScreen> {
                       // Nhận kết quả Map từ API
                       final result = await authVM.register(
                         _nameController.text.trim(),
-                        _phoneController.text.trim(),
                         _emailController.text.trim(),
                         _passController.text,
                         _confirmPassController.text,
@@ -137,13 +126,11 @@ class _SignupScreenState extends State<SignupScreen> {
                         ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('Đăng ký thành công! Vui lòng xác thực.')));
                         
-                        // Chuyển sang trang nhập OTP
                         Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => OtpVerificationScreen(
                           verificationTarget: _emailController.text.trim(), 
                           isSms: false, 
                         )));
                       } else {
-                        // Hiển thị lỗi chính xác từ Node.js trả về
                         ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(content: Text(result['message'])));
                       }
@@ -170,7 +157,7 @@ class _SignupScreenState extends State<SignupScreen> {
                 const Text('Đã có tài khoản? '),
                 GestureDetector(
                   onTap: () {
-                    Navigator.pop(context); // Trở về trang đăng nhập
+                    Navigator.pop(context); 
                   },
                   child: Text(
                     'Đăng nhập',
@@ -201,7 +188,7 @@ class _SignupScreenState extends State<SignupScreen> {
     bool obscureText = false,
     Widget? suffixIcon,
     TextInputType? keyboardType,
-    TextCapitalization textCapitalization = TextCapitalization.none, // Mặc định là không viết hoa
+    TextCapitalization textCapitalization = TextCapitalization.none,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -212,7 +199,7 @@ class _SignupScreenState extends State<SignupScreen> {
         controller: controller,
         obscureText: obscureText,
         keyboardType: keyboardType,
-        textCapitalization: textCapitalization, // Truyền tham số vào TextField
+        textCapitalization: textCapitalization,
         style: TextStyle(color: primaryColor, fontWeight: FontWeight.w500),
         decoration: InputDecoration(
           hintText: hintText,
