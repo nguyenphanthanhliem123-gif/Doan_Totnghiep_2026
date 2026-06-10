@@ -21,11 +21,11 @@ export default class userModel {
     }
 
     // Hàm tạo người dùng mới
-    static async create({ email, phoneNumber, hashedPassword, fullName }) {
+    static async create({ email, hashedPassword, fullName }) {
         try {
             const [result] = await execute(
-                'INSERT INTO `nguoi_dung`(`Ten_nguoi_dung`, `Email`, `Dien_thoai`, `Mat_khau`, `Phan_quyen`) VALUES (?, ?, ?, ?, ?)',
-                [fullName, email, phoneNumber, hashedPassword, 'Benh_nhan']
+                'INSERT INTO `nguoi_dung`(`Ten_nguoi_dung`, `Email`, `Mat_khau`, `Phan_quyen`) VALUES (?, ?, ?, ?)',
+                [fullName, email, hashedPassword, 'Benh_nhan']
             );
             return result.affectedRows > 0 ? result.insertId : null;
         } catch(error) {

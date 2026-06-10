@@ -95,28 +95,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
               ),
               
               const SizedBox(height: 40),
-              
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text('Chưa nhận được mã? ', style: TextStyle(color: Colors.black54)),
-                  TextButton(
-                    onPressed: () {
-                      // TODO: Bạn có thể gọi lại hàm authVM.register(...) ở đây để yêu cầu Backend sinh mã mới
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Tính năng gửi lại đang cập nhật!')),
-                      );
-                    },
-                    child: Text(
-                      'Gửi lại',
-                      style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ],
-              ),
-              
-              const Spacer(),
-              
+
               // NÚT XÁC NHẬN GẮN API
               SizedBox(
                 width: double.infinity,
@@ -125,7 +104,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                       ? null 
                       : () async {
                           String otpCode = getOtp();
-                          // Sửa thành kiểm tra độ dài 6 số
                           if (otpCode.length == 6) {
                             
                             // GỌI API VERIFY OTP BÊN VIEWMODEL
@@ -176,11 +154,11 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     );
   }
 
-  // Hàm tạo từng ô vuông nhập số (Thu nhỏ width và height lại một chút để vừa 6 ô trên màn hình nhỏ)
+  // Hàm tạo từng ô vuông nhập số
   Widget _buildOtpBox(int index) {
     return Container(
-      width: 45, // Thu nhỏ kích thước ô
-      height: 55, // Thu nhỏ kích thước ô
+      width: 45,
+      height: 55,
       decoration: BoxDecoration(
         color: const Color(0xFFEAF8FB),
         borderRadius: BorderRadius.circular(10),

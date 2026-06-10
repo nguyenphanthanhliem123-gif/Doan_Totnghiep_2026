@@ -26,7 +26,7 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       // 1. Khởi tạo cấu hình rõ ràng: Xin quyền truy cập Email
       final GoogleSignIn googleSignIn = GoogleSignIn(
-        // Lấy clientId từ Google Cloud Console của Gmail của bạn (tự lấy clitentId này, không dùng chung)
+        // Lấy clientId từ Google Cloud Console sau khi tạo OAuth 2.0 Client ID
         clientId: '103197146336-5c1d0231e2327rmp9793808d43i3hhfo.apps.googleusercontent.com',
         scopes: <String>[
           'email',

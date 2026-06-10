@@ -80,13 +80,13 @@ class AuthViewModel extends ChangeNotifier {
     }
   }
 
-  Future<Map<String, dynamic>> register(String fullName, String phone, String email, String password, String confirmPassword) async {
+  // Hàm kết nối API Đăng ký tài khoản mới
+  Future<Map<String, dynamic>> register(String fullName, String email, String password, String confirmPassword) async {
     // Kiểm tra cơ bản ở Frontend trước khi gửi lên Server
     if (password != confirmPassword) {
       return {"success": false, "message": "Mật khẩu xác nhận không khớp!"};
     }
-    // Đã thêm điều kiện kiểm tra fullName
-    if (fullName.isEmpty || password.isEmpty || email.isEmpty || phone.isEmpty) {
+    if (fullName.isEmpty || password.isEmpty || email.isEmpty) {
       return {"success": false, "message": "Vui lòng điền đầy đủ thông tin!"};
     }
 
@@ -100,8 +100,7 @@ class AuthViewModel extends ChangeNotifier {
         url,
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
-          "fullName": fullName, // <-- Nhận tên thật từ tham số truyền vào
-          "phoneNumber": phone,
+          "fullName": fullName,
           "email": email,
           "password": password,
           "role": "Benh_nhan"
@@ -112,7 +111,6 @@ class AuthViewModel extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
 
-      // Kiểm tra HTTP Status (200 OK hoặc 201 Created)
       if (response.statusCode == 200 || response.statusCode == 201) {
         return {"success": true, "message": "Đăng ký thành công!"};
       } else {
@@ -127,16 +125,22 @@ class AuthViewModel extends ChangeNotifier {
       return {"success": false, "message": "Lỗi kết nối máy chủ. Vui lòng thử lại!"};
     }
   }
+
   // Hàm lấy ID người dùng đã lưu trong SharedPreferences (sau khi đăng nhập thành công)
   Future<String?> getSavedUserId() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('ma_nguoi_dung');
   }
 
-  // Hàm xóa ID khi người dùng bấm Đăng xuất (Logout)
+  // Hàm xóa sạch dữ liệu khi người dùng bấm Đăng xuất (Logout)
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
+    
     await prefs.remove('ma_nguoi_dung');
+    await prefs.remove('userId');
+    await prefs.remove('token');
+    await prefs.remove('role');
+    
     notifyListeners();
   }
 

@@ -4,6 +4,7 @@ import 'package:ung_dung_dat_lich_kham/Views/profile_detail_screen.dart';
 import '../constants/ui_constants.dart';
 import '../viewmodels/profile_viewmodel.dart';
 import '../viewmodels/auth_viewmodel.dart';
+import 'login_screen.dart'; // Import thêm màn hình đăng nhập để điều hướng
 
 class ProfileScreen extends StatefulWidget{
   const ProfileScreen({super.key});
@@ -195,12 +196,24 @@ class _ProfileScreen extends State<ProfileScreen> {
                   const SizedBox(width: 15),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () {
+                      onPressed: () async {
                         Navigator.pop(ctx);
                         if (isDeleteAccount) {
                           print("Thực hiện logic Xóa tài khoản");
                         } else {
                           print("Thực hiện logic Đăng xuất");
+                          
+                          // 1. Gọi hàm logout xóa sạch SharedPreferences dữ liệu phiên đăng nhập cũ
+                          await Provider.of<AuthViewModel>(context, listen: false).logout();
+                          
+                          if (!context.mounted) return;
+                          
+                          // 2. Điều hướng đưa người dùng bay thẳng về màn hình Đăng nhập, đồng thời xóa sạch các stack cũ
+                          Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(builder: (context) => const LoginScreen()),
+                            (route) => false,
+                          );
                         }
                       },
                       style: ElevatedButton.styleFrom(
