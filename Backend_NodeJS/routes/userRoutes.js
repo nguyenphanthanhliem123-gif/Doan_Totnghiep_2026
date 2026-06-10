@@ -12,9 +12,7 @@ userRoutes.post('/verify-otp', userController.verifyOTPAndRegister);
 // API đăng nhập hệ thống
 userRoutes.post('/login', userController.login);
 
-// ==================================
-// API QUÊN MẬT KHẨU
-// ==================================
+// API quên mật khẩu
 // 1. Nhận email và gửi link reset
 userRoutes.post('/forgot-password', userController.forgotPassword);
 
@@ -23,5 +21,8 @@ userRoutes.get('/reset-password-page', userController.renderResetPasswordPage);
 
 // 3. Nhận mật khẩu mới từ form HTML gửi lên (dùng POST)
 userRoutes.post('/update-password', userController.updatePassword);
+
+// API Đăng nhập bằng Google / Facebook
+userRoutes.post('/oauth-login', userController.oauthLogin);
 
 export default userRoutes;

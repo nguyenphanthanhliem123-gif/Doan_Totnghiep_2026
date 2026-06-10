@@ -44,7 +44,6 @@ class AuthViewModel extends ChangeNotifier {
         final prefs = await SharedPreferences.getInstance();
                 
           // Lấy mã người dùng từ JSON trả về của Backend. 
-          // Hãy chắc chắn Backend của bạn trả về trường id (ví dụ: responseData['user']['id'] hoặc responseData['userId'])
           String maNguoiDung = responseData['id']?.toString() ?? responseData['userId']?.toString() ?? '';
           
           if (maNguoiDung.isNotEmpty) {
@@ -94,8 +93,6 @@ class AuthViewModel extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
-    // Tạm thời gọi vào API register cũ để lưu DB. 
-    // Mấy hôm nữa làm xong OTP bên Node.js, bạn chỉ cần đổi chỗ này thành /send-otp là xong!
     final url = Uri.parse('$_baseUrl/register'); 
 
     try {
@@ -130,7 +127,7 @@ class AuthViewModel extends ChangeNotifier {
       return {"success": false, "message": "Lỗi kết nối máy chủ. Vui lòng thử lại!"};
     }
   }
-  // Giúp các màn hình khác sau này muốn lấy ID chỉ cần gọi hàm này
+  // Hàm lấy ID người dùng đã lưu trong SharedPreferences (sau khi đăng nhập thành công)
   Future<String?> getSavedUserId() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('ma_nguoi_dung');
@@ -143,6 +140,7 @@ class AuthViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Hàm kết nối API Xác thực OTP (sau khi người dùng nhận được mã OTP qua email)
   Future<Map<String, dynamic>> verifyOTP(String email, String otp) async {
     _isLoading = true;
     notifyListeners();
@@ -209,6 +207,54 @@ class AuthViewModel extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return {"success": false, "message": "Lỗi kết nối máy chủ. Vui lòng thử lại sau!"};
+    }
+  }
+
+  // Hàm kết nối API Đăng nhập OAuth (Google/Facebook)
+  Future<Map<String, dynamic>> oauthLogin({
+    required String email,
+    required String fullName,
+    required String provider, 
+    required String providerId,
+    required String avatar,
+  }) async {
+    _isLoading = true;
+    notifyListeners();
+
+    final url = Uri.parse('$_baseUrl/oauth-login');
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "email": email,
+          "fullName": fullName,
+          "provider": provider,
+          "providerId": providerId,
+          "avatar": avatar,
+        }),
+      );
+
+      final responseData = jsonDecode(response.body);
+      _isLoading = false;
+      notifyListeners();
+
+      if (response.statusCode == 200 && responseData['succeeded'] == true) {
+        // Lưu thông tin đăng nhập tương tự luồng đăng nhập thường để đồng bộ SharedPreferences
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('token', responseData['token'] ?? '');
+        await prefs.setString('role', responseData['role'] ?? '');
+        await prefs.setInt('userId', responseData['id'] ?? 0);
+        
+        return {"success": true, "message": "Đăng nhập thành công!"};
+      } else {
+        return {"success": false, "message": responseData['message'] ?? "Đăng nhập thất bại"};
+      }
+    } catch (error) {
+      _isLoading = false;
+      notifyListeners();
+      return {"success": false, "message": "Lỗi kết nối máy chủ!"};
     }
   }
 }

@@ -4,6 +4,7 @@ import '../viewmodels/auth_viewmodel.dart';
 import 'signup_screen.dart';
 import 'main_screen.dart';
 import 'forgot_password_screen.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -20,6 +21,60 @@ class _LoginScreenState extends State<LoginScreen> {
   // Màu sắc chủ đạo từ thiết kế
   final Color primaryColor = const Color(0xFF4BCBEB);
   final Color textFieldBgColor = const Color(0xFFEAF8FB);
+
+  Future<void> _handleGoogleSignIn(BuildContext context) async {
+    try {
+      // 1. Khởi tạo cấu hình rõ ràng: Xin quyền truy cập Email
+      final GoogleSignIn googleSignIn = GoogleSignIn(
+        // Lấy clientId từ Google Cloud Console của Gmail của bạn (tự lấy clitentId này, không dùng chung)
+        clientId: '103197146336-5c1d0231e2327rmp9793808d43i3hhfo.apps.googleusercontent.com',
+        scopes: <String>[
+          'email',
+        ],
+      );
+
+      // 2. Gọi cửa sổ đăng nhập của Google hiện lên
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+
+      // Nếu người dùng bấm nút "Hủy" hoặc đóng bảng Google
+      if (googleUser == null) return; 
+
+      final authVM = Provider.of<AuthViewModel>(context, listen: false);
+
+      // 3. Truyền dữ liệu Google trả về xuống Backend
+      final result = await authVM.oauthLogin(
+        email: googleUser.email,
+        fullName: googleUser.displayName ?? 'Người dùng',
+        provider: 'Google',
+        providerId: googleUser.id,
+        avatar: googleUser.photoUrl ?? '',
+      );
+
+      // 4. Xử lý kết quả
+      if (result['success'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đăng nhập Google thành công!')),
+        );
+        
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const MainScreen()),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result['message'])),
+        );
+      }
+    } catch (error) {
+      // In lỗi màu đỏ ra Terminal của VS Code để bạn đọc được
+      debugPrint("LỖI ĐĂNG NHẬP GOOGLE: $error"); 
+      
+      // Hiện thẳng cái lỗi thật lên màn hình app luôn
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Lỗi thật sự: $error')), 
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -140,9 +195,17 @@ class _LoginScreenState extends State<LoginScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _buildSocialButton('G'),
+                GestureDetector(
+                  onTap: () => _handleGoogleSignIn(context),
+                  child: _buildSocialButton('G'),
+                ),
                 const SizedBox(width: 20),
-                _buildSocialButton('f'),
+                GestureDetector(
+                  onTap: () {
+                    // TODO: Implement Facebook Sign In
+                  },
+                  child: _buildSocialButton('f'),
+                ),
               ],
             ),
             const SizedBox(height: 40),
