@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart';
+/*import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:ung_dung_dat_lich_kham/Models/user_model.dart';
 import '../constants/ui_constants.dart';
 import '../viewmodels/profile_viewmodel.dart';
 
@@ -19,12 +20,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
   @override
   void initState() {
     super.initState();
-    // Đọc dữ liệu hiện tại từ ViewModel chỉ một lần khi khởi tạo giao diện
-    final user = context.read<ProfileViewModel>().currentUser;
-    _nameController = TextEditingController(text: user.fullName);
-    _dobController = TextEditingController(text: user.dob);
-    _addressController = TextEditingController(text: user.address);
-    _selectedGender = user.gender;
+    Provider.of<ProfileViewModel>(context, listen: false).getUserProfile();
   }
 
   @override
@@ -84,9 +80,9 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
                   // Gọi logic cập nhật của ViewModel
                   context.read<ProfileViewModel>().updateProfile(
                     _nameController.text,
-                    _dobController.text,
-                    _selectedGender,
-                    _addressController.text,
+                    //_dobController.text,
+                    //_selectedGender,
+                    //_addressController.text,
                   );
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Cập nhật thành công! Hãy qua tab Thông tin để xem.'))
@@ -143,4 +139,4 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
       },
     );
   }
-}
+}*/
