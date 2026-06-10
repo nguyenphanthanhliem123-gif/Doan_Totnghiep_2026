@@ -17,10 +17,10 @@ class _MainScreenState extends State<MainScreen> {
   int _currentIndex = 0;
   final List<Widget> _screens = [
     const HealthRecordMenuScreen(),
-    //const HealthRecordMenuScreen(),
-    //const ProfileScreen(),
-    // const UpdateProfileScreen(),
-    // const ChangePasswordScreen(),
+    const HealthRecordMenuScreen(),
+    const ProfileScreen(),
+    const UpdateProfileScreen(),
+    const ChangePasswordScreen(),
     const UpdateHealthRecordScreen(),
     //const Scaffold(body: Center(child: Text('Màn hình Lịch khám (Chưa cấu hình)'))),
   ];
