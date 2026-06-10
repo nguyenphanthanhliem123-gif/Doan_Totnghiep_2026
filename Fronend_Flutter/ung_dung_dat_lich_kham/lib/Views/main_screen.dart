@@ -19,8 +19,8 @@ class _MainScreenState extends State<MainScreen> {
     const HealthRecordMenuScreen(),
     //const HealthRecordMenuScreen(),
     //const ProfileScreen(),
-    const UpdateProfileScreen(),
-    const ChangePasswordScreen(),
+    // const UpdateProfileScreen(),
+    // const ChangePasswordScreen(),
     const UpdateHealthRecordScreen(),
     //const Scaffold(body: Center(child: Text('Màn hình Lịch khám (Chưa cấu hình)'))),
   ];

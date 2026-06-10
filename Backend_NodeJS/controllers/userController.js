@@ -1,7 +1,8 @@
 import { hash, compare } from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import userModel from '../models/userModel.js';
-// ĐÃ SỬA: Import thêm công cụ Reset Password
+import crypto from 'crypto';
+// Import thêm công cụ Reset Password
 import { otpStorage, generateOTP, resetStorage, generateResetToken } from '../utils/otpHelper.js';
 import { sendOTPEmail, sendResetPasswordEmail } from '../config/emailConfig.js';
 
@@ -162,10 +163,6 @@ export default class userController {
         }
     }
 
-    // ==========================================
-    // CÁC API MỚI CHO TÍNH NĂNG QUÊN MẬT KHẨU
-    // ==========================================
-
     // 1. API: Yêu cầu Quên mật khẩu (Gửi email)
     static async forgotPassword(req, res) {
         try {
@@ -292,6 +289,60 @@ export default class userController {
 
         } catch (error) {
             return res.send(`<h2>Lỗi: ${error.message}</h2>`);
+        }
+    }
+
+    // API Đăng nhập bằng Google/Facebook OAuth
+    static async oauthLogin(req, res) {
+        try {
+            // Flutter sẽ gửi những thông tin này lên
+            const { email, fullName, avatar, provider, providerId } = req.body;
+
+            if (!email || !provider || !providerId) {
+                return res.status(400).json({ succeeded: false, message: "Thiếu thông tin xác thực từ Google/Facebook" });
+            }
+
+            // Kiểm tra xem email này đã từng đăng nhập/đăng ký vào hệ thống chưa
+            let user = await userModel.findByEmail(email);
+
+            if (!user) {
+                // KỊCH BẢN 1: TÀI KHOẢN HOÀN TOÀN MỚI
+                // Tự động sinh ra một mật khẩu dài 32 ký tự vô nghĩa để "lách luật" Database
+                const randomPassword = crypto.randomBytes(32).toString('hex');
+                // Băm mật khẩu này ra
+                const hashedPassword = await hash(randomPassword, parseInt(process.env.PASSWORD_HASH_ROUNDS) || 10);
+
+                // Lưu vào Database
+                const newId = await userModel.createOAuthUser({
+                    email: email,
+                    randomHashedPassword: hashedPassword,
+                    fullName: fullName || 'Người dùng ẩn danh',
+                    provider: provider, // 'Google' hoặc 'Facebook'
+                    providerId: providerId,
+                    avatar: avatar
+                });
+
+                if (!newId) return res.status(500).json({ succeeded: false, message: "Tạo tài khoản thất bại" });
+
+                // Lấy lại thông tin user vừa tạo để cấp Token
+                user = await userModel.findById(newId);
+            } 
+            // KỊCH BẢN 2: TÀI KHOẢN ĐÃ TỒN TẠI
+            // Có thể trước đó họ đã đăng ký bằng Email thường, nay họ bấm nhầm nút Đăng nhập Google
+            // Hệ thống vẫn sẽ cho qua và trả về Token bình thường vì Email là duy nhất.
+
+            // Cấp Token để vào App
+            const token = await userController.generateToken(user);
+            
+            return res.status(200).json({ 
+                succeeded: true, 
+                token: token, 
+                role: user.Phan_quyen,
+                id: user.Ma_nguoi_dung 
+            });
+
+        } catch (error) {
+            return res.status(500).json({ succeeded: false, message: error.message });
         }
     }
 }

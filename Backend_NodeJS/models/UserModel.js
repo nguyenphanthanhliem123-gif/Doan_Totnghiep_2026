@@ -19,6 +19,7 @@ export default class userModel {
         }
     }
 
+    // Hàm tạo người dùng mới
     static async create({ email, phoneNumber, hashedPassword, fullName }) {
         try {
             const [result] = await execute(
@@ -31,7 +32,20 @@ export default class userModel {
         }
     }
 
-    // ĐÃ THÊM: Hàm cập nhật mật khẩu mới
+    // Hàm tạo người dùng mới từ OAuth
+    static async createOAuthUser({ email, randomHashedPassword, fullName, provider, providerId, avatar }) {
+        try {
+            const [result] = await execute(
+                'INSERT INTO `nguoi_dung`(`Ten_nguoi_dung`, `Email`, `Mat_khau`, `Phan_quyen`, `Dang_nhap_Oauth`, `Ma_DN_Oauth`, `Anh_dai_dien`) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                [fullName, email, randomHashedPassword, 'Benh_nhan', provider, providerId, avatar]
+            );
+            return result.affectedRows > 0 ? result.insertId : null;
+        } catch(error) {
+            throw new Error(error.message);
+        }
+    }
+
+    // Hàm cập nhật mật khẩu mới
     static async updatePassword(email, newHashedPassword) {
         try {
             const [result] = await execute(
