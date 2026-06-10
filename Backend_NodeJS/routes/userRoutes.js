@@ -1,7 +1,11 @@
 import { Router } from "express";
 import userController from "../controllers/userController.js";
+import auth from "../middleware/auth.js";
 
 const userRoutes = Router();
+
+const authUserRoutes = Router();
+authUserRoutes.use(auth);
 
 // API gửi thông tin đăng ký để nhận mã OTP qua Email
 userRoutes.post('/register', userController.register);
@@ -24,5 +28,10 @@ userRoutes.post('/update-password', userController.updatePassword);
 
 // API Đăng nhập bằng Google / Facebook
 userRoutes.post('/oauth-login', userController.oauthLogin);
+
+authUserRoutes.post('/change-password', userController.changePassword);
+
+
+userRoutes.use('/',authUserRoutes);
 
 export default userRoutes;

@@ -1,4 +1,5 @@
 import { execute } from "../config/db.js";
+import { hash, compare } from 'bcrypt';
 
 export default class userModel {
     static async findByEmail(email) {
@@ -55,6 +56,36 @@ export default class userModel {
             return result.affectedRows > 0;
         } catch (error) {
             throw new Error("Lỗi Database: " + error.message);
+        }
+    }
+
+    static async changePassword(userID, newHashedPassword, currentPassword){
+        try{
+            const [currentPasswordInDB] = await execute(`
+                    SELECT
+                        nguoi_dung.Mat_khau
+                    FROM
+                        nguoi_dung
+                    WHERE
+                        nguoi_dung.Ma_nguoi_dung = ?
+                `,[userID]);
+
+            if(currentPasswordInDB.length < 1) throw new Error("Không tìm thấy người dùng này");
+            
+            const isMatch = await compare(currentPassword, currentPasswordInDB[0].Mat_khau);
+
+            if(!isMatch) throw new Error("Mật khẩu xác nhận không đúng");
+            
+            const [result] = await execute(`
+                    UPDATE nguoi_dung 
+                    SET Mat_khau = ? 
+                    WHERE Ma_nguoi_dung = ?
+                `,[newHashedPassword, userID])
+
+            return result.affectedRows > 0 ? true: false;
+        }
+        catch(error){
+            throw new Error("Lỗi UserModel.changePassword: " + error.message);
         }
     }
 }

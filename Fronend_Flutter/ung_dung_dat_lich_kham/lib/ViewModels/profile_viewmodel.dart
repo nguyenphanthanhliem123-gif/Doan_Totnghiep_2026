@@ -21,6 +21,7 @@ class ProfileViewModel extends ChangeNotifier {
 
     try{
       _userModel = await _apiProfileService.fecthProfile(ma_nguoi_dung);
+      print('=== USERMODEL: $_userModel');
     }
     catch(e){
       _errorMessage = e.toString();

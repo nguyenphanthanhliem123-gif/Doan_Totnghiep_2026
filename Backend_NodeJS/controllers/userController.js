@@ -292,6 +292,28 @@ export default class userController {
         }
     }
 
+    static async changePassword(req,res){
+        try{
+            const {userID, newPassword, currentPassword} = req.body;
+
+            if(!userID) return res.status(400).json({succeeded: false, message: 'Thiếu userID'});
+            if(!newPassword) return res.status(400).json({succeeded: false, message: 'Thiếu mật khẩu mới'});
+            if(!currentPassword) return res.status(400).json({succeeded: false, message: 'Thiếu mật khẩu hiện tại'});
+
+            const newHashedPassword = await hash(newPassword, parseInt(process.env.PASSWORD_HASH_ROUNDS) || 10);
+
+            const result = await userModel.changePassword(userID, newHashedPassword, currentPassword);
+
+            return result
+            ? res.status(200).json({succeeded: true})
+            : res.status(400).json({succeeded: false, message: result});
+        }
+        catch(error)
+        {
+            return res.status(500).json({succeeded: false, message: "Lỗi thay đổi mật khẩu: " + error.message});
+        }
+    }
+
     // API Đăng nhập bằng Google/Facebook OAuth
     static async oauthLogin(req, res) {
         try {
@@ -345,4 +367,6 @@ export default class userController {
             return res.status(500).json({ succeeded: false, message: error.message });
         }
     }
+
+    
 }

@@ -1,6 +1,6 @@
-/*import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:ung_dung_dat_lich_kham/Models/user_model.dart';
+import 'package:ung_dung_dat_lich_kham/ViewModels/auth_viewmodel.dart';
 import '../constants/ui_constants.dart';
 import '../viewmodels/profile_viewmodel.dart';
 
@@ -12,27 +12,51 @@ class UpdateProfileScreen extends StatefulWidget {
 }
 
 class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
-  late TextEditingController _nameController;
-  late TextEditingController _dobController;
-  late TextEditingController _addressController;
-  String _selectedGender = 'Nam';
+  String? _maNguoiDung;
+
+  final TextEditingController _nameController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    Provider.of<ProfileViewModel>(context, listen: false).getUserProfile();
+    _loadUserIdThenFetch();
+  }
+
+  Future<void> _loadUserIdThenFetch() async {
+    
+    final id = await Provider.of<AuthViewModel>(context, listen: false)
+        .getSavedUserId();
+
+    if (!mounted) return;
+
+    setState(() {
+      _maNguoiDung = id;
+    });
+
+    if (id != null) {
+      final maNguoiDung = int.tryParse(id);
+      
+      if (maNguoiDung != null) {
+        await context.read<ProfileViewModel>().getUserProfile(maNguoiDung);
+        final user = context.read<ProfileViewModel>().userProfile;
+        if (user != null && mounted) {
+          setState(() {
+            _nameController.text = user.fullName;
+          });
+        }
+      }
+    }
   }
 
   @override
   void dispose() {
-    _nameController.dispose();
-    _dobController.dispose();
-    _addressController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final profileVM = context.watch<ProfileViewModel>();
+    final user = profileVM.userProfile;
     return Scaffold(
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(80),
@@ -49,7 +73,12 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
           ),
         ),
       ),
-      body: SingleChildScrollView(
+      body:
+      profileVM.isLoading
+      ? const Center(child: CircularProgressIndicator(),)
+      : user == null 
+        ? const Center(child: Text("Không thể tải thông tin tài khoản."))
+        : SingleChildScrollView(
         child: Column(
           children: [
             const SizedBox(height: 30),
@@ -60,15 +89,6 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
                 children: [
                   const Text('Họ và Tên', style: kLabelTextStyle), const SizedBox(height: 8),
                   _buildTextField(_nameController),
-                  const SizedBox(height: 20),
-                  const Text('Ngày sinh', style: kLabelTextStyle), const SizedBox(height: 8),
-                  _buildTextField(_dobController, icon: Icons.calendar_month),
-                  const SizedBox(height: 20),
-                  const Text('Địa chỉ', style: kLabelTextStyle), const SizedBox(height: 8),
-                  _buildTextField(_addressController),
-                  const SizedBox(height: 20),
-                  const Text('Giới tính', style: kLabelTextStyle), const SizedBox(height: 8),
-                  _buildGenderComboBox()
                 ],
               ),
             ),
@@ -99,6 +119,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
           ],
         ),
       ),
+       
     );
   }
 
@@ -113,30 +134,4 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
       ),
     );
   }
-
-  Widget _buildGenderComboBox() {
-    return DropdownButtonFormField<String>(
-      value: _selectedGender,
-      decoration: InputDecoration(
-        fillColor: kInputBackgroundColor,
-        filled: true,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide.none,
-        ),
-      ),
-      icon: const Icon(Icons.keyboard_arrow_down, color: kGreyTextColor),
-      items: <String>['Nam', 'Nữ', 'Khác'].map((String value) {
-        return DropdownMenuItem<String>(
-          value: value,
-          child: Text(value, style: kInputTextStyle),
-        );
-      }).toList(),
-      onChanged: (String? newValue) {
-        setState(() {
-          _selectedGender = newValue!;
-        });
-      },
-    );
-  }
-}*/
+}

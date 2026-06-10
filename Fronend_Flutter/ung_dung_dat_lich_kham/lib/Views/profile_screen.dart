@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:ung_dung_dat_lich_kham/Views/profile_detail_screen.dart';
 import '../constants/ui_constants.dart';
 import '../viewmodels/profile_viewmodel.dart';
 import '../viewmodels/auth_viewmodel.dart';
@@ -21,12 +22,9 @@ class _ProfileScreen extends State<ProfileScreen> {
 
   Future<void> _loadUserIdThenFetch() async {
     print("=== BẮT ĐẦU LOAD ===");
-    
     final id = await Provider.of<AuthViewModel>(context, listen: false)
         .getSavedUserId();
-    
-    print("=== ID LẤY ĐƯỢC: $id ===");  // null hay có giá trị?
-
+    print("=== ID: $id");
     if (!mounted) return;
 
     setState(() {
@@ -35,12 +33,9 @@ class _ProfileScreen extends State<ProfileScreen> {
 
     if (id != null) {
       final maNguoiDung = int.tryParse(id);
-      print("=== MA NGUOI DUNG SAU PARSE: $maNguoiDung ==="); // null hay có số?
       
       if (maNguoiDung != null) {
-        print("=== GỌI API PROFILE ===");
         await context.read<ProfileViewModel>().getUserProfile(maNguoiDung);
-        print("=== API XONG, userProfile: ${context.read<ProfileViewModel>().userProfile} ===");
       }
     }
   }
@@ -54,7 +49,9 @@ class _ProfileScreen extends State<ProfileScreen> {
     }
     // 2. LẮNG NGHE SỰ THAY ĐỔI TỪ PROFILE_VIEWMODEL
     final profileVM = context.watch<ProfileViewModel>();
-    final user = profileVM.userProfile; // Lấy dữ liệu user ra dùng
+    final user = profileVM.userProfile;
+
+    print('=== USER: $user');
 
     return Scaffold(
       appBar: PreferredSize(
@@ -99,8 +96,6 @@ class _ProfileScreen extends State<ProfileScreen> {
                                 // Đổ tên, số điện thoại và email động từ model
                                 Text(user.fullName, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                                 const SizedBox(height: 5),
-                                Text(user.phone, style: const TextStyle(color: kGreyTextColor, fontSize: 14)),
-                                const SizedBox(height: 2),
                                 Text(user.email, style: const TextStyle(color: kGreyTextColor, fontSize: 14)),
                               ],
                             ),
@@ -112,7 +107,17 @@ class _ProfileScreen extends State<ProfileScreen> {
                     Expanded(
                       child: ListView(
                         children: [
-                          _buildOptionItem(Icons.person_outline, 'Hồ sơ cá nhân', true, (){}),
+                          _buildOptionItem(Icons.person_outline, 'Hồ sơ cá nhân', true, (){
+                            if(!context.mounted) return;
+                            if(user.address != null && user.dob != null && user.gender != null)
+                            {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(builder: (context) => ProfileDetailScreen())
+                              );
+                            }else{
+                              
+                            }
+                          }),
                           _buildOptionItem(Icons.health_and_safety_outlined, 'Hồ sơ sức khỏe', true, (){}),
                           _buildOptionItem(Icons.payment, 'Phương thức thanh toán', true, (){}),
                           _buildOptionItem(Icons.lock_outline, 'Quản lý mật khẩu', true, (){}),
