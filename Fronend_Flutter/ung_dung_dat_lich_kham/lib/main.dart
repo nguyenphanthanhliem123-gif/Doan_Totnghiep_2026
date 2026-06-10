@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:ung_dung_dat_lich_kham/viewmodels/profile_viewmodel.dart';
 // import 'package:ung_dung_dat_lich_kham/Views/health_record_menu_screen.dart';
 // import 'package:ung_dung_dat_lich_kham/Views/main_screen.dart';
 // import 'viewmodels/profile_viewmodel.dart'; 
@@ -18,7 +19,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        // ChangeNotifierProvider(create: (_) => ProfileViewModel()),
+        ChangeNotifierProvider(create: (_) => ProfileViewModel()),
         // ChangeNotifierProvider(create: (_) => HealthRecordViewModel()),
         ChangeNotifierProvider(create: (_) => AuthViewModel()),
       ],

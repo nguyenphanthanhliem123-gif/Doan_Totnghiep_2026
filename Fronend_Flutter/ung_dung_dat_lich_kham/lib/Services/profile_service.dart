@@ -24,7 +24,7 @@ class APIProfileService{
       }
     }
     catch(e){
-      print('Lỗi lấy dữ liệu hồ dơ người dùng');
+      print('Lỗi lấy dữ liệu hồ sơ người dùng');
       return null;
     }
 

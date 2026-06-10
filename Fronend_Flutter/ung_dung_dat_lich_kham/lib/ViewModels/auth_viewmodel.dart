@@ -51,6 +51,11 @@ class AuthViewModel extends ChangeNotifier {
             await prefs.setString('ma_nguoi_dung', maNguoiDung);
             print("Lưu ma_nguoi_dung thành công: $maNguoiDung"); // Log ra màn hình để bạn dễ debug
           }
+          final token = responseData['token']?.toString() ?? '';
+          if (token.isNotEmpty) {
+            await prefs.setString('token', token);
+            print("Lưu token thành công");
+          }
         // Trả về kết quả thành công và kèm theo token nếu cần lưu trữ sau này
         return {
           "success": true,
