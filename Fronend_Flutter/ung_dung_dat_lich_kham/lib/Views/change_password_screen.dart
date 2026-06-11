@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../constants/ui_constants.dart';
 import '../viewmodels/auth_viewmodel.dart'; // Đồng bộ dùng nhất quán chữ thường 'viewmodels'
-import '../viewmodels/profile_viewmodel.dart';
+import 'package:ung_dung_dat_lich_kham/viewmodels/profile_viewmodel.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});

@@ -1,4 +1,4 @@
-import { execute } from "../config/db.js";
+import { beginTransaction, commitTransaction, execute, rollbackTransaction } from "../config/db.js";
 
 export default class profileModel{
     static async getAll(){
@@ -61,6 +61,56 @@ export default class profileModel{
         }
         catch(error){
             throw new Error('Lỗi database(profileModel.getProfileByMaNguoiDung): ' + error.message);
+        }
+    }
+
+    static async updateProfile(fullName, birthDay, gender, address, avatar, userID){
+        let conn;
+        
+        console.log("==== DEBUG THÔNG TIN GỬI LÊN ====");
+        console.log("=== fullName: ", fullName);
+        console.log("=== birthDay: ", birthDay);
+        console.log("=== gender: ", gender);
+        console.log("=== address: ", address);
+        console.log("=== avatar: ", avatar);
+        console.log("=== userID: ", userID);
+
+        try {
+
+            conn = await beginTransaction();
+
+            const safeFullName = fullName ?? null;
+            const safeBirthDay = birthDay ?? null;
+            const safeGender = gender ?? null;
+            const safeAddress = address ?? null;
+            const safeAvatar = avatar ?? null;
+
+
+            const sqlNguoiDung = `
+                UPDATE nguoi_dung 
+                SET Ten_nguoi_dung = ?, Anh_dai_dien = ? 
+                WHERE Ma_nguoi_dung = ?
+            `;
+            await conn.execute(sqlNguoiDung, [safeFullName, safeAvatar, userID]);
+
+
+            const sqlBenhNhan = `
+                UPDATE benh_nhan 
+                SET Ngay_sinh = ?, Gioi_tinh = ?, Dia_chi = ? 
+                WHERE Ma_nguoi_dung = ?
+            `;
+            await conn.execute(sqlBenhNhan, [safeBirthDay, safeGender, safeAddress, userID]);
+
+
+            await commitTransaction(conn);
+
+            return true;
+        } catch (error) {
+
+            if (conn) {
+                await rollbackTransaction(conn);
+            }
+            throw new Error('Lỗi database(profileModel.updateProfile): ' + error.message);
         }
     }
 }

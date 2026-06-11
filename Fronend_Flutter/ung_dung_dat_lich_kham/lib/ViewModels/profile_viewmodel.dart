@@ -9,12 +9,14 @@ class ProfileViewModel extends ChangeNotifier {
   bool _isLoading = false;
   String _errorMessage = '';
   bool? _changePassResult;
+  bool? _updateProfileResult;
 
 
   UserModel? get userProfile => _userModel;
   bool get isLoading => _isLoading;
   String get errorMessage => _errorMessage;
   bool? get changePassResult => _changePassResult;
+  bool? get updateProfileResult => _updateProfileResult;
 
   Future<void> getUserProfile(int ma_nguoi_dung) async {
     _isLoading = true;
@@ -34,19 +36,24 @@ class ProfileViewModel extends ChangeNotifier {
     }
   }
 
-  void updateProfile(String newName) {
-    //_currentUser.fullName = newName;
+  Future<void> updateProfile(String fullName, DateTime birth, String avatar, String address, int gender) async {
+    _isLoading = true;
+    _errorMessage = '';
+    _updateProfileResult = false;
+    notifyListeners();
 
-    //     notifyListeners(); // Thông báo cho tất cả các View cập nhật giao diện
-    //   }
-
-    //   bool changePassword(String currentPass, String newPass, String confirmPass) {
-    //     if (newPass == confirmPass && newPass.isNotEmpty) {
-    //       return true;
-    //     }
-    //     return false;
-    //   }
+    try{
+      _updateProfileResult = await _apiProfileService.updateProfile(fullName, birth, avatar, address, gender);
     }
+    catch(e){
+      _errorMessage = e.toString().replaceAll('Exception: ', '');
+      _updateProfileResult = false;
+    }
+    finally{
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 
   Future<void> changePassword(int userID, String newPassword, String currentPassword) async {
     _isLoading = true;

@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:ung_dung_dat_lich_kham/Views/change_password_screen.dart';
 import 'package:ung_dung_dat_lich_kham/Views/profile_detail_screen.dart';
 import '../constants/ui_constants.dart';
-import '../viewmodels/profile_viewmodel.dart';
+import 'package:ung_dung_dat_lich_kham/viewmodels/profile_viewmodel.dart';
 import '../viewmodels/auth_viewmodel.dart';
 import 'login_screen.dart'; // Import thêm màn hình đăng nhập để điều hướng
 

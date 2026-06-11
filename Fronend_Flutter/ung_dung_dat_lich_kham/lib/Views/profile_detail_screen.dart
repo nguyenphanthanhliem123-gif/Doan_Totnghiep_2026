@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ung_dung_dat_lich_kham/Models/user_model.dart';
 import 'package:ung_dung_dat_lich_kham/ViewModels/auth_viewmodel.dart';
+import 'package:ung_dung_dat_lich_kham/views/update_profile_screen.dart';
 import '../constants/ui_constants.dart';
-import '../viewmodels/profile_viewmodel.dart';
+import 'package:ung_dung_dat_lich_kham/viewmodels/profile_viewmodel.dart';
 
 class ProfileDetailScreen extends StatefulWidget {
   const ProfileDetailScreen({super.key});
@@ -139,7 +140,9 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 40),
                     child: ElevatedButton(
                       onPressed: () {
-                        Navigator.pop(context); // Thoát về màn hình trước
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (context) => UpdateProfileScreen())
+                        );
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: kPrimaryColor,

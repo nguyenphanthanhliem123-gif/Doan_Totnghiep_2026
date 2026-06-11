@@ -16,7 +16,7 @@ export default async function auth(req,res,next) {
     const user = await userModel.findById(id);
     if(!user) return res.status(401).json({message: 'User not found'});
 
-    req.Ma_nguoi_dung=id;
+    req.Ma_nguoi_dung = id;
     req.username = user.Ten_nguoi_dung;
     req.phan_quyen = user.Phan_quyen;
     req.token = token;

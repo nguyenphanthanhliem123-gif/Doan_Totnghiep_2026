@@ -9,6 +9,7 @@ const authProfileRoutes = Router();
 authProfileRoutes.use(auth);
 
 authProfileRoutes.get('/:Ma_nguoi_dung', profileController.getProfileByMaNguoiDung);
+authProfileRoutes.post('/update-profile', profileController.updateProfile);
 
 profileRoutes.use('/', authProfileRoutes);
 export default profileRoutes;

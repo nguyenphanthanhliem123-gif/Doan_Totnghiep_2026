@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/profile_viewmodel.dart';
-// import 'package:ung_dung_dat_lich_kham/Views/health_record_menu_screen.dart';
+//import 'package:ung_dung_dat_lich_kham/ViewModels/profile_viewmodel.dart';
+import 'package:ung_dung_dat_lich_kham/Views/health_record_menu_screen.dart';
 // import 'package:ung_dung_dat_lich_kham/Views/main_screen.dart';
 // import 'viewmodels/profile_viewmodel.dart'; 
 // import 'viewmodels/health_record_viewmodel.dart'; 

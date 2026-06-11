@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../Models/user_model.dart';
 import '../Config/BASE_URL.dart';
@@ -59,12 +60,47 @@ class APIProfileService{
         final data = jsonDecode(res.body);
         print('Lỗi đổi mật khẩu người dùng: ${res.statusCode}, ${data['message']}');
         
-        // Trả lỗi cụ thể từ Server về thay vì chỉ return false
         throw Exception(data['message'] ?? 'Đổi mật khẩu thất bại.');
       }
     } catch (e) {
       print('Lỗi đổi mật khẩu: $e');
-      // Nếu là lỗi Exception đã được throw ở trên thì giữ nguyên, ngược lại quăng lỗi hệ thống
+      throw Exception(e.toString().replaceAll('Exception: ', ''));
+    }
+  }
+
+  Future<bool> updateProfile(String fullName, DateTime birth, String avatar, String address, int gender ) async{
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    if (token == null) throw Exception('Phiên đăng nhập đã hết hạn.');
+
+    try{
+      final res = await http.post(
+        Uri.parse('$BASE_URL/api/profile/update-profile'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          "fullName": fullName,
+          "birthDay": birth.toIso8601String(), 
+          "gender": gender, 
+          "address": address, 
+          "avatar": avatar
+        })
+      );
+
+      if(res.statusCode == 200){
+        return true;
+      }
+      else{
+        final data = jsonDecode(res.body);
+        print("Lỗi cập nhật hồ sơ người dùng: ${data['message']}");
+
+        throw Exception(data['message'] ?? "Cập nhật thông tin người dùng thất bại");
+      }
+    }
+    catch(e){
+      print("Lỗi cập nhật hồ sơ người dùng: $e");
       throw Exception(e.toString().replaceAll('Exception: ', ''));
     }
   }

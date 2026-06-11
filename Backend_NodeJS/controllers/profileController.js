@@ -32,4 +32,23 @@ export default class profileController{
             });
         }
     }
+
+    static async updateProfile(req,res){
+        try{
+            const {fullName, birthDay, gender, address, avatar} = req.body;
+            const userId = req.Ma_nguoi_dung;
+
+            const result = await profileModel.updateProfile(fullName, birthDay, gender, address, avatar, userId);
+
+            if(result) return res.status(200).json({
+                succeeded: true,
+            });
+        }
+        catch(error){
+            return res.status(500).json({
+                succeeded: false,
+                message: "Lỗi cập nhật hồ sơ người dùng(profileController.updateProfile): "+error.message
+            });
+        }
+    }
 }
