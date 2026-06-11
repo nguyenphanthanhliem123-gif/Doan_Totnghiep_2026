@@ -2,10 +2,6 @@ class UserModel {
   final int id;
   final String fullName;
   final String email;
-<<<<<<< HEAD
-=======
-  final String? phone;
->>>>>>> 04190d81da100fd8db7fdb363b326827a2c6e4de
   final String? avatar;
   final int? gender;
   final String? address;
@@ -16,15 +12,10 @@ class UserModel {
     required this.id,
     required this.fullName,
     required this.email,
-<<<<<<< HEAD
     this.avatar,
     this.gender,
     this.address,
     this.dob
-=======
-    this.phone,
-    this.avatar
->>>>>>> 04190d81da100fd8db7fdb363b326827a2c6e4de
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json){

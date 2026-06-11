@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:ung_dung_dat_lich_kham/Views/change_password_screen.dart';
 import 'package:ung_dung_dat_lich_kham/Views/profile_detail_screen.dart';
 import '../constants/ui_constants.dart';
 import '../viewmodels/profile_viewmodel.dart';
@@ -121,7 +122,12 @@ class _ProfileScreen extends State<ProfileScreen> {
                           }),
                           _buildOptionItem(Icons.health_and_safety_outlined, 'Hồ sơ sức khỏe', true, (){}),
                           _buildOptionItem(Icons.payment, 'Phương thức thanh toán', true, (){}),
-                          _buildOptionItem(Icons.lock_outline, 'Quản lý mật khẩu', true, (){}),
+                          _buildOptionItem(Icons.lock_outline, 'Quản lý mật khẩu', true, (){
+                            if(!context.mounted) return;
+                            Navigator.of(context).push(
+                              MaterialPageRoute(builder: (context) => ChangePasswordScreen())
+                            );
+                          }),
                           _buildOptionItem(Icons.person_remove, 'Xóa tài khoản', false, (){
                             _showConfirmBottomSheet(context, isDeleteAccount: true);
                           }),

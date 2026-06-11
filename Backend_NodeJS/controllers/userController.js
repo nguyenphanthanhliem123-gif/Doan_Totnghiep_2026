@@ -296,6 +296,11 @@ export default class userController {
         try{
             const {userID, newPassword, currentPassword} = req.body;
 
+            console.log('=== DEBUG(change_password) ===');
+            console.log('=== userID: ' + userID);
+            console.log('=== newPassword: ' + newPassword);
+            console.log('=== currentPassword: ' + currentPassword);
+
             if(!userID) return res.status(400).json({succeeded: false, message: 'Thiếu userID'});
             if(!newPassword) return res.status(400).json({succeeded: false, message: 'Thiếu mật khẩu mới'});
             if(!currentPassword) return res.status(400).json({succeeded: false, message: 'Thiếu mật khẩu hiện tại'});
