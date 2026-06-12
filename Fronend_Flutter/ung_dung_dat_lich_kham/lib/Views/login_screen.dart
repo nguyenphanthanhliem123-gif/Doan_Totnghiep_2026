@@ -5,6 +5,7 @@ import 'signup_screen.dart';
 import 'main_screen.dart';
 import 'forgot_password_screen.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'doctor_detail_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -159,9 +160,13 @@ class _LoginScreenState extends State<LoginScreen> {
                         );
                         
                         // Điều hướng sang màn hình chính
+                        // Navigator.pushReplacement(
+                        //   context,
+                        //   MaterialPageRoute(builder: (context) => const MainScreen()),
+                        // );
                         Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(builder: (context) => const MainScreen()),
+                          context, 
+                          MaterialPageRoute(builder: (context) => const DoctorDetailScreen()),
                         );
                       } else {
                         // Hiện thông báo lỗi chi tiết (Ví dụ: "Sai email...", "Thiếu trường...")

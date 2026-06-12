@@ -144,6 +144,14 @@ export default class userController {
                 return res.status(401).json({ succeeded: false, message: 'Email hoặc mật khẩu không đúng' });
             }
 
+            // 🛑 CHẶN TÀI KHOẢN ĐÃ BỊ XÓA (Trang_thai = 0)
+            if (user.Trang_thai === 0) {
+                return res.status(403).json({ 
+                    succeeded: false, 
+                    message: "Tài khoản này đã bị vô hiệu hóa hoặc bị xóa. Vui lòng liên hệ phòng khám." 
+                });
+            }
+
             const isMatch = await compare(password, user.Mat_khau);
             if (!isMatch) {
                 return res.status(401).json({ succeeded: false, message: "Email hoặc mật khẩu không đúng" });
@@ -332,6 +340,15 @@ export default class userController {
             // Kiểm tra xem email này đã từng đăng nhập/đăng ký vào hệ thống chưa
             let user = await userModel.findByEmail(email);
 
+            // 🛑 CHẶN TÀI KHOẢN ĐÃ BỊ XÓA MỀM (Nếu tài khoản đã tồn tại nhưng bị vô hiệu hóa)
+            // Đặt ở đây để chặn ngay lập tức, không cho phép cấp Token
+            if (user && user.Trang_thai === 0) {
+                return res.status(403).json({ 
+                    succeeded: false, 
+                    message: "Tài khoản này đã bị vô hiệu hóa hoặc bị xóa." 
+                });
+            }
+
             if (!user) {
                 // KỊCH BẢN 1: TÀI KHOẢN HOÀN TOÀN MỚI
                 // Tự động sinh ra một mật khẩu dài 32 ký tự vô nghĩa để "lách luật" Database
@@ -355,9 +372,6 @@ export default class userController {
                 user = await userModel.findById(newId);
             } 
             // KỊCH BẢN 2: TÀI KHOẢN ĐÃ TỒN TẠI
-            // Có thể trước đó họ đã đăng ký bằng Email thường, nay họ bấm nhầm nút Đăng nhập Google
-            // Hệ thống vẫn sẽ cho qua và trả về Token bình thường vì Email là duy nhất.
-
             // Cấp Token để vào App
             const token = await userController.generateToken(user);
             
@@ -373,5 +387,25 @@ export default class userController {
         }
     }
 
-    
+    // API Xóa tài khoản
+    static async deleteAccount(req, res) {
+        try {
+            // Lấy ID người dùng do Flutter gửi lên
+            const { userId } = req.body;
+
+            if (!userId) {
+                return res.status(400).json({ succeeded: false, message: "Không tìm thấy thông tin người dùng" });
+            }
+
+            const isDeleted = await userModel.softDeleteUser(userId);
+
+            if (isDeleted) {
+                return res.status(200).json({ succeeded: true, message: "Đã vô hiệu hóa tài khoản thành công" });
+            } else {
+                return res.status(400).json({ succeeded: false, message: "Lỗi hệ thống: Không thể xóa tài khoản" });
+            }
+        } catch (error) {
+            return res.status(500).json({ succeeded: false, message: error.message });
+        }
+    }
 }
