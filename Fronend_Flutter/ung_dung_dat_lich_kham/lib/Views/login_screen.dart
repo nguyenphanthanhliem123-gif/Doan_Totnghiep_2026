@@ -163,6 +163,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           context,
                           MaterialPageRoute(builder: (context) => const MainScreen()),
                         );
+                      
                       } else {
                         // Hiện thông báo lỗi chi tiết (Ví dụ: "Sai email...", "Thiếu trường...")
                         ScaffoldMessenger.of(context).showSnackBar(

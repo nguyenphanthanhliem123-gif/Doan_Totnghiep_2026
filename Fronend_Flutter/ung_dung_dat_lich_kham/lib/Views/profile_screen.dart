@@ -6,7 +6,7 @@ import 'package:ung_dung_dat_lich_kham/Views/profile_detail_screen.dart';
 import '../constants/ui_constants.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/profile_viewmodel.dart';
 import '../viewmodels/auth_viewmodel.dart';
-import 'login_screen.dart'; // Import thêm màn hình đăng nhập để điều hướng
+import 'login_screen.dart';
 
 class ProfileScreen extends StatefulWidget{
   const ProfileScreen({super.key});
@@ -186,7 +186,7 @@ class _ProfileScreen extends State<ProfileScreen> {
             children: [
               Text(
                 isDeleteAccount 
-                    ? 'Bạn có muốn xóa tài khoản này?' 
+                    ? 'Bạn có chắc chắn muốn xóa tài khoản này không?\nHành động này không thể hoàn tác.' 
                     : 'Bạn có muốn đăng xuất tài khoản này?',
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.black),
                 textAlign: TextAlign.center,
@@ -209,18 +209,43 @@ class _ProfileScreen extends State<ProfileScreen> {
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () async {
-                        Navigator.pop(ctx);
+                        Navigator.pop(ctx); // Đóng BottomSheet trước
+
                         if (isDeleteAccount) {
-                          print("Thực hiện logic Xóa tài khoản");
-                        } else {
-                          print("Thực hiện logic Đăng xuất");
+                          // LẤY ID RA ĐỂ GỌI HÀM XÓA TÀI KHOẢN
+                          final userId = await Provider.of<AuthViewModel>(context, listen: false).getSavedUserId();
                           
-                          // 1. Gọi hàm logout xóa sạch SharedPreferences dữ liệu phiên đăng nhập cũ
+                          if (userId != null) {
+                            if (!context.mounted) return;
+                            
+                            // Gọi hàm xóa tài khoản từ ViewModel
+                            final result = await Provider.of<AuthViewModel>(context, listen: false).deleteAccount(userId);
+                            
+                            if (!context.mounted) return;
+                            
+                            if (result['success'] == true) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Tài khoản của bạn đã được vô hiệu hóa thành công!')),
+                              );
+                              // Điều hướng về Login và xóa lịch sử màn hình
+                              Navigator.pushAndRemoveUntil(
+                                context,
+                                MaterialPageRoute(builder: (context) => const LoginScreen()),
+                                (route) => false,
+                              );
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(result['message'])),
+                              );
+                            }
+                          }
+                        } else {
+                          // LOGIC ĐĂNG XUẤT 
                           await Provider.of<AuthViewModel>(context, listen: false).logout();
                           
                           if (!context.mounted) return;
                           
-                          // 2. Điều hướng đưa người dùng bay thẳng về màn hình Đăng nhập, đồng thời xóa sạch các stack cũ
+                          // Điều hướng đưa người dùng bay thẳng về màn hình Đăng nhập
                           Navigator.pushAndRemoveUntil(
                             context,
                             MaterialPageRoute(builder: (context) => const LoginScreen()),
@@ -229,7 +254,7 @@ class _ProfileScreen extends State<ProfileScreen> {
                         }
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: kPrimaryColor,
+                        backgroundColor: isDeleteAccount ? Colors.red : kPrimaryColor, // Đổi màu đỏ nếu là nút Xóa cho nguy hiểm
                         elevation: 0,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),

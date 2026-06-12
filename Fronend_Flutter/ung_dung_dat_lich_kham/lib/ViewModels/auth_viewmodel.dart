@@ -261,4 +261,43 @@ class AuthViewModel extends ChangeNotifier {
       return {"success": false, "message": "Lỗi kết nối máy chủ!"};
     }
   }
+
+  // Hàm kết nối API Xóa tài khoản
+  Future<Map<String, dynamic>> deleteAccount(String userId) async {
+    _isLoading = true;
+    notifyListeners();
+
+    final url = Uri.parse('$_baseUrl/delete-account');
+
+    try {
+      // 1. LẤY TOKEN TỪ BỘ NHỚ RA
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token') ?? '';
+
+      final response = await http.post(
+        url,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token", // 2. TRÌNH THẺ CĂN CƯỚC (TOKEN) CHO BACKEND
+        },
+        body: jsonEncode({"userId": userId}),
+      );
+
+      final responseData = jsonDecode(response.body);
+      _isLoading = false;
+      notifyListeners();
+
+      if (response.statusCode == 200 && responseData['succeeded'] == true) {
+        // Nếu Server báo xóa thành công, tiến hành dọn sạch bộ nhớ cục bộ
+        await logout(); 
+        return {"success": true, "message": responseData['message'] ?? "Đã xóa tài khoản!"};
+      } else {
+        return {"success": false, "message": responseData['message'] ?? "Xóa thất bại"};
+      }
+    } catch (error) {
+      _isLoading = false;
+      notifyListeners();
+      return {"success": false, "message": "Lỗi kết nối máy chủ!"};
+    }
+  }
 }
