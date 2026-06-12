@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:ung_dung_dat_lich_kham/viewmodels/health_record_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/profile_viewmodel.dart';
 //import 'package:ung_dung_dat_lich_kham/ViewModels/profile_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/Views/health_record_menu_screen.dart';
@@ -23,6 +24,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ProfileViewModel()),
         // ChangeNotifierProvider(create: (_) => HealthRecordViewModel()),
         ChangeNotifierProvider(create: (_) => AuthViewModel()),
+        ChangeNotifierProvider(create: (_) => HealthRecordViewModel())
       ],
       child: MaterialApp(
         title: 'Hệ thống đặt lịch khám bệnh',

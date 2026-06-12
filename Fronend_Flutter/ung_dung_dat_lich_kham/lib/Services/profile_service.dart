@@ -82,7 +82,7 @@ class APIProfileService{
         },
         body: jsonEncode({
           "fullName": fullName,
-          "birthDay": birth.toIso8601String(), 
+          "birthDay": "${birth.year}-${birth.month.toString().padLeft(2, '0')}-${birth.day.toString().padLeft(2, '0')}", 
           "gender": gender, 
           "address": address, 
           "avatar": avatar

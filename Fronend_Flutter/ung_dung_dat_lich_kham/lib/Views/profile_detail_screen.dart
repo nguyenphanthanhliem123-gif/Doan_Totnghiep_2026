@@ -135,7 +135,7 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // ---------------- Nút Hành động (Đổi thành Quay lại) ----------------
+                  // ---------------- Nút Hành động ----------------
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 40),
                     child: ElevatedButton(

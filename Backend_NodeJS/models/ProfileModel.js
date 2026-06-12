@@ -53,8 +53,12 @@ export default class profileModel{
                     bn.Benh_nen
 
                     FROM nguoi_dung nd
-                    LEFT JOIN benh_nhan bn ON bn.Ma_nguoi_dung = nd.Ma_nguoi_dung
-                    WHERE nd.Ma_nguoi_dung = ?`, 
+                    JOIN benh_nhan bn ON nd.Ma_nguoi_dung = bn.Ma_nguoi_dung
+                    -- Nối với bảng người thân để kiểm tra
+                    LEFT JOIN nguoi_than nt ON bn.Ma_benh_nhan = nt.Ma_benh_nhan
+                    WHERE nd.Ma_nguoi_dung = ? 
+                    AND nt.Ma_benh_nhan IS NULL
+                    LIMIT 1;`, 
             [ma_nguoi_dung]);
             if(profile.length < 1) throw new Error('Không tìm thấy người dùng này');
             return profile[0] ?? null;
@@ -98,6 +102,8 @@ export default class profileModel{
                 UPDATE benh_nhan 
                 SET Ngay_sinh = ?, Gioi_tinh = ?, Dia_chi = ? 
                 WHERE Ma_nguoi_dung = ?
+                ORDER BY Ma_nguoi_dung ASC
+                LIMIT 1
             `;
             await conn.execute(sqlBenhNhan, [safeBirthDay, safeGender, safeAddress, userID]);
 

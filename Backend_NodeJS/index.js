@@ -7,6 +7,7 @@ import cors from 'cors';
 import userRoutes from './routes/userRoutes.js';
 import adminRoutes from "./routes/adminRoutes.js";
 import profileRoutes from "./routes/profileRoutes.js";
+import healthRecordRoutes from "./routes/healthRecordRoutes.js";
 
 const app = express();
 app.use(bodyParser.json());
@@ -21,6 +22,7 @@ app.get('/',(req,res) => {
 app.use('/api/admin', adminRoutes);
 app.use('/api/auth', userRoutes);
 app.use('/api/profile', profileRoutes);
+app.use('/api/record', healthRecordRoutes);
 
 app.use((req,res,next)=>{
     res.status(404).json({message: 'Endpoint not found'});

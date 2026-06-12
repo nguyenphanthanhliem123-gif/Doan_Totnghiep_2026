@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ung_dung_dat_lich_kham/Views/change_password_screen.dart';
+import 'package:ung_dung_dat_lich_kham/Views/health_record_menu_screen.dart';
 import 'package:ung_dung_dat_lich_kham/Views/profile_detail_screen.dart';
 import '../constants/ui_constants.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/profile_viewmodel.dart';
@@ -120,7 +121,12 @@ class _ProfileScreen extends State<ProfileScreen> {
                               
                             }
                           }),
-                          _buildOptionItem(Icons.health_and_safety_outlined, 'Hồ sơ sức khỏe', true, (){}),
+                          _buildOptionItem(Icons.health_and_safety_outlined, 'Hồ sơ sức khỏe', true, (){
+                            if(!mounted) return;
+                            Navigator.of(context).push(
+                              MaterialPageRoute(builder: (context) => HealthRecordListScreen())
+                            );
+                          }),
                           _buildOptionItem(Icons.payment, 'Phương thức thanh toán', true, (){}),
                           _buildOptionItem(Icons.lock_outline, 'Quản lý mật khẩu', true, (){
                             if(!context.mounted) return;

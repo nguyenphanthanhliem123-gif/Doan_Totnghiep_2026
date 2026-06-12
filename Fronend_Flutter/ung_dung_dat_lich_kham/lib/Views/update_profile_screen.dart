@@ -297,6 +297,8 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
                         )
                       );
                     }
+
+                    Navigator.pop(context, true);
                   } catch (e) {
                     if (context.mounted) Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi hệ thống: $e')));
@@ -339,7 +341,6 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
     final Map<int, String> genderMap = {
       1: 'Nam',
       0: 'Nữ',
-      2: 'Khác',
     };
 
     return DropdownButtonFormField<int>(

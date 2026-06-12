@@ -44,6 +44,20 @@ class ProfileViewModel extends ChangeNotifier {
 
     try{
       _updateProfileResult = await _apiProfileService.updateProfile(fullName, birth, avatar, address, gender);
+
+      if (_updateProfileResult == true && _userModel != null) {
+        _userModel = UserModel(
+          id: _userModel!.id,
+          email: _userModel!.email,
+          fullName: fullName,
+          dob: birth,
+          avatar: avatar,
+          address: address,
+          gender: gender,
+        );
+        
+        notifyListeners();
+      }
     }
     catch(e){
       _errorMessage = e.toString().replaceAll('Exception: ', '');

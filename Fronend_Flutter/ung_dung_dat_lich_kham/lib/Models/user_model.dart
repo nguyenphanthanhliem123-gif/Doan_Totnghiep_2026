@@ -26,7 +26,7 @@ class UserModel {
       avatar: json['Anh_dai_dien'],
       gender: json['Gioi_tinh'] ?? 1,
       address: json['Dia_chi'] ?? '',
-      dob: json['Ngay_sinh'] != null ? DateTime.parse(json['Ngay_sinh']) : DateTime.now(),
+      dob: json['Ngay_sinh'] != null ? DateTime.parse(json['Ngay_sinh']).toLocal() : DateTime.now(),
     );
   }
 }
