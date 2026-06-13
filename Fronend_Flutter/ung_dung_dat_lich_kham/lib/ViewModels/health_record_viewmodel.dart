@@ -11,6 +11,9 @@ class HealthRecordViewModel extends ChangeNotifier {
   String _errorMessage = '';
   bool _addRecordResult = false;
 
+  bool _updateRecordResult = false;
+  bool get updateRecordResult => _updateRecordResult;
+
   bool get addRecordResult => _addRecordResult;
   HealthRecordModel? get record => _recordModel;
   List<HealthRecordModel>? get listRecord => _listRecord;
@@ -67,6 +70,70 @@ class HealthRecordViewModel extends ChangeNotifier {
     } catch (e) {
       _errorMessage = e.toString();
       _addRecordResult = false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+
+  Future<void> updateRecord({
+    required int maBenhNhan,
+    required String tenHoSo,
+    required String moiQuanHe,
+    required DateTime birthDay,
+    required int gender,
+    required String address,
+    String? nhomMau,
+    String? diUng,
+    String? benhNen,
+  }) async {
+    _isLoading = true;
+    _errorMessage = '';
+    _updateRecordResult = false;
+    notifyListeners();
+
+    try {
+      _updateRecordResult = await _apiHealRecordService.updateHealthRecord(
+        maBenhNhan: maBenhNhan,
+        tenHoSo: tenHoSo,
+        moiQuanHe: moiQuanHe,
+        birthDay: birthDay,
+        gender: gender,
+        address: address,
+        nhomMau: nhomMau,
+        diUng: diUng,
+        benhNen: benhNen,
+      );
+
+      // Nếu cập nhật thành công, gọi API kéo lại danh sách mới nhất
+      if (_updateRecordResult == true) {
+        await loadHealthRecord(); 
+        
+        // Cập nhật luôn cục dữ liệu đang chọn để màn hình chi tiết đổi theo
+        if (_recordModel != null) {
+           _recordModel = _listRecord?.firstWhere((element) => element.id == maBenhNhan, orElse: () => _recordModel!);
+        }
+      }
+    } catch (e) {
+      _errorMessage = e.toString();
+      _updateRecordResult = false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> fetchDetailRecord(int maBenhNhan) async {
+    _isLoading = true;
+    _errorMessage = '';
+    _recordModel = null; // Xóa dữ liệu cũ đi để tránh hiển thị nhầm hồ sơ trước đó
+    notifyListeners();
+
+    try {
+      _recordModel = await _apiHealRecordService.getDetailHealthRecord(maBenhNhan);
+    } catch (e) {
+      _errorMessage = e.toString();
     } finally {
       _isLoading = false;
       notifyListeners();

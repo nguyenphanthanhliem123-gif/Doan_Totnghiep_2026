@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:ung_dung_dat_lich_kham/Views/health_record_detail.dart';
+import 'package:ung_dung_dat_lich_kham/Views/update_health_record.dart';
 import 'add_health_record.dart';
 import '../constants/ui_constants.dart';
 import '../viewmodels/health_record_viewmodel.dart';
@@ -90,7 +92,10 @@ class _HealthRecordListScreenState extends State<HealthRecordListScreen> {
           const SizedBox(height: 50),
           ElevatedButton(
             onPressed: () {
-              // TODO: Chuyển sang màn hình Form thêm hồ sơ mới
+              if(!mounted) return;
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) => const AddHealthRecordScreen())
+                );
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: kPrimaryColor,
@@ -136,6 +141,10 @@ class _HealthRecordListScreenState extends State<HealthRecordListScreen> {
             subtitle: Text(record.roll), // Vai trò (Chủ tài khoản, Cha, Mẹ...)
             trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
             onTap: () {
+              if(!mounted) return;
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => HealthRecordMenuScreen(maBenhNhan: record.id,))
+              );
               // TODO: Chuyển sang màn hình HealthRecordMenuScreen (Chi tiết hồ sơ)
               // Nhớ gán record hiện tại vào ViewModel trước khi chuyển trang nhé!
             },

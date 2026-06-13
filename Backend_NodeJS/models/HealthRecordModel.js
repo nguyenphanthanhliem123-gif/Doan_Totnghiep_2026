@@ -1,5 +1,5 @@
 import { beginTransaction, commitTransaction, execute, rollbackTransaction } from "../config/db.js";
-import { encrypt } from "../utils/cryptoUtil.js";
+import { decrypt, encrypt } from "../utils/cryptoUtil.js";
 
 export default class healthRecordModel{
     static async getAllHealthRecordByUserID(userID){
@@ -77,6 +77,96 @@ export default class healthRecordModel{
         catch(error){
             await rollbackTransaction(conn);
             throw new Error('Lỗi thêm hồ sơ sức khỏe(healthRecordModel.addRelativeProfile): ' + error.message);
+        }
+    }
+
+    static async updateHealthRecord(maBenhNhan, userID, tenHoSo, moiQuanHe, birthDay, gender, address, nhomMau, diUng, benhNen) {
+        let conn;
+        try {
+            conn = await beginTransaction();
+
+            // 1. Mã hóa thông tin y tế bằng AES-256 trước khi lưu
+            const encryptedNhomMau = encrypt(nhomMau);
+            const encryptedDiUng = encrypt(diUng);
+            const encryptedBenhNen = encrypt(benhNen);
+
+            // 2. Cập nhật bảng benh_nhan (Kèm điều kiện Ma_nguoi_dung để tránh user này sửa hồ sơ của user khác)
+            const sqlBenhNhan = `
+                UPDATE benh_nhan 
+                SET Ngay_sinh = ?, Gioi_tinh = ?, Dia_chi = ?, Nhom_mau = ?, Di_ung = ?, Benh_nen = ?
+                WHERE Ma_benh_nhan = ? AND Ma_nguoi_dung = ?
+            `;
+            const [resBenhNhan] = await conn.execute(sqlBenhNhan, [
+                birthDay, gender, address, encryptedNhomMau, encryptedDiUng, encryptedBenhNen, maBenhNhan, userID
+            ]);
+
+            // Nếu không có dòng nào thay đổi, nghĩa là hồ sơ không tồn tại hoặc không thuộc về user này
+            if (resBenhNhan.affectedRows === 0) {
+                throw new Error("Không tìm thấy hồ sơ hoặc bạn không có quyền chỉnh sửa.");
+            }
+
+            // 3. Cập nhật bảng nguoi_than (Nếu có tên người thân và mối quan hệ gửi lên)
+            // Cột Quan_he hay Moi_quan_he tùy thuộc vào DB của bạn (tôi đang dùng Quan_he dựa theo log lỗi của bạn ở trên)
+            if (tenHoSo && moiQuanHe) {
+                const sqlNguoiThan = `
+                    UPDATE nguoi_than 
+                    SET Ten_nguoi_than = ?, Quan_he = ?
+                    WHERE Ma_benh_nhan = ?
+                `;
+                await conn.execute(sqlNguoiThan, [tenHoSo, moiQuanHe, maBenhNhan]);
+            }
+
+            await commitTransaction(conn);
+            return true;
+
+        } catch (error) {
+            if (conn) {
+                await rollbackTransaction(conn);
+            }
+            throw new Error('Lỗi cập nhật hồ sơ (healthRecordModel.updateHealthRecord): ' + error.message);
+        }
+    }
+
+    static async getHealthRecordDetail(maBenhNhan, userID) {
+        try {
+            // ✅ Đã sửa SQL: Join thêm bảng nguoi_dung và dùng COALESCE
+            const sql = `
+                SELECT 
+                    bn.Ma_benh_nhan, 
+                    bn.Ngay_sinh, 
+                    bn.Gioi_tinh, 
+                    bn.Dia_chi, 
+                    bn.Nhom_mau, 
+                    bn.Di_ung, 
+                    bn.Benh_nen,
+                    COALESCE(nt.Ten_nguoi_than, nd.Ten_nguoi_dung) AS Ten_ho_so, 
+                    COALESCE(nt.Quan_he, 'Chủ tài khoản') AS Vai_tro
+                FROM benh_nhan bn
+                JOIN nguoi_dung nd ON bn.Ma_nguoi_dung = nd.Ma_nguoi_dung
+                LEFT JOIN nguoi_than nt ON bn.Ma_benh_nhan = nt.Ma_benh_nhan
+                WHERE bn.Ma_benh_nhan = ? AND bn.Ma_nguoi_dung = ?
+            `;
+
+            const [rows] = await execute(sql, [maBenhNhan, userID]);
+
+            if (rows.length === 0) {
+                return null;
+            }
+
+            const record = rows[0];
+
+            // Giải mã các trường dữ liệu y tế an toàn
+            try {
+                record.Nhom_mau = record.Nhom_mau ? decrypt(record.Nhom_mau) : null;
+                record.Di_ung = record.Di_ung ? decrypt(record.Di_ung) : null;
+                record.Benh_nen = record.Benh_nen ? decrypt(record.Benh_nen) : null;
+            } catch (decryptError) {
+                console.error("Lỗi giải mã dữ liệu y tế: ", decryptError.message);
+            }
+
+            return record;
+        } catch (error) {
+            throw new Error('Lỗi model getHealthRecordDetail: ' + error.message);
         }
     }
 }
