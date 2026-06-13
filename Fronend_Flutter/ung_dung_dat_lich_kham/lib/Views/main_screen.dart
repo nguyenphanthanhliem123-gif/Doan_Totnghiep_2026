@@ -5,6 +5,7 @@ import 'package:ung_dung_dat_lich_kham/Views/global_search_screen.dart';
 import 'package:ung_dung_dat_lich_kham/Views/specialty_list_screen.dart';
 import 'package:ung_dung_dat_lich_kham/views/health_record_menu_screen.dart';
 import 'package:ung_dung_dat_lich_kham/Views/profile_detail_screen.dart';
+//import 'package:ung_dung_dat_lich_kham/Views/update_health_record_screen.dart'; (Lỗi không thấy file này, tạm comment lại để chạy được)
 import 'profile_screen.dart';
 import 'update_profile_screen.dart';
 import 'change_password_screen.dart';

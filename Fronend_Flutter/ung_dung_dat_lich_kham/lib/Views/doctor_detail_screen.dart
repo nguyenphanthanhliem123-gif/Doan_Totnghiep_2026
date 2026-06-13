@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../viewmodels/doctor_viewmodel.dart';
-import '../viewmodels/clinic_viewmodel.dart'; // Thêm ViewModel của Phòng khám
+import '../viewmodels/clinic_viewmodel.dart';
+import '../viewmodels/review_viewmodel.dart';
 import '../constants/ui_constants.dart'; 
 import '../models/doctor_detail_model.dart';
+import 'doctor_review_screen.dart'; 
 
 class DoctorDetailScreen extends StatefulWidget {
   // TODO: Mở comment dòng dưới khi tích hợp luồng điều hướng từ trang Danh sách
@@ -16,7 +18,6 @@ class DoctorDetailScreen extends StatefulWidget {
 }
 
 class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
-  // Biến quản lý trang hiện tại của Slider ảnh phòng khám
   int _currentImageIndex = 0;
 
   String formatCurrency(double amount) {
@@ -34,7 +35,6 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
     }
   }
 
-  // Hàm hỗ trợ mở liên kết ngoài (Web, Phone, Google Maps)
   Future<void> _launchExternalUrl(String urlString) async {
     final Uri url = Uri.parse(urlString);
     if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
@@ -49,10 +49,10 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
   @override
   void initState() {
     super.initState();
-    // Tạm thời gọi ID 1 cho cả Bác sĩ và Phòng khám để test
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<DoctorViewModel>().fetchDoctorDetail(1); 
       context.read<ClinicViewModel>().fetchClinicDetail(1); 
+      context.read<ReviewViewModel>().fetchReviews(1);
     });
   }
 
@@ -63,6 +63,11 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
 
     final clinicVM = context.watch<ClinicViewModel>();
     final clinic = clinicVM.clinicDetail;
+    
+    // Lấy data từ ReviewViewModel để hiển thị số thật
+    final reviewVM = context.watch<ReviewViewModel>();
+    final String avgRating = reviewVM.reviews.isEmpty ? "0.0" : reviewVM.averageRating.toStringAsFixed(1);
+    final String reviewCount = reviewVM.reviews.isEmpty ? "Chưa có" : "${reviewVM.reviews.length}";
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -70,7 +75,7 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
           ? const Center(child: CircularProgressIndicator(color: kPrimaryColor))
           : doctor == null
               ? const Center(child: Text('Không thể tải thông tin bác sĩ'))
-              : SingleChildScrollView( // Cho phép toàn bộ trang kéo lên xuống mượt mà
+              : SingleChildScrollView( 
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -89,7 +94,6 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
                         child: SafeArea(
                           child: Column(
                             children: [
-                              // Thanh điều hướng và các nút thao tác
                               Padding(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                                 child: Row(
@@ -112,12 +116,10 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
                                 ),
                               ),
                               
-                              // Chi tiết định danh bác sĩ
                               Padding(
                                 padding: const EdgeInsets.symmetric(horizontal: 20),
                                 child: Row(
                                   children: [
-                                    // Ảnh đại diện
                                     CircleAvatar(
                                       radius: 40,
                                       backgroundColor: Colors.white,
@@ -147,9 +149,18 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
                                           const SizedBox(height: 8),
                                           Row(
                                             children: [
-                                              _buildBadge(Icons.star, "5.0"),
+                                              _buildBadge(Icons.star, avgRating), 
                                               const SizedBox(width: 10),
-                                              _buildBadge(Icons.chat, "3+"),
+                                              _buildBadge(
+                                                Icons.chat, 
+                                                "$reviewCount đánh giá",
+                                                onTap: () {
+                                                  Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(builder: (context) => const DoctorReviewScreen()),
+                                                  );
+                                                }
+                                              ),
                                             ],
                                           ),
                                           const SizedBox(height: 8),
@@ -169,17 +180,16 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
                         ),
                       ),
 
-                      const SizedBox(height: 25), // Đã xóa khung trắng Transform, chừa lại khoảng trống chuẩn
+                      const SizedBox(height: 25),
 
                       // ==========================================
-                      // PHẦN 2: THÔNG TIN BÁC SĨ (Giới thiệu, Dịch vụ, Lịch)
+                      // PHẦN 2: THÔNG TIN BÁC SĨ
                       // ==========================================
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Giới thiệu bản thân
                             _buildSectionTitle("Giới thiệu bản thân"),
                             Text(
                               doctor.description ?? "Bác sĩ chưa cập nhật thông tin giới thiệu.",
@@ -187,7 +197,6 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
                             ),
                             const SizedBox(height: 25),
 
-                            // Danh sách dịch vụ khám
                             _buildSectionTitle("Dịch vụ khám"),
                             Container(
                               padding: const EdgeInsets.all(15),
@@ -205,7 +214,6 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
                             ),
                             const SizedBox(height: 25),
 
-                            // Lịch làm việc theo ngày
                             _buildSectionTitle("Lịch làm việc"),
                             if (doctor.schedules.isEmpty)
                               const Text("Bác sĩ hiện chưa có lịch làm việc.", style: TextStyle(color: kGreyTextColor))
@@ -213,7 +221,6 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // Danh sách ngày ngang
                                   SingleChildScrollView(
                                     scrollDirection: Axis.horizontal,
                                     child: Row(
@@ -243,7 +250,6 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
                                   ),
                                   const SizedBox(height: 15),
 
-                                  // Danh sách giờ lưới
                                   Builder(
                                     builder: (context) {
                                       final currentSchedule = doctor.schedules.firstWhere(
@@ -316,10 +322,10 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
                       ),
 
                       // ==========================================
-                      // PHẦN 3: THÔNG TIN PHÒNG KHÁM (GỘP VÀO)
+                      // PHẦN 3: THÔNG TIN PHÒNG KHÁM
                       // ==========================================
                       Container(
-                        color: kInputBackgroundColor.withOpacity(0.5), // Nhấn background nhẹ để tách biệt phần PK
+                        color: kInputBackgroundColor.withOpacity(0.5), 
                         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 25),
                         child: clinic == null 
                         ? const Center(child: Text("Đang tải thông tin cơ sở y tế..."))
@@ -329,7 +335,6 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
                             _buildSectionTitle("Thông tin Cơ sở Y tế"),
                             const SizedBox(height: 10),
 
-                            // Tên và Địa chỉ
                             Text(
                               clinic.name,
                               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: kTextColor),
@@ -350,7 +355,6 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
                             ),
                             const SizedBox(height: 20),
 
-                            // Các nút chức năng (Chỉ đường, Gọi điện, Website)
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
@@ -391,7 +395,6 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
                             ),
                             const SizedBox(height: 25),
 
-                            // Slider Ảnh cơ sở vật chất
                             if (clinic.images.isNotEmpty) ...[
                               const Text("Cơ sở vật chất", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                               const SizedBox(height: 10),
@@ -444,14 +447,13 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
                               const SizedBox(height: 20),
                             ],
 
-                            // Mô tả phòng khám
                             if (clinic.description != null && clinic.description!.isNotEmpty)
                               Text(
                                 clinic.description!,
                                 style: const TextStyle(color: kTextColor, fontSize: 14, height: 1.5),
                               ),
                             
-                            const SizedBox(height: 40), // Cắt lề đáy cho thoáng
+                            const SizedBox(height: 40), 
                           ],
                         ),
                       )
@@ -461,7 +463,6 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
     );
   }
 
-  // Các Widget hỗ trợ (Giữ nguyên)
   Widget _buildActionIcon(IconData icon) {
     return Container(
       padding: const EdgeInsets.all(8),
@@ -470,18 +471,38 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
     );
   }
 
-  Widget _buildBadge(IconData icon, String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(10)),
+  Widget _buildBadge(IconData icon, String text, {VoidCallback? onTap}) {
+    Widget content = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: onTap != null ? [const BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))] : null,
+      ),
       child: Row(
         children: [
           Icon(icon, color: kPrimaryColor, size: 14),
           const SizedBox(width: 4),
           Text(text, style: const TextStyle(color: kPrimaryColor, fontSize: 12, fontWeight: FontWeight.bold)),
+          if (onTap != null) ...[
+            const SizedBox(width: 4),
+            const Icon(Icons.arrow_forward_ios, color: kPrimaryColor, size: 10),
+          ]
         ],
       ),
     );
+
+    if (onTap != null) {
+      return Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(15),
+          child: content,
+        ),
+      );
+    }
+    return content;
   }
 
   Widget _buildSectionTitle(String title) {

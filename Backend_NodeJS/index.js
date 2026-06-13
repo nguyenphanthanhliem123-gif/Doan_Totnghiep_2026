@@ -12,6 +12,7 @@ import doctorRoutes from './routes/doctorRoutes.js';
 import clinicRoutes from './routes/clinicRoutes.js';
 import specialtyRoutes from "./routes/specialtyRoutes.js";
 import searchRoutes from "./routes/searchRoutes.js";
+import reviewRoutes from './routes/reviewRoutes.js';
 
 const app = express();
 app.use(bodyParser.json());
@@ -31,6 +32,7 @@ app.use('/api/doctors', doctorRoutes);
 app.use('/api/clinics', clinicRoutes);
 app.use('/api/specialty', specialtyRoutes);
 app.use('/api/search', searchRoutes);
+app.use('/api/reviews', reviewRoutes);
 
 app.use((req,res,next)=>{
     res.status(404).json({message: 'Endpoint not found'});
