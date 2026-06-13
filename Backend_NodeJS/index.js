@@ -9,6 +9,7 @@ import adminRoutes from "./routes/adminRoutes.js";
 import profileRoutes from "./routes/profileRoutes.js";
 import healthRecordRoutes from "./routes/healthRecordRoutes.js";
 import doctorRoutes from './routes/doctorRoutes.js';
+import clinicRoutes from './routes/clinicRoutes.js';
 
 const app = express();
 app.use(bodyParser.json());
@@ -20,11 +21,15 @@ app.use(cors({ origin: '*' }));
 app.get('/',(req,res) => {
     res.json({message: "Server API running"});
 });
-app.use('/api/doctors', doctorRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/auth', userRoutes);
 app.use('/api/profile', profileRoutes);
+<<<<<<< HEAD
 app.use('/api/record', healthRecordRoutes);
+=======
+app.use('/api/doctors', doctorRoutes);
+app.use('/api/clinics', clinicRoutes);
+>>>>>>> 82c7a915df885b6fe63298f9c9887b9853564c79
 
 app.use((req,res,next)=>{
     res.status(404).json({message: 'Endpoint not found'});
