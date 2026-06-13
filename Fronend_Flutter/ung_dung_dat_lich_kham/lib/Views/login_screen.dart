@@ -5,7 +5,6 @@ import 'signup_screen.dart';
 import 'main_screen.dart';
 import 'forgot_password_screen.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'doctor_detail_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -162,7 +161,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         // Điều hướng sang màn hình chính
                         Navigator.pushReplacement(
                           context,
-                          MaterialPageRoute(builder: (context) => const DoctorDetailScreen()),
+                          MaterialPageRoute(builder: (context) => const MainScreen()),
                         );
                       
                       } else {
