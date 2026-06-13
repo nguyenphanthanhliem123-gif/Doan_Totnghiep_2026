@@ -51,4 +51,30 @@ export default class doctorController {
             return res.status(500).json({ succeeded: false, message: error.message });
         }
     }
+
+    static async getDoctors(req, res) {
+        try {
+            // Lấy toàn bộ query params người dùng gửi lên
+            const filters = {
+                specialtyId: req.query.specialtyId,
+                location: req.query.location,
+                minPrice: req.query.minPrice,
+                maxPrice: req.query.maxPrice,
+                minRating: req.query.minRating,
+                availableDate: req.query.availableDate
+            };
+            
+            const doctors = await doctorModel.getDoctorsFilter(filters); 
+            
+            return res.status(200).json({ 
+                succeeded: true, 
+                doctors: doctors 
+            });
+        } catch (error) {
+            return res.status(500).json({ 
+                succeeded: false, 
+                message: error.message 
+            });
+        }
+    }
 }

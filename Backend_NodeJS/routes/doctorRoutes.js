@@ -5,6 +5,6 @@ const doctorRoutes = Router();
 
 // API: Lấy thông tin chi tiết của bác sĩ dựa vào mã bác sĩ (ID)
 doctorRoutes.get('/:id', doctorController.getDoctorById);
-doctorRoutes.get('/', doctorController.getAllDoctor);
+doctorRoutes.get('/', doctorController.getDoctors);
 
 export default doctorRoutes;

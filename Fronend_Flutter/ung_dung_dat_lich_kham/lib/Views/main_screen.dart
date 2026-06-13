@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:ung_dung_dat_lich_kham/Constants/ui_constants.dart';
+import 'package:ung_dung_dat_lich_kham/Views/doctor_list_screen.dart';
 import 'package:ung_dung_dat_lich_kham/Views/global_search_screen.dart';
 import 'package:ung_dung_dat_lich_kham/Views/specialty_list_screen.dart';
 import 'package:ung_dung_dat_lich_kham/views/health_record_menu_screen.dart';
@@ -21,7 +22,7 @@ class _MainScreenState extends State<MainScreen> {
     //const HealthRecordMenuScreen(),
     //const HealthRecordMenuScreen(),
     const ProfileScreen(),
-    const ProfileDetailScreen(),
+    const DoctorListScreen(),
     const SpecialtyListScreen(),
     const GlobalSearchScreen(),
     //const UpdateProfileScreen(),

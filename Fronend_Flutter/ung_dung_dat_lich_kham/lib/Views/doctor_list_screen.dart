@@ -16,6 +16,13 @@ class DoctorListScreen extends StatefulWidget {
 }
 
 class _DoctorListScreenState extends State<DoctorListScreen> {
+
+  String? selectedLocation;
+  double minPrice = 0;
+  double maxPrice = 1000000;
+  double? selectedRating;
+  DateTime? selectedDate;
+  
   @override
   void initState() {
     super.initState();
@@ -42,6 +49,13 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
           widget.specialtyName != null ? 'Bác sĩ ${widget.specialtyName}' : 'Danh Sách Bác Sĩ',
           style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
         ),
+
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.filter_list_rounded, color: Colors.white),
+            onPressed: () => _showFilterBottomSheet(context), // Gọi hàm mở bộ lọc
+          )
+        ],
       ),
       body: doctorVM.isLoading
           ? const Center(child: CircularProgressIndicator(color: kPrimaryColor))
@@ -166,6 +180,145 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  void _showFilterBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) {
+        return StatefulBuilder( // Dùng StatefulBuilder để Update UI riêng trong BottomSheet
+          builder: (BuildContext context, StateSetter setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+                left: 20, right: 20, top: 20
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Lọc Bác Sĩ', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  const Divider(height: 30),
+
+                  // 1. Lọc theo khu vực
+                  const Text('Khu vực', style: TextStyle(fontWeight: FontWeight.bold)),
+                  DropdownButtonFormField<String>(
+                    value: selectedLocation,
+                    decoration: const InputDecoration(border: OutlineInputBorder()),
+                    items: ['TP. Hồ Chí Minh', 'Hà Nội', 'Đà Nẵng'].map((loc) {
+                      return DropdownMenuItem(value: loc, child: Text(loc));
+                    }).toList(),
+                    onChanged: (val) => setModalState(() => selectedLocation = val),
+                    hint: const Text('Chọn khu vực'),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // 2. Lọc theo giá khám
+                  Text('Khoảng giá: ${(minPrice/1000).toStringAsFixed(0)}k - ${(maxPrice/1000).toStringAsFixed(0)}k', style: const TextStyle(fontWeight: FontWeight.bold)),
+                  RangeSlider(
+                    values: RangeValues(minPrice, maxPrice),
+                    min: 0,
+                    max: 2000000,
+                    divisions: 20,
+                    activeColor: kPrimaryColor,
+                    labels: RangeLabels('${minPrice.toInt()}', '${maxPrice.toInt()}'),
+                    onChanged: (RangeValues values) {
+                      setModalState(() {
+                        minPrice = values.start;
+                        maxPrice = values.end;
+                      });
+                    },
+                  ),
+
+                  // 3. Lọc theo đánh giá
+                  const Text('Đánh giá tối thiểu', style: TextStyle(fontWeight: FontWeight.bold)),
+                  Wrap(
+                    spacing: 10,
+                    children: [3, 4, 5].map((star) {
+                      return ChoiceChip(
+                        label: Text('$star+ Sao'),
+                        selected: selectedRating == star.toDouble(),
+                        onSelected: (selected) {
+                          setModalState(() => selectedRating = selected ? star.toDouble() : null);
+                        },
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // 4. Lọc theo ngày
+                  const Text('Ngày khám', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(selectedDate == null ? 'Chọn ngày' : "${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}"),
+                    trailing: const Icon(Icons.calendar_month, color: kPrimaryColor),
+                    onTap: () async {
+                      final date = await showDatePicker(
+                        context: context,
+                        initialDate: DateTime.now(),
+                        firstDate: DateTime.now(),
+                        lastDate: DateTime.now().add(const Duration(days: 30)),
+                      );
+                      if (date != null) {
+                        setModalState(() => selectedDate = date);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Nút Áp dụng & Nút Xóa bộ lọc
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            // Reset biến
+                            selectedLocation = null;
+                            minPrice = 0; maxPrice = 1000000;
+                            selectedRating = null; selectedDate = null;
+                            Navigator.pop(context); // Đóng modal
+                            // Load lại toàn bộ không filter
+                            context.read<DoctorViewModel>().loadDoctors(specialtyId: widget.specialtyId);
+                          },
+                          child: const Text('Xóa lọc', style: TextStyle(color: Colors.grey)),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        flex: 2,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(backgroundColor: kPrimaryColor),
+                          onPressed: () {
+                            Navigator.pop(context); // Đóng Modal
+                            // Gọi API kèm thông số lọc
+                            String? formattedDate = selectedDate != null 
+                                ? "${selectedDate!.year}-${selectedDate!.month.toString().padLeft(2, '0')}-${selectedDate!.day.toString().padLeft(2, '0')}" 
+                                : null;
+
+                            context.read<DoctorViewModel>().loadDoctors(
+                              specialtyId: widget.specialtyId,
+                              location: selectedLocation,
+                              minPrice: minPrice,
+                              maxPrice: maxPrice,
+                              minRating: selectedRating,
+                              availableDate: formattedDate,
+                            );
+                          },
+                          child: const Text('Áp dụng', style: TextStyle(color: Colors.white)),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

@@ -30,13 +30,17 @@ class DoctorViewModel extends ChangeNotifier {
   // Cấu hình URL gọi tới API lấy chi tiết bác sĩ
   final String _baseUrl = "http://localhost:3001/api/doctors";
 
-  Future<void> loadDoctors({int? specialtyId}) async {
+  Future<void> loadDoctors({
+    int? specialtyId, String? location, double? minPrice, 
+    double? maxPrice, double? minRating, String? availableDate
+  }) async {
     _isLoading = true;
-    _errorMessage = '';
     notifyListeners();
-
     try {
-      _listDoctor = await _apiService.getDoctors(specialtyId: specialtyId);
+      _listDoctor = await _apiService.getDoctors(
+        specialtyId: specialtyId, location: location, minPrice: minPrice, 
+        maxPrice: maxPrice, minRating: minRating, availableDate: availableDate
+      );
     } catch (e) {
       _errorMessage = e.toString();
     } finally {
