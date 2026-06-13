@@ -128,7 +128,7 @@ export default class doctorModel {
 
     static async getDoctorsFilter(filters = {}) {
         try {
-            // Điều kiện mặc định: Bác sĩ phải đang hoạt động hoạt động
+            // Điều kiện mặc định: Bác sĩ phải đang hoạt động
             let conditions = ["b.Trang_thai_hoat_dong = 'active'"];
             let params = [];
 
@@ -138,22 +138,26 @@ export default class doctorModel {
                 params.push(filters.specialtyId);
             }
 
-            // 2. SỬA TÊN CỘT: Sử dụng pk.Vi_tri thay vì pk.Dia_chi
+            // 2. Lọc theo khu vực (Sử dụng pk.Vi_tri)
             if (filters.location) {
                 conditions.push("pk.Vi_tri LIKE ?");
                 params.push(`%${filters.location}%`);
             }
 
+            // 3. SỬA TẠI ĐÂY: Lọc theo ngày còn lịch (Dùng bảng khung_gio_kham)
             let dateJoin = "";
             if (filters.availableDate) {
-                dateJoin = "JOIN ca_kham ck ON b.Ma_bac_si = ck.Ma_bac_si";
-                conditions.push("ck.Ngay_kham = ? AND ck.Trang_thai = 'Trống'");
+                // Join với bảng khung_gio_kham
+                dateJoin = "JOIN khung_gio_kham kgk ON b.Ma_bac_si = kgk.Ma_bac_si";
+                
+                // Dùng DATE(kgk.Thoi_gian_Bdau) để cắt lấy phần Ngày từ DATETIME, và trạng thái 'available'
+                conditions.push("DATE(kgk.Thoi_gian_Bdau) = ? AND kgk.Trang_thai = 'available'");
                 params.push(filters.availableDate);
             }
 
             let whereClause = conditions.length > 0 ? "WHERE " + conditions.join(" AND ") : "";
 
-            // 🛑 CẬP NHẬT CÂU LỆNH SQL HOÀN CHỈNH: ĐÃ THÊM JOIN DICH_VU VÀ DANH_GIA
+            // CÂU LỆNH SQL HOÀN CHỈNH
             let query = `
                 SELECT 
                     b.Ma_bac_si, 
@@ -163,7 +167,7 @@ export default class doctorModel {
                     b.Nam_kinh_nghiem,
                     c.Ten_chuyen_khoa,
                     pk.Ten_phong_kham,
-                    pk.Vi_tri AS Khu_vuc, -- Sửa thành pk.Vi_tri
+                    pk.Vi_tri AS Khu_vuc,
                     MIN(dv.Gia_tien) AS Gia_kham,
                     AVG(dg.So_sao) AS Diem_danh_gia
                 FROM bac_si b
@@ -171,14 +175,14 @@ export default class doctorModel {
                 LEFT JOIN chuyen_khoa c ON b.Ma_chuyen_khoa = c.Ma_chuyen_khoa
                 LEFT JOIN bac_si_phong_kham bspk ON b.Ma_bac_si = bspk.Ma_bac_si
                 LEFT JOIN phong_kham pk ON bspk.Ma_phong_kham = pk.Ma_phong_kham
-                LEFT JOIN dich_vu dv ON b.Ma_bac_si = dv.Ma_bac_si    -- 🌟 Bổ sung JOIN bảng dịch vụ
-                LEFT JOIN danh_gia dg ON b.Ma_bac_si = dg.Ma_bac_si    -- 🌟 Bổ sung JOIN bảng đánh giá
+                LEFT JOIN dich_vu dv ON b.Ma_bac_si = dv.Ma_bac_si    
+                LEFT JOIN danh_gia dg ON b.Ma_bac_si = dg.Ma_bac_si    
                 ${dateJoin}
                 ${whereClause}
                 GROUP BY b.Ma_bac_si
             `;
 
-            // Xử lý các bộ lọc số lượng trong HAVING
+            // 4. Xử lý các bộ lọc số lượng trong HAVING
             let havingConditions = [];
             if (filters.minPrice) havingConditions.push(`MIN(dv.Gia_tien) >= ${Number(filters.minPrice)}`);
             if (filters.maxPrice) havingConditions.push(`MIN(dv.Gia_tien) <= ${Number(filters.maxPrice)}`);
