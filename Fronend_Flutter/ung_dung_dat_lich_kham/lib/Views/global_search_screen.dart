@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:ung_dung_dat_lich_kham/Views/doctor_detail_screen.dart';
+import 'package:ung_dung_dat_lich_kham/Views/doctor_list_screen.dart';
 import '../constants/ui_constants.dart';
 import '../viewmodels/search_viewmodel.dart';
 
@@ -70,7 +72,10 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
                         title: Text(doc['Ten_bac_si'], style: const TextStyle(fontWeight: FontWeight.bold)),
                         subtitle: Text(doc['Ten_chuyen_khoa'] ?? 'Chưa rõ khoa'),
                         onTap: () {
-                          // Điều hướng tới trang chi tiết Bác sĩ
+                          if(!mounted) return;
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (context) => DoctorDetailScreen(doctorId: doc['Ma_bac_si']),)
+                          );
                         },
                       )).toList(),
                       const Divider(height: 30),
@@ -88,7 +93,10 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
                         ),
                         title: Text(spec['Ten_chuyen_khoa'], style: const TextStyle(fontWeight: FontWeight.bold)),
                         onTap: () {
-                          // Điều hướng tới Danh sách bác sĩ theo chuyên khoa
+                          if(!mounted) return;
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (context) => DoctorListScreen(specialtyId: spec['Ma_chuyen_khoa'],))
+                          );
                         },
                       )).toList(),
                       const Divider(height: 30),
