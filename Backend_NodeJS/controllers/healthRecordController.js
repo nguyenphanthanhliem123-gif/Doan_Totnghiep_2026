@@ -141,4 +141,45 @@ export default class healthRecordController{
             });
         }
     }
+
+    static async deleteAllRecords(req, res) {
+        try {
+            const userID = req.Ma_nguoi_dung; 
+
+            await healthRecordModel.deleteAllHealthRecords(userID);
+
+            return res.status(200).json({
+                succeeded: true,
+                message: "Đã xóa toàn bộ hồ sơ sức khỏe thành công."
+            });
+        } catch (error) {
+            return res.status(500).json({
+                succeeded: false,
+                message: "Lỗi khi xóa hồ sơ: " + error.message
+            });
+        }
+    }
+
+    static async deleteRecord(req, res) {
+        try {
+            const userID = req.Ma_nguoi_dung; 
+            const maBenhNhan = req.params.id;
+
+            if (!maBenhNhan) {
+                return res.status(400).json({ succeeded: false, message: "Thiếu mã hồ sơ cần xóa." });
+            }
+
+            await healthRecordModel.deleteHealthRecord(maBenhNhan, userID);
+
+            return res.status(200).json({
+                succeeded: true,
+                message: "Đã xóa hồ sơ sức khỏe thành công."
+            });
+        } catch (error) {
+            return res.status(500).json({
+                succeeded: false,
+                message: "Lỗi khi xóa hồ sơ: " + error.message
+            });
+        }
+    }
 }

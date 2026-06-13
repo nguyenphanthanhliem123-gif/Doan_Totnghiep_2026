@@ -29,7 +29,8 @@ export default class profileModel{
 
     static async getProfileByMaNguoiDung(ma_nguoi_dung){
         try{
-            //console.log(ma_nguoi_dung);
+            console.log('==== DEBUG ====');
+            console.log(ma_nguoi_dung);
             const [profile] = await execute(
                 `SELECT
                     nd.Ma_nguoi_dung,
@@ -53,14 +54,20 @@ export default class profileModel{
                     bn.Benh_nen
 
                     FROM nguoi_dung nd
-                    JOIN benh_nhan bn ON nd.Ma_nguoi_dung = bn.Ma_nguoi_dung
-                    -- Nối với bảng người thân để kiểm tra
-                    LEFT JOIN nguoi_than nt ON bn.Ma_benh_nhan = nt.Ma_benh_nhan
+                    -- ✅ 1. Dùng LEFT JOIN để nếu bảng benh_nhan bị trống thì vẫn lấy được nguoi_dung
+                    LEFT JOIN benh_nhan bn ON nd.Ma_nguoi_dung = bn.Ma_nguoi_dung
+                    
+                    -- ✅ 2. BẮT BUỘC đưa điều kiện Quan_he lên trên mệnh đề ON (dùng AND)
+                    -- Tuyệt đối không đưa xuống mệnh đề WHERE bên dưới.
+                    LEFT JOIN nguoi_than nt ON bn.Ma_benh_nhan = nt.Ma_benh_nhan AND nt.Quan_he = 'bản thân'
+                    
                     WHERE nd.Ma_nguoi_dung = ? 
-                    AND nt.Ma_benh_nhan IS NULL
                     LIMIT 1;`, 
             [ma_nguoi_dung]);
-            if(profile.length < 1) throw new Error('Không tìm thấy người dùng này');
+            
+            // Thay vì check length < 1 rồi quăng lỗi chung chung, ta kiểm tra xem có dòng dữ liệu nào không
+            if(profile.length < 1) throw new Error('Tài khoản này không tồn tại trên hệ thống.');
+            
             return profile[0] ?? null;
         }
         catch(error){

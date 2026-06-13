@@ -8,10 +8,8 @@ import '../models/doctor_detail_model.dart';
 
 class DoctorDetailScreen extends StatefulWidget {
   // TODO: Mở comment dòng dưới khi tích hợp luồng điều hướng từ trang Danh sách
-  // final int doctorId; 
-  // const DoctorDetailScreen({super.key, required this.doctorId});
-
-  const DoctorDetailScreen({super.key});
+  final int doctorId; 
+  const DoctorDetailScreen({super.key, required this.doctorId});
 
   @override
   State<DoctorDetailScreen> createState() => _DoctorDetailScreenState();

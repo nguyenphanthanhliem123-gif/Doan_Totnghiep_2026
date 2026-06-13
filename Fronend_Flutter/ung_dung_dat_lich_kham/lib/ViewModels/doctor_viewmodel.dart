@@ -1,15 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:ung_dung_dat_lich_kham/Models/doctor_model.dart';
+import 'package:ung_dung_dat_lich_kham/Services/doctor_service.dart';
 import 'dart:convert';
 
 import '../models/doctor_detail_model.dart'; 
 
 class DoctorViewModel extends ChangeNotifier {
+
+  final APIDoctorService _apiService = APIDoctorService();
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
   DoctorDetailModel? _doctorDetail;
   DoctorDetailModel? get doctorDetail => _doctorDetail;
+
+  String _errorMessage = '';
+  String get errorMessage => _errorMessage;
+
+  List<DoctorModel>? _listDoctor;
+  List<DoctorModel>? get listDoctor => _listDoctor;
 
   String? _selectedDate;
   String? get selectedDate => _selectedDate;
@@ -19,6 +29,21 @@ class DoctorViewModel extends ChangeNotifier {
 
   // Cấu hình URL gọi tới API lấy chi tiết bác sĩ
   final String _baseUrl = "http://localhost:3001/api/doctors";
+
+  Future<void> loadDoctors({int? specialtyId}) async {
+    _isLoading = true;
+    _errorMessage = '';
+    notifyListeners();
+
+    try {
+      _listDoctor = await _apiService.getDoctors(specialtyId: specialtyId);
+    } catch (e) {
+      _errorMessage = e.toString();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 
   // Hàm gọi API để lấy chi tiết bác sĩ theo ID
   Future<void> fetchDoctorDetail(int doctorId) async {
@@ -67,4 +92,6 @@ class DoctorViewModel extends ChangeNotifier {
       notifyListeners();
     }
   }
+
 }
+

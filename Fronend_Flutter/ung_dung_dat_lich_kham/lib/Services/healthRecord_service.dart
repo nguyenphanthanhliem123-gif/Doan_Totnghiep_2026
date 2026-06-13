@@ -155,4 +155,52 @@ class APIHealRecordService{
       throw Exception(e.toString());
     }
   }
+
+  // Hàm xóa toàn bộ hồ sơ
+  Future<bool> deleteAllHealthRecords() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    if (token == null) throw Exception('Phiên đăng nhập đã hết hạn.');
+
+    try {
+      final res = await http.delete(
+        Uri.parse('$BASE_URL/api/record/delete-all'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      final data = jsonDecode(res.body);
+      
+      if (res.statusCode == 200 && data['succeeded'] == true) {
+        return true;
+      } else {
+        throw Exception(data['message'] ?? 'Xóa hồ sơ thất bại');
+      }
+    } catch (e) {
+      throw Exception(e.toString().replaceAll('Exception: ', ''));
+    }
+  }
+
+  // Hàm xóa 1 hồ sơ cụ thể
+  Future<bool> deleteHealthRecord(int maBenhNhan) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    if (token == null) throw Exception('Phiên đăng nhập đã hết hạn.');
+
+    try {
+      final res = await http.delete(
+        Uri.parse('$BASE_URL/api/record/delete/$maBenhNhan'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      final data = jsonDecode(res.body);
+      
+      if (res.statusCode == 200 && data['succeeded'] == true) {
+        return true;
+      } else {
+        throw Exception(data['message'] ?? 'Xóa hồ sơ thất bại');
+      }
+    } catch (e) {
+      throw Exception(e.toString().replaceAll('Exception: ', ''));
+    }
+  }
 }

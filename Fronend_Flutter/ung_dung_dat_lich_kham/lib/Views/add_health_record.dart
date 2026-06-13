@@ -18,10 +18,10 @@ class _AddHealthRecordScreenState extends State<AddHealthRecordScreen> {
   final TextEditingController _diseaseController = TextEditingController();
 
   int _selectedGender = 1; // 1: Nam, 0: Nữ
-  String _selectedRelation = 'Cha';
+  String _selectedRelation = 'Bản thân';
   String _selectedBloodType = 'Không rõ';
 
-  final List<String> _relations = ['Cha', 'Mẹ', 'Vợ', 'Chồng', 'Con trai', 'Con gái', 'Anh', 'Chị', 'Em', 'Khác'];
+  final List<String> _relations = ['Bản thân','Cha', 'Mẹ', 'Vợ', 'Chồng', 'Con trai', 'Con gái', 'Anh', 'Chị', 'Em', 'Khác'];
   final List<String> _bloodTypes = ['Không rõ', 'A', 'B', 'AB', 'O'];
 
   DateTime? _selectedDate;
@@ -87,7 +87,7 @@ class _AddHealthRecordScreenState extends State<AddHealthRecordScreen> {
                   const Text('Thông tin bắt buộc', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: kPrimaryColor)),
                   const SizedBox(height: 15),
                   
-                  _buildTextField(_nameController, 'Họ và tên người thân *'),
+                  _buildTextField(_nameController, 'Họ và tên *'),
                   const SizedBox(height: 15),
                   
                   // Combobox Mối quan hệ
@@ -109,7 +109,6 @@ class _AddHealthRecordScreenState extends State<AddHealthRecordScreen> {
                     items: const [
                       DropdownMenuItem(value: 1, child: Text('Nam')),
                       DropdownMenuItem(value: 0, child: Text('Nữ')),
-                      DropdownMenuItem(value: 2, child: Text('Khác')),
                     ],
                     onChanged: (val) => setState(() => _selectedGender = val!),
                   ),

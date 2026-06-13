@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:ung_dung_dat_lich_kham/viewmodels/search_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/health_record_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/profile_viewmodel.dart';
-import 'package:ung_dung_dat_lich_kham/Views/health_record_menu_screen.dart';
+import 'package:ung_dung_dat_lich_kham/viewmodels/specialty_viewmodel.dart';
 import 'viewmodels/auth_viewmodel.dart';
 import 'views/login_screen.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/doctor_viewmodel.dart';
@@ -24,6 +25,8 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => HealthRecordViewModel()),
         ChangeNotifierProvider(create: (_) => DoctorViewModel()),
         ChangeNotifierProvider(create: (_) => ClinicViewModel()),
+        ChangeNotifierProvider(create: (_) => SpecialtyViewModel()),
+        ChangeNotifierProvider(create: (_) => SearchViewModel())
       ],
       child: MaterialApp(
         title: 'Hệ thống đặt lịch khám bệnh',

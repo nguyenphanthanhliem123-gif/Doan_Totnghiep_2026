@@ -90,4 +90,38 @@ export default class doctorModel {
             throw new Error("Lỗi lấy lịch khám: " + error.message);
         }
     }
+
+    static async getDoctors(maChuyenKhoa = null) {
+    try {
+        let query = `
+            SELECT 
+                b.Ma_bac_si, 
+                nd.Ten_nguoi_dung AS Ten_bac_si, 
+                nd.Anh_dai_dien, 
+                b.Hoc_vi,
+                b.Nam_kinh_nghiem, 
+                b.Tom_tat_danh_gia,
+                c.Ten_chuyen_khoa 
+            FROM bac_si b
+            JOIN nguoi_dung nd ON b.Ma_nguoi_dung = nd.Ma_nguoi_dung
+            LEFT JOIN chuyen_khoa c ON b.Ma_chuyen_khoa = c.Ma_chuyen_khoa
+            WHERE b.Trang_thai_hoat_dong = 'active'
+        `;
+        let params = [];
+
+        // Lọc theo chuyên khoa nếu có truyền vào
+        if (maChuyenKhoa) {
+            query += ` AND b.Ma_chuyen_khoa = ?`;
+            params.push(maChuyenKhoa);
+        }
+
+        console.log('=== DEBUG ===');
+        console.log('=== query: ' + query);
+
+        const [rows] = await execute(query, params);
+        return rows;
+    } catch (error) {
+        throw new Error('Lỗi DB (doctorModel.getDoctors): ' + error.message);
+    }
+}
 }

@@ -33,4 +33,22 @@ export default class doctorController {
             return res.status(500).json({ succeeded: false, message: error.message });
         }
     }
+
+    static async getAllDoctor(req,res){
+        try {
+            const specialtyId = req.query.specialtyId;
+
+            console.log('=== SpecialID: ' + specialtyId);
+
+            const doctors = await doctorModel.getDoctors(specialtyId);
+
+            
+            return res.status(200).json({
+                succeeded: true,
+                doctors: doctors
+            });
+        } catch (error) {
+            return res.status(500).json({ succeeded: false, message: error.message });
+        }
+    }
 }

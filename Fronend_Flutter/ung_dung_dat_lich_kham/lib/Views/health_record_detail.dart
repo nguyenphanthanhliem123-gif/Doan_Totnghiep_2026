@@ -90,7 +90,7 @@ class _HealthRecordMenuScreenState extends State<HealthRecordMenuScreen> {
       );
     }
 
-    // TRẠNG THÁI 4: Dữ liệu tải thành công hoàn toàn -> Hiển thị UI đẹp đẽ
+    // TRẠNG THÁI 4: Dữ liệu tải thành công hoàn toàn
     final age = DateTime.now().year - record.dob.year;
     final formattedDob = "${record.dob.day.toString().padLeft(2, '0')}/${record.dob.month.toString().padLeft(2, '0')}/${record.dob.year}";
 
@@ -119,6 +119,11 @@ class _HealthRecordMenuScreenState extends State<HealthRecordMenuScreen> {
             },
           ),
           const SizedBox(width: 10),
+          IconButton(
+            icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 26),
+            onPressed: () => _showDeleteSingleDialog(context, record.id, record.recordName),
+          ),
+          const SizedBox(width: 5),
         ],
       ),
       body: SingleChildScrollView(
@@ -322,4 +327,61 @@ class _HealthRecordMenuScreenState extends State<HealthRecordMenuScreen> {
       ),
     );
   }*/
+
+  // Hàm hiển thị Dialog Xác nhận xóa từng hồ sơ
+  void _showDeleteSingleDialog(BuildContext context, int id, String name) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.red, size: 28),
+              SizedBox(width: 10),
+              Text('Xác nhận xóa', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 18)),
+            ],
+          ),
+          content: Text(
+            'Bạn có chắc chắn muốn xóa hồ sơ của "$name" không? Hành động này không thể hoàn tác.',
+            style: const TextStyle(fontSize: 15, height: 1.5),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext), // Đóng Dialog
+              child: const Text('Hủy', style: TextStyle(color: Colors.grey, fontSize: 16)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () async {
+                Navigator.pop(dialogContext); // Tắt Dialog trước
+                
+                final vm = context.read<HealthRecordViewModel>();
+                final success = await vm.deleteSingleRecord(id); // Gọi hàm xóa
+
+                if (mounted) {
+                  if (success) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Xóa hồ sơ thành công!'), backgroundColor: Colors.green),
+                    );
+                    // Bật ra ngoài màn hình danh sách
+                    Navigator.pop(context); 
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(vm.errorMessage), backgroundColor: Colors.red),
+                    );
+                  }
+                }
+              },
+              child: const Text('Xóa', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        );
+      },
+    );
+  }
 }

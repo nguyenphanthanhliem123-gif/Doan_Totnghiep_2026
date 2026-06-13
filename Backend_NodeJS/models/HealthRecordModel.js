@@ -129,7 +129,6 @@ export default class healthRecordModel{
 
     static async getHealthRecordDetail(maBenhNhan, userID) {
         try {
-            // ✅ Đã sửa SQL: Join thêm bảng nguoi_dung và dùng COALESCE
             const sql = `
                 SELECT 
                     bn.Ma_benh_nhan, 
@@ -155,7 +154,6 @@ export default class healthRecordModel{
 
             const record = rows[0];
 
-            // Giải mã các trường dữ liệu y tế an toàn
             try {
                 record.Nhom_mau = record.Nhom_mau ? decrypt(record.Nhom_mau) : null;
                 record.Di_ung = record.Di_ung ? decrypt(record.Di_ung) : null;
@@ -167,6 +165,82 @@ export default class healthRecordModel{
             return record;
         } catch (error) {
             throw new Error('Lỗi model getHealthRecordDetail: ' + error.message);
+        }
+    }
+
+    static async deleteHealthRecord(maBenhNhan, userID) {
+        let conn;
+        try {
+            conn = await beginTransaction();
+
+            // 1. Kiểm tra xem hồ sơ này có tồn tại và thuộc về user đang đăng nhập không
+            const [checkRows] = await conn.execute(
+                'SELECT Ma_benh_nhan FROM benh_nhan WHERE Ma_benh_nhan = ? AND Ma_nguoi_dung = ?',
+                [maBenhNhan, userID]
+            );
+
+            if (checkRows.length === 0) {
+                throw new Error("Không tìm thấy hồ sơ hoặc bạn không có quyền xóa hồ sơ này.");
+            }
+
+            // 2. Xóa dữ liệu trong bảng nguoi_than trước (Vì bạn đã lưu cả "bản thân" vào đây)
+            await conn.execute(
+                'DELETE FROM nguoi_than WHERE Ma_benh_nhan = ?', 
+                [maBenhNhan]
+            );
+
+            // 3. Xóa dữ liệu gốc trong bảng benh_nhan
+            await conn.execute(
+                'DELETE FROM benh_nhan WHERE Ma_benh_nhan = ?', 
+                [maBenhNhan]
+            );
+
+            await commitTransaction(conn);
+            return true;
+        } catch (error) {
+            if (conn) {
+                await rollbackTransaction(conn);
+            }
+            throw new Error('Lỗi model deleteHealthRecord: ' + error.message);
+        }
+    }
+
+    // Thêm vào trong class HealthRecordModel
+    static async deleteAllHealthRecords(userID) {
+        let conn;
+        try {
+            conn = await beginTransaction();
+
+            // 1. Tìm tất cả các hồ sơ (Ma_benh_nhan) thuộc về user này
+            const [rows] = await conn.execute(
+                'SELECT Ma_benh_nhan FROM benh_nhan WHERE Ma_nguoi_dung = ?', 
+                [userID]
+            );
+
+            if (rows.length > 0) {
+                const maBenhNhanList = rows.map(r => r.Ma_benh_nhan);
+                const placeholders = maBenhNhanList.map(() => '?').join(',');
+
+                // 2. Xóa các bản ghi liên quan trong bảng nguoi_than trước (để không dính lỗi khóa ngoại)
+                await conn.execute(
+                    `DELETE FROM nguoi_than WHERE Ma_benh_nhan IN (${placeholders})`, 
+                    maBenhNhanList
+                );
+
+                // 3. Xóa toàn bộ hồ sơ trong bảng benh_nhan
+                await conn.execute(
+                    'DELETE FROM benh_nhan WHERE Ma_nguoi_dung = ?', 
+                    [userID]
+                );
+            }
+
+            await commitTransaction(conn);
+            return true;
+        } catch (error) {
+            if (conn) {
+                await rollbackTransaction(conn);
+            }
+            throw new Error('Lỗi model deleteAllHealthRecords: ' + error.message);
         }
     }
 }
