@@ -61,7 +61,10 @@ export default class doctorController {
                 minPrice: req.query.minPrice,
                 maxPrice: req.query.maxPrice,
                 minRating: req.query.minRating,
-                availableDate: req.query.availableDate
+                availableDate: req.query.availableDate,
+                sortBy: req.query.sortBy,
+                userLat: req.query.userLat,
+                userLng: req.query.userLng
             };
             
             const doctors = await doctorModel.getDoctorsFilter(filters); 

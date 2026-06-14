@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import 'package:ung_dung_dat_lich_kham/Views/doctor_detail_screen.dart';
 import '../constants/ui_constants.dart';
@@ -22,7 +23,9 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
   double maxPrice = 1000000;
   double? selectedRating;
   DateTime? selectedDate;
-  
+
+  String selectedSort = 'default';
+
   @override
   void initState() {
     super.initState();
@@ -30,6 +33,34 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
       context.read<DoctorViewModel>().loadDoctors(specialtyId: widget.specialtyId);
     });
   }
+
+  Future<Position> _determinePosition() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    // Kiểm tra xem dịch vụ vị trí (GPS) đã bật chưa
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      return Future.error('Vui lòng bật GPS (Vị trí) trên điện thoại.');
+    }
+
+    // Kiểm tra quyền ứng dụng
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission(); // Xin quyền
+      if (permission == LocationPermission.denied) {
+        return Future.error('Bạn đã từ chối cấp quyền vị trí.');
+      }
+    }
+    
+    if (permission == LocationPermission.deniedForever) {
+      return Future.error('Quyền vị trí bị từ chối vĩnh viễn, không thể lấy tọa độ.');
+    } 
+
+    // Nếu đã có quyền, tiến hành lấy tọa độ hiện tại
+    return await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -50,26 +81,118 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
           style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
         ),
 
-        actions: [
+        /*actions: [
           IconButton(
             icon: const Icon(Icons.filter_list_rounded, color: Colors.white),
             onPressed: () => _showFilterBottomSheet(context), // Gọi hàm mở bộ lọc
           )
+        ],*/
+      ),
+      body: Column(
+        children: [
+          // 🌟 THANH SẮP XẾP & LỌC (Sorting & Filter Toolbar)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            color: Colors.white,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Dropdown Sắp xếp
+                Row(
+                  children: [
+                    const Icon(Icons.sort_rounded, color: Colors.grey, size: 20),
+                    const SizedBox(width: 8),
+                    DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: selectedSort,
+                        icon: const Icon(Icons.keyboard_arrow_down, size: 18),
+                        style: const TextStyle(fontSize: 14, color: Colors.black87, fontWeight: FontWeight.w600),
+                        items: const [
+                          DropdownMenuItem(value: 'default', child: Text('Mới nhất')),
+                          DropdownMenuItem(value: 'rating_desc', child: Text('Đánh giá cao nhất')),
+                          DropdownMenuItem(value: 'price_asc', child: Text('Giá thấp nhất')),
+                          DropdownMenuItem(value: 'distance_asc', child: Text('Gần tôi nhất')),
+                        ],
+                        onChanged: (value) async {
+                          if (value != null) {
+                            setState(() => selectedSort = value);
+                            String? formattedDate;
+                            if(selectedDate != null) {
+                              formattedDate = "${selectedDate!.year}-${selectedDate!.month.toString().padLeft(2, '0')}-${selectedDate!.day.toString().padLeft(2, '0')}";
+                            }
+
+                            double? myLat;
+                            double? myLng;
+
+                            if (value == 'distance_asc') {
+                              try {
+                                // Hiện thông báo đang lấy vị trí (tùy chọn cho trải nghiệm người dùng)
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Đang lấy vị trí của bạn...'), duration: Duration(seconds: 1)),
+                                );
+
+                                Position position = await _determinePosition(); // Gọi hàm lấy vị trí
+                                myLat = position.latitude;
+                                myLng = position.longitude;
+                              } catch (e) {
+                                // Nếu lỗi (người dùng từ chối cấp quyền, chưa bật GPS...)
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+                                );
+                                // Chuyển lại trạng thái mặc định vì không lấy được vị trí
+                                setState(() => selectedSort = 'default');
+                                return; // Dừng lại, không gọi API nữa
+                              }
+                            }
+                            // Gọi lại API với tham số sortBy mới
+                            context.read<DoctorViewModel>().loadDoctors(
+                              specialtyId: widget.specialtyId,
+                              sortBy: value == 'default' ? null : value,
+                              location: selectedLocation,
+                              minPrice: minPrice,
+                              maxPrice: maxPrice,
+                              minRating: selectedRating,
+                              availableDate: formattedDate,
+                              userLat: myLat,
+                              userLng: myLng,
+                            );
+                          }
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                
+                // Nút mở Bộ Lọc (Filter BottomSheet)
+                TextButton.icon(
+                  onPressed: () => _showFilterBottomSheet(context),
+                  icon: const Icon(Icons.filter_alt_outlined, size: 18, color: kPrimaryColor),
+                  label: const Text('Lọc', style: TextStyle(color: kPrimaryColor)),
+                )
+              ],
+            ),
+          ),
+          
+          const Divider(height: 1, thickness: 1, color: Color(0xFFE2E8F0)),
+
+          // 🌟 DANH SÁCH BÁC SĨ (Giữ nguyên như cũ)
+          Expanded(
+            child: doctorVM.isLoading
+                ? const Center(child: CircularProgressIndicator(color: kPrimaryColor))
+                : doctorVM.errorMessage.isNotEmpty
+                    ? Center(child: Text(doctorVM.errorMessage, style: const TextStyle(color: Colors.red)))
+                    : doctorVM.listDoctor == null || doctorVM.listDoctor!.isEmpty
+                        ? _buildEmptyState()
+                        : ListView.builder(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: doctorVM.listDoctor!.length,
+                            itemBuilder: (context, index) {
+                              return _buildDoctorCard(doctorVM.listDoctor![index]);
+                            },
+                          ),
+          ),
         ],
       ),
-      body: doctorVM.isLoading
-          ? const Center(child: CircularProgressIndicator(color: kPrimaryColor))
-          : doctorVM.errorMessage.isNotEmpty
-              ? Center(child: Text(doctorVM.errorMessage, style: const TextStyle(color: Colors.red)))
-              : doctorVM.listDoctor == null || doctorVM.listDoctor!.isEmpty
-                  ? _buildEmptyState()
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: doctorVM.listDoctor!.length,
-                      itemBuilder: (context, index) {
-                        return _buildDoctorCard(doctorVM.listDoctor![index]);
-                      },
-                    ),
     );
   }
 
