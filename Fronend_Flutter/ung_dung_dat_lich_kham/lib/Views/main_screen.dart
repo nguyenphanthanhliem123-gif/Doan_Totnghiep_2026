@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:ung_dung_dat_lich_kham/Constants/ui_constants.dart';
 import 'package:ung_dung_dat_lich_kham/Views/doctor_list_screen.dart';
 import 'package:ung_dung_dat_lich_kham/Views/global_search_screen.dart';
+import 'package:ung_dung_dat_lich_kham/Views/home_screen.dart';
 import 'package:ung_dung_dat_lich_kham/Views/specialty_list_screen.dart';
 import 'package:ung_dung_dat_lich_kham/views/health_record_menu_screen.dart';
 import 'package:ung_dung_dat_lich_kham/Views/profile_detail_screen.dart';
@@ -22,10 +23,11 @@ class _MainScreenState extends State<MainScreen> {
   final List<Widget> _screens = [
     //const HealthRecordMenuScreen(),
     //const HealthRecordMenuScreen(),
+    const HomeScreen(),
     const ProfileScreen(),
     const DoctorListScreen(),
     const SpecialtyListScreen(),
-    const GlobalSearchScreen(),
+    //const GlobalSearchScreen(),
     //const UpdateProfileScreen(),
     //const ChangePasswordScreen(),
     //const UpdateHealthRecordScreen(),
