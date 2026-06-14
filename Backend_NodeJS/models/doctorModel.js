@@ -157,6 +157,19 @@ export default class doctorModel {
 
             let whereClause = conditions.length > 0 ? "WHERE " + conditions.join(" AND ") : "";
 
+            let distanceSelect = "0 AS Khoang_cach"; 
+            if (filters.sortBy === 'distance_asc' && filters.userLat && filters.userLng) {
+                distanceSelect = `
+                    (6371 * acos(
+                        cos(radians(${Number(filters.userLat)})) 
+                        * cos(radians(pk.Vi_do)) 
+                        * cos(radians(pk.Kinh_do) - radians(${Number(filters.userLng)})) 
+                        + sin(radians(${Number(filters.userLat)})) 
+                        * sin(radians(pk.Vi_do))
+                    )) AS Khoang_cach
+                `;
+            }
+
             // CÂU LỆNH SQL HOÀN CHỈNH
             let query = `
                 SELECT 
@@ -170,6 +183,7 @@ export default class doctorModel {
                     pk.Vi_tri AS Khu_vuc,
                     MIN(dv.Gia_tien) AS Gia_kham,
                     AVG(dg.So_sao) AS Diem_danh_gia
+                    ${distanceSelect}
                 FROM bac_si b
                 JOIN nguoi_dung nd ON b.Ma_nguoi_dung = nd.Ma_nguoi_dung
                 LEFT JOIN chuyen_khoa c ON b.Ma_chuyen_khoa = c.Ma_chuyen_khoa
@@ -191,6 +205,18 @@ export default class doctorModel {
             if (havingConditions.length > 0) {
                 query += " HAVING " + havingConditions.join(" AND ");
             }
+
+            let orderByClause = "ORDER BY b.Ma_bac_si DESC";
+
+            if (filters.sortBy === 'rating_desc') {
+                orderByClause = "ORDER BY Diem_danh_gia DESC";
+            } else if (filters.sortBy === 'price_asc') {
+                orderByClause = "ORDER BY Gia_kham ASC";
+            } else if (filters.sortBy === 'distance_asc' && filters.userLat && filters.userLng) {
+                orderByClause = "ORDER BY Khoang_cach ASC";
+            }
+
+            query += ` ${orderByClause}`;
 
             // Thực thi câu lệnh
             const [rows] = await execute(query, params);

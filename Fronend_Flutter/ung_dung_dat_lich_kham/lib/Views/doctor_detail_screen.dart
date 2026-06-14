@@ -50,9 +50,9 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<DoctorViewModel>().fetchDoctorDetail(1); 
-      context.read<ClinicViewModel>().fetchClinicDetail(1); 
-      context.read<ReviewViewModel>().fetchReviews(1);
+      context.read<DoctorViewModel>().fetchDoctorDetail(widget.doctorId); 
+      context.read<ClinicViewModel>().fetchClinicDetail(widget.doctorId); 
+      context.read<ReviewViewModel>().fetchReviews(widget.doctorId);
     });
   }
 

@@ -13,6 +13,9 @@ class APIDoctorService {
     double? maxPrice,
     double? minRating,
     String? availableDate,
+    String? sortBy,
+    double? userLat,
+    double? userLng,
   }) async {
     try {
       Map<String, String> queryParams = {};
@@ -22,6 +25,9 @@ class APIDoctorService {
       if (maxPrice != null) queryParams['maxPrice'] = maxPrice.toString();
       if (minRating != null) queryParams['minRating'] = minRating.toString();
       if (availableDate != null) queryParams['availableDate'] = availableDate;
+      if (sortBy != null && sortBy.isNotEmpty) queryParams['sortBy'] = sortBy;
+      if (userLat != null) queryParams['userLat'] = userLat.toString();
+      if (userLng != null) queryParams['userLng'] = userLng.toString();
 
       final uri = Uri.parse('$BASE_URL/api/doctors').replace(queryParameters: queryParams);
       print(uri);

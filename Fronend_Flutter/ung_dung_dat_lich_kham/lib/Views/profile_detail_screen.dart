@@ -49,7 +49,6 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Lắng nghe trực tiếp sự thay đổi dữ liệu từ ProfileViewModel
     final profileViewModel = context.watch<ProfileViewModel>();
     final user = profileViewModel.userProfile;
 

@@ -32,14 +32,16 @@ class DoctorViewModel extends ChangeNotifier {
 
   Future<void> loadDoctors({
     int? specialtyId, String? location, double? minPrice, 
-    double? maxPrice, double? minRating, String? availableDate
+    double? maxPrice, double? minRating, String? availableDate, String? sortBy, double? userLat,
+    double? userLng,
   }) async {
     _isLoading = true;
     notifyListeners();
     try {
       _listDoctor = await _apiService.getDoctors(
         specialtyId: specialtyId, location: location, minPrice: minPrice, 
-        maxPrice: maxPrice, minRating: minRating, availableDate: availableDate
+        maxPrice: maxPrice, minRating: minRating, availableDate: availableDate,  sortBy: sortBy,
+        userLat: userLat, userLng: userLng
       );
     } catch (e) {
       _errorMessage = e.toString();
