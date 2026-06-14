@@ -12,6 +12,7 @@ class ClinicViewModel extends ChangeNotifier {
 
   final String _baseUrl = "http://localhost:3001/api/clinics";
 
+  // Hàm gọi API lấy chi tiết phòng khám theo ID
   Future<void> fetchClinicDetail(int clinicId) async {
     _isLoading = true;
     notifyListeners();

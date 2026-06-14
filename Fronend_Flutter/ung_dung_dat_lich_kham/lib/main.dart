@@ -9,6 +9,7 @@ import 'views/login_screen.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/doctor_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/clinic_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/review_viewmodel.dart';
+import 'package:ung_dung_dat_lich_kham/viewmodels/booking_viewmodel.dart';
 
 void main() {
   runApp(const MyApp());
@@ -29,6 +30,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => SpecialtyViewModel()),
         ChangeNotifierProvider(create: (_) => SearchViewModel()),
         ChangeNotifierProvider(create: (_) => ReviewViewModel()),
+        ChangeNotifierProvider(create: (_) => BookingViewModel())
       ],
       child: MaterialApp(
         title: 'Hệ thống đặt lịch khám bệnh',

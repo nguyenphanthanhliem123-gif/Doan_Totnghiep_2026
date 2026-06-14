@@ -7,9 +7,9 @@ import '../viewmodels/review_viewmodel.dart';
 import '../constants/ui_constants.dart'; 
 import '../models/doctor_detail_model.dart';
 import 'doctor_review_screen.dart'; 
+import 'booking_screen.dart';
 
 class DoctorDetailScreen extends StatefulWidget {
-  // TODO: Mở comment dòng dưới khi tích hợp luồng điều hướng từ trang Danh sách
   final int doctorId; 
   const DoctorDetailScreen({super.key, required this.doctorId});
 
@@ -458,6 +458,40 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
                         ),
                       )
                     ],
+                  ),
+                ),
+                bottomNavigationBar: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    boxShadow: [
+                      BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))
+                    ],
+                  ),
+                  child: SafeArea(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        final isSuccess = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => BookingScreen(doctor: doctor!), // Truyền nguyên object Bác sĩ sang
+                          ),
+                        );
+                        if (isSuccess == true && context.mounted) {
+                          context.read<DoctorViewModel>().fetchDoctorDetail(widget.doctorId); 
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: kPrimaryColor,
+                        padding: const EdgeInsets.symmetric(vertical: 15),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                        elevation: 0,
+                      ),
+                      child: const Text(
+                        "Đặt lịch khám",
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
+                    ),
                   ),
                 ),
     );
