@@ -182,7 +182,7 @@ export default class doctorModel {
                     pk.Ten_phong_kham,
                     pk.Vi_tri AS Khu_vuc,
                     MIN(dv.Gia_tien) AS Gia_kham,
-                    AVG(dg.So_sao) AS Diem_danh_gia
+                    AVG(dg.So_sao) AS Diem_danh_gia,
                     ${distanceSelect}
                 FROM bac_si b
                 JOIN nguoi_dung nd ON b.Ma_nguoi_dung = nd.Ma_nguoi_dung

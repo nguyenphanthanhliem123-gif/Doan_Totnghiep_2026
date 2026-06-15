@@ -26,15 +26,6 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
     return '$result vnđ';
   }
 
-  String formatDateStr(String dateString) {
-    try {
-      final parts = dateString.split('-');
-      return "${parts[2]}/${parts[1]}";
-    } catch (e) {
-      return dateString;
-    }
-  }
-
   Future<void> _launchExternalUrl(String urlString) async {
     final Uri url = Uri.parse(urlString);
     if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
@@ -64,7 +55,6 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
     final clinicVM = context.watch<ClinicViewModel>();
     final clinic = clinicVM.clinicDetail;
     
-    // Lấy data từ ReviewViewModel để hiển thị số thật
     final reviewVM = context.watch<ReviewViewModel>();
     final String avgRating = reviewVM.reviews.isEmpty ? "0.0" : reviewVM.averageRating.toStringAsFixed(1);
     final String reviewCount = reviewVM.reviews.isEmpty ? "Chưa có" : "${reviewVM.reviews.length}";
@@ -214,108 +204,12 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
                             ),
                             const SizedBox(height: 25),
 
-                            _buildSectionTitle("Lịch làm việc"),
-                            if (doctor.schedules.isEmpty)
-                              const Text("Bác sĩ hiện chưa có lịch làm việc.", style: TextStyle(color: kGreyTextColor))
-                            else
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  SingleChildScrollView(
-                                    scrollDirection: Axis.horizontal,
-                                    child: Row(
-                                      children: doctor.schedules.map((schedule) {
-                                        final isSelected = doctorVM.selectedDate == schedule.date;
-                                        return GestureDetector(
-                                          onTap: () => doctorVM.selectDate(schedule.date),
-                                          child: Container(
-                                            margin: const EdgeInsets.only(right: 10),
-                                            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
-                                            decoration: BoxDecoration(
-                                              color: isSelected ? kPrimaryColor : Colors.white,
-                                              border: Border.all(color: isSelected ? kPrimaryColor : Colors.grey.shade300),
-                                              borderRadius: BorderRadius.circular(15),
-                                            ),
-                                            child: Text(
-                                              formatDateStr(schedule.date),
-                                              style: TextStyle(
-                                                color: isSelected ? Colors.white : kTextColor,
-                                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                              ),
-                                            ),
-                                          ),
-                                        );
-                                      }).toList(),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 15),
+                            // ==========================================
+                            // GIAO DIỆN LỊCH MỚI KIỂU ACCORDION SỐ 2
+                            // ==========================================
+                            _buildSectionTitle("Lịch làm việc sắp tới"),
+                            _buildExpandableSchedule(doctor.schedules),
 
-                                  Builder(
-                                    builder: (context) {
-                                      final currentSchedule = doctor.schedules.firstWhere(
-                                        (s) => s.date == doctorVM.selectedDate,
-                                        orElse: () => DoctorScheduleModel(date: '', slots: []),
-                                      );
-
-                                      if (currentSchedule.slots.isEmpty) {
-                                        return const Text("Không có ca khám nào trong ngày này.", style: TextStyle(color: kGreyTextColor));
-                                      }
-
-                                      return Wrap(
-                                        spacing: 10,
-                                        runSpacing: 10,
-                                        children: currentSchedule.slots.map((slot) {
-                                          final isSelected = doctorVM.selectedSlot?.id == slot.id;
-                                          final isAvailable = slot.status == 'available';
-
-                                          Color boxColor = Colors.white;
-                                          Color textColor = kTextColor;
-                                          Color borderColor = Colors.grey.shade300;
-                                          TextDecoration? textDecoration;
-
-                                          if (slot.status == 'booked') {
-                                            boxColor = Colors.grey.shade200;
-                                            textColor = Colors.grey.shade400;
-                                            borderColor = Colors.transparent;
-                                            textDecoration = TextDecoration.lineThrough;
-                                          } else if (slot.status == 'locked') {
-                                            boxColor = Colors.red.shade50;
-                                            textColor = Colors.red.shade300;
-                                            borderColor = Colors.red.shade100;
-                                            textDecoration = TextDecoration.lineThrough;
-                                          } else {
-                                            if (isSelected) {
-                                              boxColor = kPrimaryColor;
-                                              textColor = Colors.white;
-                                              borderColor = kPrimaryColor;
-                                            }
-                                          }
-
-                                          return GestureDetector(
-                                            onTap: isAvailable ? () => doctorVM.selectSlot(slot) : null,
-                                            child: Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
-                                              decoration: BoxDecoration(
-                                                color: boxColor,
-                                                border: Border.all(color: borderColor),
-                                                borderRadius: BorderRadius.circular(10),
-                                              ),
-                                              child: Text(
-                                                slot.time,
-                                                style: TextStyle(
-                                                  color: textColor,
-                                                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                                  decoration: textDecoration, 
-                                                ),
-                                              ),
-                                            ),
-                                          );
-                                        }).toList(),
-                                      );
-                                    },
-                                  ),
-                                ],
-                              ),
                             const SizedBox(height: 35),
                           ],
                         ),
@@ -460,43 +354,160 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
                     ],
                   ),
                 ),
-                bottomNavigationBar: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    boxShadow: [
-                      BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))
-                    ],
+        bottomNavigationBar: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))
+            ],
+          ),
+          child: SafeArea(
+            child: ElevatedButton(
+              onPressed: () async {
+                final isSuccess = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => BookingScreen(doctor: doctor!), 
                   ),
-                  child: SafeArea(
-                    child: ElevatedButton(
-                      onPressed: () async {
-                        final isSuccess = await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => BookingScreen(doctor: doctor!), // Truyền nguyên object Bác sĩ sang
-                          ),
-                        );
-                        if (isSuccess == true && context.mounted) {
-                          context.read<DoctorViewModel>().fetchDoctorDetail(widget.doctorId); 
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: kPrimaryColor,
-                        padding: const EdgeInsets.symmetric(vertical: 15),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                        elevation: 0,
-                      ),
-                      child: const Text(
-                        "Đặt lịch khám",
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-                      ),
-                    ),
-                  ),
-                ),
+                );
+                if (isSuccess == true && context.mounted) {
+                  context.read<DoctorViewModel>().fetchDoctorDetail(widget.doctorId); 
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kPrimaryColor,
+                padding: const EdgeInsets.symmetric(vertical: 15),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                elevation: 0,
+              ),
+              child: const Text(
+                "Đặt lịch khám",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+            ),
+          ),
+        ),
     );
   }
 
+  // ==========================================
+  // WIDGET MỚI: BẢNG LỊCH XỔ XUỐNG (ACCORDION)
+  // ==========================================
+  Widget _buildExpandableSchedule(List<DoctorScheduleModel> schedules) {
+    if (schedules.isEmpty) {
+      return const Text("Bác sĩ hiện chưa có lịch làm việc.", style: TextStyle(color: kGreyTextColor));
+    }
+
+    // Lọc ra các ngày CÓ CA KHÁM, bỏ qua những ngày nghỉ (tất cả các slot đều 'locked')
+    final activeSchedules = schedules.where((schedule) {
+      return schedule.slots.any((slot) => slot.status != 'locked');
+    }).toList();
+
+    if (activeSchedules.isEmpty) {
+      return const Text("Bác sĩ hiện đã kín lịch tuần này.", style: TextStyle(color: kGreyTextColor));
+    }
+
+    // Hiển thị tối đa 5 ngày sắp tới để màn hình đỡ dài
+    final upcomingSchedules = activeSchedules.take(5).toList();
+
+    return Column(
+      children: upcomingSchedules.map((schedule) {
+        DateTime parsedDate;
+        try {
+          parsedDate = DateTime.parse(schedule.date);
+        } catch (e) {
+          parsedDate = DateTime.now();
+        }
+
+        List<String> weekdays = ["", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ Nhật"];
+        String weekdayStr = weekdays[parsedDate.weekday];
+        String dateDisplay = "$weekdayStr (${parsedDate.day.toString().padLeft(2, '0')}/${parsedDate.month.toString().padLeft(2, '0')})";
+
+        // Phân loại slot Sáng / Chiều
+        List<DoctorTimeSlotModel> morningSlots = [];
+        List<DoctorTimeSlotModel> afternoonSlots = [];
+
+        for (var slot in schedule.slots) {
+          if (slot.status != 'locked') {
+            int hour = int.tryParse(slot.time.split(':')[0]) ?? 0;
+            if (hour < 12) {
+              morningSlots.add(slot);
+            } else {
+              afternoonSlots.add(slot);
+            }
+          }
+        }
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade200),
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent), // Xóa vạch kẻ ngang mặc định
+            child: ExpansionTile(
+              title: Text(
+                "$dateDisplay - Có lịch khám",
+                style: const TextStyle(fontWeight: FontWeight.w600, color: kTextColor, fontSize: 14),
+              ),
+              iconColor: kPrimaryColor,
+              collapsedIconColor: Colors.grey,
+              childrenPadding: const EdgeInsets.only(left: 15, right: 15, bottom: 20),
+              expandedCrossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Render list ca Sáng
+                if (morningSlots.isNotEmpty) ...[
+                  const Text("☀️ Ca Sáng", style: TextStyle(fontWeight: FontWeight.bold, color: kPrimaryColor, fontSize: 13)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 8,
+                    children: morningSlots.map((slot) {
+                      bool isBooked = slot.status == 'booked';
+                      return Text(
+                        "${slot.time}${isBooked ? ' (Đã đặt)' : ''}", 
+                        style: TextStyle(
+                          color: isBooked ? Colors.grey.shade400 : Colors.black87,
+                          decoration: isBooked ? TextDecoration.lineThrough : null,
+                          fontSize: 13,
+                        )
+                      );
+                    }).toList(),
+                  ),
+                  if (afternoonSlots.isNotEmpty) const SizedBox(height: 15),
+                ],
+                
+                // Render list ca Chiều
+                if (afternoonSlots.isNotEmpty) ...[
+                  const Text("🌙 Ca Chiều", style: TextStyle(fontWeight: FontWeight.bold, color: kPrimaryColor, fontSize: 13)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 8,
+                    children: afternoonSlots.map((slot) {
+                      bool isBooked = slot.status == 'booked';
+                      return Text(
+                        "${slot.time}${isBooked ? ' (Đã đặt)' : ''}", 
+                        style: TextStyle(
+                          color: isBooked ? Colors.grey.shade400 : Colors.black87,
+                          decoration: isBooked ? TextDecoration.lineThrough : null,
+                          fontSize: 13,
+                        )
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  // --- CÁC WIDGET HỖ TRỢ GIỮ NGUYÊN ---
   Widget _buildActionIcon(IconData icon) {
     return Container(
       padding: const EdgeInsets.all(8),
