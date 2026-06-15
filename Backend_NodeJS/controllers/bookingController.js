@@ -67,4 +67,23 @@ export default class bookingController {
             return res.status(500).json({ succeeded: false, message: error.message });
         }
     }
+
+    static async getDoctorSchedule(req,res){
+        try{
+            const date = req.query.q || '';
+
+            const doctorSchedule = await bookingModel.getDoctorSchedule(date);
+
+            return  res.status(200).json({
+                succeeded: true,
+                schedule: doctorSchedule
+            });
+        }
+        catch(error){
+            return res.status(500).json({
+                succeeded: false,
+                message: error.message
+            });
+        }
+    }
 }

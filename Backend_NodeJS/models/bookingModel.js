@@ -55,4 +55,24 @@ export default class bookingModel {
         const [rows] = await execute(query, [ma_nguoi_dung]);
         return rows.length ? rows[0].Ma_benh_nhan : null;
     }
+
+    static async getDoctorSchedule(date){
+        try{
+            const query = `
+                SELECT * 
+                FROM khung_gio_kham kgk 
+                    JOIN bac_si bs ON bs.Ma_bac_si = kgk.Ma_bac_si
+                    JOIN nguoi_dung nd ON nd.Ma_nguoi_dung = bs.Ma_nguoi_dung
+                    JOIN phong_kham pk ON  pk.Ma_phong_kham = kgk.Ma_phong_kham
+                WHERE  DATE(kgk.Thoi_gian_Bdau)  = ? AND kgk.Trang_thai = 'available'
+            `;
+
+            const [rows] = await execute(query,[date]);
+
+            return rows.length ?  rows : null;
+        }
+        catch(error){
+            throw new Error('Lỗi bookingModel.getDoctorSchedule: ' + error.message);
+        }
+    }
 }
