@@ -42,7 +42,7 @@ class BookingViewModel extends ChangeNotifier {
     required int serviceId,
     required int slotId,
     required String type,
-    required String symptoms,
+    required String symptoms, required String paymentMethod,
   }) async {
     try {
       final url = Uri.parse(_baseUrl);
@@ -57,6 +57,7 @@ class BookingViewModel extends ChangeNotifier {
           "Ma_khung_gio": slotId,
           "Hinh_thuc": type,
           "Trieu_chung": symptoms,
+          "Phuong_thuc": paymentMethod,
         }),
       );
 

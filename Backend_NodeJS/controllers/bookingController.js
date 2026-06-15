@@ -42,6 +42,7 @@ export default class bookingController {
             const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
             const randomNum = Math.floor(1000 + Math.random() * 9000);
             const Ma_booking = `BK${dateStr}_${randomNum}`;
+            const Phuong_thuc = req.body.Phuong_thuc || 'cash';
 
             // 4. Ghi vào bảng lich_hen
             const bookingData = {
@@ -49,7 +50,17 @@ export default class bookingController {
             };
             const insertId = await bookingModel.createAppointment(bookingData);
 
-            // 5. CẬP NHẬT SLOT THÀNH 'booked' để người sau không đặt trùng được nữa
+            // 5. Ghi vào bảng thanh_toan
+            const paymentData = {
+                Ma_lich_hen: insertId, // Lấy ID của lịch hẹn vừa tạo
+                Phuong_thuc: Phuong_thuc,
+                Trang_thai_thanh_toan: 'pending', // Mặc định là pending, nếu quét QR xong mới update thành 'paid'
+                Ma_giao_dich: `TXN_${Ma_booking}`, // Sinh mã giao dịch tự động
+                Tong_tien: Tong_tien
+            };
+            await bookingModel.createPayment(paymentData);
+
+            // 6. Cập nhật trạng thái khung giờ thành 'booked' để người sau không đặt trùng được nữa
             await bookingModel.updateSlotStatus(Ma_khung_gio, 'booked');
 
             // Trả kết quả thành công về cho Flutter
@@ -59,7 +70,8 @@ export default class bookingController {
                 data: {
                     Ma_lich_hen: insertId,
                     Ma_booking: Ma_booking,
-                    Tong_tien: Tong_tien
+                    Tong_tien: Tong_tien,
+                    Phuong_thuc: Phuong_thuc
                 }
             });
 

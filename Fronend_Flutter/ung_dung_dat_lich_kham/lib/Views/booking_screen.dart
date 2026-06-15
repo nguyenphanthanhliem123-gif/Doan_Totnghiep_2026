@@ -22,6 +22,7 @@ class _BookingScreenState extends State<BookingScreen> {
   int? _selectedSlotId; 
   bool _isForSelf = true; 
   bool _isOffline = true; 
+  String _paymentMethod = 'cash'; // Mặc định là tiền mặt
   
   DoctorServiceModel? _selectedService; // Dịch vụ được chọn
   final TextEditingController _symptomController = TextEditingController();
@@ -151,9 +152,12 @@ class _BookingScreenState extends State<BookingScreen> {
                       _buildSectionTitle("Khung giờ trống"),
                       Row(
                         children: [
-                          _buildLegendIndicator(kPrimaryColor.withOpacity(0.2), "Còn trống"),
-                          const SizedBox(width: 10),
-                          _buildLegendIndicator(Colors.grey.shade200, "Đầy chỗ"),
+                          _buildLegendIndicator(kPrimaryColor.withOpacity(0.2), "Trống"),
+                          const SizedBox(width: 8),
+                          _buildLegendIndicator(Colors.grey.shade300, "Đầy"),
+                          const SizedBox(width: 8),
+                          // Chú thích cho trạng thái Locked (Màu trắng viền xám)
+                          _buildLegendIndicator(Colors.white, "Nghỉ", borderColor: Colors.grey.shade400),
                         ],
                       )
                     ],
@@ -169,7 +173,31 @@ class _BookingScreenState extends State<BookingScreen> {
                       runSpacing: 10,
                       children: activeSlots.map((slot) {
                         bool isAvailable = slot.status == 'available';
+                        bool isBooked = slot.status == 'booked';
+                        // Nếu không phải available và booked thì mặc định là locked
+                        bool isLocked = slot.status == 'locked'; 
                         bool isSelected = _selectedSlotId == slot.id;
+
+                        // --- LOGIC GÁN MÀU SẮC THEO TRẠNG THÁI ---
+                        Color bgColor;
+                        Color borderColor = Colors.transparent;
+                        Color textColor;
+                        TextDecoration? textDecoration;
+
+                        if (isAvailable) {
+                          bgColor = isSelected ? kPrimaryColor : kPrimaryColor.withOpacity(0.1);
+                          borderColor = isAvailable ? kPrimaryColor.withOpacity(0.4) : Colors.transparent;
+                          textColor = isSelected ? Colors.white : kPrimaryColor;
+                        } else if (isBooked) {
+                          bgColor = Colors.grey.shade300;
+                          textColor = Colors.grey.shade600;
+                          textDecoration = TextDecoration.lineThrough; // Gạch ngang chữ
+                        } else { 
+                          // Trạng thái Locked (Không làm việc)
+                          bgColor = Colors.white;
+                          borderColor = Colors.grey.shade300; // Viền xám để khung không bị tàng hình
+                          textColor = Colors.grey.shade400;
+                        }
 
                         return GestureDetector(
                           onTap: isAvailable ? () {
@@ -178,22 +206,16 @@ class _BookingScreenState extends State<BookingScreen> {
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                             decoration: BoxDecoration(
-                              color: isAvailable
-                                  ? (isSelected ? kPrimaryColor : kPrimaryColor.withOpacity(0.1))
-                                  : Colors.grey.shade200,
+                              color: bgColor,
                               borderRadius: BorderRadius.circular(15),
-                              border: Border.all(
-                                color: isAvailable ? kPrimaryColor.withOpacity(0.4) : Colors.transparent,
-                              ),
+                              border: Border.all(color: borderColor),
                             ),
                             child: Text(
                               slot.time,
                               style: TextStyle(
-                                color: isAvailable
-                                    ? (isSelected ? Colors.white : kPrimaryColor)
-                                    : Colors.grey.shade500,
+                                color: textColor,
                                 fontWeight: FontWeight.bold,
-                                decoration: isAvailable ? null : TextDecoration.lineThrough,
+                                decoration: textDecoration,
                               ),
                             ),
                           ),
@@ -280,7 +302,7 @@ class _BookingScreenState extends State<BookingScreen> {
           ),
 
           // ==========================================
-          // 6. THANH XÁC NHẬN VÀ GỌI API
+          // 6. THANH GỌI BOTTOM SHEET TÓM TẮT
           // ==========================================
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
@@ -296,7 +318,6 @@ class _BookingScreenState extends State<BookingScreen> {
                   children: [
                     const Text("Tổng cộng:", style: TextStyle(color: kGreyTextColor, fontSize: 13)),
                     Text(
-                      // Tự động lấy giá tiền thật của Dịch vụ đang chọn
                       _selectedService != null 
                         ? "${_selectedService!.price.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')} VNĐ" 
                         : "0 VNĐ",
@@ -305,54 +326,9 @@ class _BookingScreenState extends State<BookingScreen> {
                   ],
                 ),
                 ElevatedButton(
-                  onPressed: (_selectedSlotId == null || _selectedService == null) ? null : () async {
-                    
-                    // 1. MÓC ID BỆNH NHÂN TỪ AuthViewModel RA
-                    final authVM = context.read<AuthViewModel>();
-                    final patientIdStr = await authVM.getSavedUserId();
-                    
-                    if (patientIdStr == null || patientIdStr.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Vui lòng đăng nhập để đặt lịch!')));
-                      return;
-                    }
-
-                    int patientId = int.parse(patientIdStr);
-
-                    // 2. GỌI API POST ĐỂ TẠO LỊCH
-                    if (mounted) {
-                      final result = await context.read<BookingViewModel>().submitBooking(
-                        doctorId: widget.doctor.id, 
-                        patientId: patientId, 
-                        relativeId: _isForSelf ? null : 1, // Tạm fix 1, sau này làm quản lý người thân ráp vào
-                        serviceId: _selectedService!.id,
-                        slotId: _selectedSlotId!,
-                        type: _isOffline ? "offline" : "online",
-                        symptoms: _symptomController.text,
-                      );
-
-                      if (mounted) {
-                        if (result['succeeded'] == true) {
-                          showDialog(
-                            context: context,
-                            builder: (ctx) => AlertDialog(
-                              title: const Text("Thành công", style: TextStyle(color: Colors.green)),
-                              content: Text("${result['message']}\nMã vé: ${result['data']['Ma_booking']}"),
-                              actions: [
-                                TextButton(
-                                  onPressed: () {
-                                    Navigator.pop(ctx);
-                                    Navigator.pop(context, true); // Lùi về trang bác sĩ và báo hiệu có thay đổi để reload lại lịch
-                                  },
-                                  child: const Text("OK", style: TextStyle(color: kPrimaryColor)),
-                                )
-                              ],
-                            ),
-                          );
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['message'] ?? "Đặt lịch thất bại")));
-                        }
-                      }
-                    }
+                  onPressed: (_selectedSlotId == null || _selectedService == null) ? null : () {
+                    // Mở màn hình tóm tắt
+                    _showSummaryBottomSheet(context, activeSlots);
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: kPrimaryColor,
@@ -360,9 +336,7 @@ class _BookingScreenState extends State<BookingScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 35, vertical: 12),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                   ),
-                  child: context.watch<BookingViewModel>().isLoading 
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Text("Xác nhận", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+                  child: const Text("Xác nhận", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
                 )
               ],
             ),
@@ -374,14 +348,9 @@ class _BookingScreenState extends State<BookingScreen> {
 
   // --- LOGIC VẼ LỊCH (CALENDAR) BẰNG DATETIME ---
   Widget _buildCalendarGrid(List<String> availableDateStrings) {
-    // Tìm ngày đầu tiên của tháng
     DateTime firstDayOfMonth = DateTime(_focusedMonth.year, _focusedMonth.month, 1);
-    // Tìm tổng số ngày trong tháng đó
     int daysInMonth = DateUtils.getDaysInMonth(_focusedMonth.year, _focusedMonth.month);
-    // Ngày đầu tiên rơi vào thứ mấy (1: Thứ 2, 7: Chủ Nhật)
     int firstWeekday = firstDayOfMonth.weekday;
-
-    // Tổng số ô cần vẽ trên Grid = Khoảng trống đầu tháng + Số ngày trong tháng
     int totalSlots = (firstWeekday - 1) + daysInMonth;
 
     return GridView.builder(
@@ -394,20 +363,13 @@ class _BookingScreenState extends State<BookingScreen> {
       ),
       itemCount: totalSlots,
       itemBuilder: (context, index) {
-        // Những ô trống ở đầu tuần
-        if (index < firstWeekday - 1) {
-          return const SizedBox(); 
-        }
+        if (index < firstWeekday - 1) return const SizedBox(); 
 
-        // Tính ra ngày hiện tại
         int day = index - (firstWeekday - 1) + 1;
         DateTime cellDate = DateTime(_focusedMonth.year, _focusedMonth.month, day);
         String currentGridDate = _formatDate(cellDate);
 
-        // Kiểm tra logic chọn ngày
         bool isSelected = _selectedDate != null && _selectedDate!.year == cellDate.year && _selectedDate!.month == cellDate.month && _selectedDate!.day == cellDate.day;
-        
-        // Disable ngày nếu nằm trong quá khứ HOẶC bác sĩ không có lịch trống
         bool isPast = cellDate.isBefore(DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day));
         bool isDisabled = isPast || !availableDateStrings.contains(currentGridDate);
 
@@ -415,7 +377,7 @@ class _BookingScreenState extends State<BookingScreen> {
           onTap: isDisabled ? null : () {
             setState(() { 
               _selectedDate = cellDate; 
-              _selectedSlotId = null; // Reset slot khi đổi ngày
+              _selectedSlotId = null; 
             });
           },
           child: Container(
@@ -438,15 +400,23 @@ class _BookingScreenState extends State<BookingScreen> {
     );
   }
 
-  // --- CÁC WIDGET HỖ TRỢ (GIỮ NGUYÊN) ---
+  // --- CÁC WIDGET HỖ TRỢ ---
   Widget _buildSectionTitle(String title) {
     return Text(title, style: const TextStyle(color: kPrimaryColor, fontSize: 16, fontWeight: FontWeight.bold));
   }
 
-  Widget _buildLegendIndicator(Color color, String label) {
+  Widget _buildLegendIndicator(Color color, String label, {Color? borderColor}) {
     return Row(
       children: [
-        Container(width: 10, height: 10, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        Container(
+          width: 10, 
+          height: 10, 
+          decoration: BoxDecoration(
+            color: color, 
+            shape: BoxShape.circle,
+            border: borderColor != null ? Border.all(color: borderColor) : null,
+          )
+        ),
         const SizedBox(width: 5),
         Text(label, style: const TextStyle(fontSize: 12, color: kGreyTextColor)),
       ],
@@ -473,6 +443,289 @@ class _BookingScreenState extends State<BookingScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  // --- HÀM HIỂN THỊ BẢNG TÓM TẮT TRƯỚC KHI ĐẶT LỊCH ---
+  void _showSummaryBottomSheet(BuildContext context, List<DoctorTimeSlotModel> activeSlots) {
+    final selectedSlot = activeSlots.firstWhere((slot) => slot.id == _selectedSlotId);
+    final String formattedPrice = "${_selectedService!.price.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')} Đ";
+
+    // Logic chặn chọn Tiền mặt nếu khám Online
+    if (!_isOffline && _paymentMethod == 'cash') {
+      _paymentMethod = 'momo'; 
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
+              ),
+              padding: EdgeInsets.only(
+                top: 20, left: 20, right: 20,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 20, 
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(width: 50, height: 5, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10))),
+                  ),
+                  const SizedBox(height: 20),
+                  const Center(
+                    child: Text("Xác Nhận Đặt Lịch", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: kPrimaryColor)),
+                  ),
+                  const SizedBox(height: 25),
+                  Container(
+                    padding: const EdgeInsets.all(15),
+                    decoration: BoxDecoration(color: kPrimaryColor.withOpacity(0.1), borderRadius: BorderRadius.circular(15)),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 30,
+                          backgroundImage: widget.doctor.avatar != null ? NetworkImage(widget.doctor.avatar!) : const AssetImage('assets/images/doctor_placeholder.png') as ImageProvider,
+                        ),
+                        const SizedBox(width: 15),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text("BS. ${widget.doctor.fullName}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: kPrimaryColor)),
+                              const SizedBox(height: 5),
+                              Text("${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year} • ${selectedSlot.time}", style: const TextStyle(color: kTextColor, fontWeight: FontWeight.w500)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  _buildSummaryRow("Đặt cho", _isForSelf ? "Bản thân" : "Người thân"),
+                  _buildSummaryRow("Hình thức", _isOffline ? "Tại phòng khám" : "Khám Online"),
+                  _buildSummaryRow("Dịch vụ", _selectedService!.name),
+                  const Divider(height: 30),
+                  _buildSummaryRow("Phí khám", formattedPrice, isTotal: true),
+                  const SizedBox(height: 15),
+
+                  // --- GIAO DIỆN CHỌN PHƯƠNG THỨC THANH TOÁN ---
+                  const Text("Phương thức thanh toán:", style: TextStyle(fontWeight: FontWeight.bold, color: kPrimaryColor)),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      if (_isOffline)
+                        _buildPaymentButton("Tiền mặt", "cash", Icons.money, setModalState),
+                      if (_isOffline) const SizedBox(width: 10),
+
+                      _buildPaymentButton("MoMo", "momo", Icons.account_balance_wallet, setModalState),
+                      const SizedBox(width: 10),
+                      _buildPaymentButton("Chuyển khoản", "transfer", Icons.account_balance, setModalState),
+                    ],
+                  ),
+                  const SizedBox(height: 30),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 15),
+                            side: const BorderSide(color: kPrimaryColor),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          ),
+                          child: const Text("Hủy bỏ", style: TextStyle(color: kPrimaryColor, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                      const SizedBox(width: 15),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () => _executeBooking(ctx), 
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: kPrimaryColor,
+                            padding: const EdgeInsets.symmetric(vertical: 15),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                            elevation: 0,
+                          ),
+                          child: context.watch<BookingViewModel>().isLoading 
+                              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                              : Text(_paymentMethod == 'cash' ? "Xác nhận" : "Thanh toán", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                    ],
+                  )
+                ],
+              ),
+            );
+          }
+        );
+      },
+    );
+  }
+
+  // --- NÚT CHỌN PHƯƠNG THỨC THANH TOÁN DÙNG TRONG BOTTOM SHEET ---
+  Widget _buildPaymentButton(String label, String value, IconData icon, StateSetter setModalState) {
+    bool isSelected = _paymentMethod == value;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () {
+          setModalState(() { _paymentMethod = value; }); // Update bên trong BottomSheet
+          setState(() { _paymentMethod = value; }); // Update bên ngoài màn hình chính
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected ? kPrimaryColor.withOpacity(0.1) : Colors.white,
+            border: Border.all(color: isSelected ? kPrimaryColor : Colors.grey.shade300),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Column(
+            children: [
+              Icon(icon, color: isSelected ? kPrimaryColor : Colors.grey, size: 20),
+              const SizedBox(height: 5),
+              Text(label, style: TextStyle(fontSize: 12, color: isSelected ? kPrimaryColor : kTextColor, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal), textAlign: TextAlign.center),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // --- WIDGET HỖ TRỢ VẼ DÒNG TÓM TẮT ---
+  Widget _buildSummaryRow(String title, String value, {bool isTotal = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(title, style: const TextStyle(color: kGreyTextColor)),
+          Text(
+            value, 
+            style: TextStyle(
+              color: isTotal ? kPrimaryColor : kTextColor, 
+              fontWeight: isTotal ? FontWeight.bold : FontWeight.w600,
+              fontSize: isTotal ? 16 : 14,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- HÀM GỌI API ĐẶT LỊCH CHÍNH THỨC ---
+  Future<void> _executeBooking(BuildContext bottomSheetContext) async {
+    final authVM = context.read<AuthViewModel>();
+    final patientIdStr = await authVM.getSavedUserId();
+    
+    if (patientIdStr == null || patientIdStr.isEmpty) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Vui lòng đăng nhập để đặt lịch!')));
+      return;
+    }
+
+    int patientId = int.parse(patientIdStr);
+
+    if (mounted) {
+      final result = await context.read<BookingViewModel>().submitBooking(
+        doctorId: widget.doctor.id, 
+        patientId: patientId, 
+        relativeId: _isForSelf ? null : 1, 
+        serviceId: _selectedService!.id,
+        slotId: _selectedSlotId!,
+        type: _isOffline ? "offline" : "online",
+        symptoms: _symptomController.text,
+        paymentMethod: _paymentMethod, // Truyền thêm Phương thức thanh toán vào API
+      );
+
+      if (mounted) {
+        if (result['succeeded'] == true) {
+          Navigator.pop(bottomSheetContext); // Tắt BottomSheet
+
+          if (_paymentMethod != 'cash') {
+            // Mở màn hình quét QR
+            _showQRCodeScreen(result['data']['Ma_booking'], result['data']['Tong_tien'].toString());
+          } else {
+            // Báo thành công luôn đối với tiền mặt
+            _showSuccessDialog(result['message'], result['data']['Ma_booking']);
+          }
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['message'] ?? "Đặt lịch thất bại")));
+        }
+      }
+    }
+  }
+
+  // --- HIỂN THỊ MÀN HÌNH QUÉT QR ẢO ---
+  void _showQRCodeScreen(String bookingCode, String amount) {
+    showDialog(
+      context: context,
+      barrierDismissible: false, 
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Center(child: Text("Thanh toán ${_paymentMethod == 'momo' ? 'MoMo' : 'Chuyển khoản'}", style: const TextStyle(color: kPrimaryColor, fontWeight: FontWeight.bold))),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text("Quét mã dưới đây để hoàn tất đặt lịch", textAlign: TextAlign.center, style: TextStyle(color: kGreyTextColor)),
+            const SizedBox(height: 20),
+            Container(
+              width: 200, height: 200,
+              decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(15)),
+              child: const Icon(Icons.qr_code_2, size: 150, color: Colors.black87),
+            ),
+            const SizedBox(height: 20),
+            Text("Số tiền: $amount Đ", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.red)),
+            Text("Nội dung: $bookingCode", style: const TextStyle(fontWeight: FontWeight.bold)),
+          ],
+        ),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.pop(ctx); 
+                _showSuccessDialog("Thanh toán & Đặt lịch thành công!", bookingCode);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kPrimaryColor, padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: const Text("Tôi đã thanh toán", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          )
+        ],
+      ),
+    );
+  }
+
+  // --- HỘP THOẠI THÀNH CÔNG CUỐI CÙNG ---
+  void _showSuccessDialog(String message, String bookingCode) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        icon: const Icon(Icons.check_circle, color: Colors.green, size: 60),
+        title: const Text("Tuyệt vời!"),
+        content: Text("$message\n\nMã vé của bạn là: $bookingCode", textAlign: TextAlign.center),
+        actions: [
+          Center(
+            child: TextButton(
+              onPressed: () {
+                Navigator.pop(ctx); 
+                Navigator.pop(context, true); 
+              },
+              child: const Text("Quay về", style: TextStyle(color: kPrimaryColor, fontWeight: FontWeight.bold)),
+            ),
+          )
+        ],
       ),
     );
   }
