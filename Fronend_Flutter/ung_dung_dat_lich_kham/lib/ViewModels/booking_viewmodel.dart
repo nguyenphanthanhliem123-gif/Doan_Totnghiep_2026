@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
+import 'package:ung_dung_dat_lich_kham/Config/BASE_URL.dart';
+
 class BookingViewModel extends ChangeNotifier {
   bool _isLoading = false;
   bool get isLoading => _isLoading;
@@ -67,5 +69,44 @@ class BookingViewModel extends ChangeNotifier {
     }
   }
 
-  
+  Future<Map<String, dynamic>> createMomoPayment({
+    required String bookingCode,
+    required String amount,
+  }) async {
+    try {
+      final res = await http.post(
+        Uri.parse('$BASE_URL/api/booking-momo/create-momo-payment'),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "bookingCode": bookingCode,
+          "amount": amount,
+        }),
+      );
+
+      if (res.statusCode == 200) {
+        final Map<String, dynamic> body = jsonDecode(res.body);
+        if (body['succeeded'] == true) {
+          return {
+            'succeeded': true,
+            'payUrl': body['payUrl'],
+            'deeplink': body['deeplink'],
+          };
+        }
+        return {
+          'succeeded': false,
+          'message': body['message'] ?? 'Khởi tạo cổng thanh toán MoMo thất bại'
+        };
+      } else {
+        return {
+          'succeeded': false,
+          'message': 'Lỗi kết nối Server: ${res.statusCode}'
+        };
+      }
+    } catch (e) {
+      return {
+        'succeeded': false,
+        'message': 'Lỗi hệ thống cổng thanh toán: $e'
+      };
+    }
+  }
 }

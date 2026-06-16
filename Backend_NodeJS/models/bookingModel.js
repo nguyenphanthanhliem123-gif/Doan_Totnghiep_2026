@@ -56,7 +56,6 @@ export default class bookingModel {
         return rows.length ? rows[0].Ma_benh_nhan : null;
     }
 
-<<<<<<< HEAD
     static async getDoctorSchedule(date){
         try{
             const query = `
@@ -75,7 +74,7 @@ export default class bookingModel {
         catch(error){
             throw new Error('Lỗi bookingModel.getDoctorSchedule: ' + error.message);
         }
-=======
+    }
     // Hàm lưu thông tin thanh toán
     static async createPayment(paymentData) {
         const query = `INSERT INTO thanh_toan (Ma_lich_hen, Phuong_thuc, Trang_thai_thanh_toan, Ma_giao_dich, Tong_tien) 
@@ -88,6 +87,5 @@ export default class bookingModel {
             paymentData.Tong_tien
         ]);
         return result.insertId;
->>>>>>> f457d8b17c3aa9d6311210b70054f5aca9952951
     }
 }
