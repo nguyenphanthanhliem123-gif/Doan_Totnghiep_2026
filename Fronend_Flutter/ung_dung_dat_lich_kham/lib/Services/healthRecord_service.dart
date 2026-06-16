@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ung_dung_dat_lich_kham/Config/BASE_URL.dart';
-import 'package:ung_dung_dat_lich_kham/Models/health_record_model.dart';
+import 'package:ung_dung_dat_lich_kham/models/health_record_model.dart';
 import 'package:http/http.dart' as http;
 
 class APIHealRecordService{
@@ -49,6 +49,7 @@ class APIHealRecordService{
     String? nhomMau,
     String? diUng,
     String? benhNen,
+    String? phone,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
@@ -70,7 +71,8 @@ class APIHealRecordService{
           "address": address,
           "nhomMau": nhomMau,
           "diUng": diUng,
-          "benhNen": benhNen
+          "benhNen": benhNen,
+          "phone": phone,
         }),
       );
 
@@ -97,6 +99,7 @@ class APIHealRecordService{
     String? nhomMau,
     String? diUng,
     String? benhNen,
+    String? phone,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
@@ -118,7 +121,8 @@ class APIHealRecordService{
           "address": address,
           "nhomMau": nhomMau,
           "diUng": diUng,
-          "benhNen": benhNen
+          "benhNen": benhNen,
+          "phone": phone,
         }),
       );
 

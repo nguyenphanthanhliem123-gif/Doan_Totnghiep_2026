@@ -6,6 +6,7 @@ class UserModel {
   final int? gender;
   final String? address;
   final DateTime? dob;
+  final String? phone;
 
 
   UserModel({
@@ -15,7 +16,8 @@ class UserModel {
     this.avatar,
     this.gender,
     this.address,
-    this.dob
+    this.dob,
+    this.phone,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json){
@@ -26,6 +28,7 @@ class UserModel {
       avatar: json['Anh_dai_dien'],
       gender: json['Gioi_tinh'] ?? 1,
       address: json['Dia_chi'] ?? '',
+      phone: json['Dien_thoai'] ?? '',
       dob: json['Ngay_sinh'] != null ? DateTime.parse(json['Ngay_sinh']).toLocal() : DateTime.now(),
     );
   }

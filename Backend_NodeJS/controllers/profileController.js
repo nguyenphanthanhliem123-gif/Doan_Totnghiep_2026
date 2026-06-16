@@ -35,10 +35,10 @@ export default class profileController{
 
     static async updateProfile(req,res){
         try{
-            const {fullName, birthDay, gender, address, avatar} = req.body;
+            const {fullName, birthDay, gender, address, avatar, phone} = req.body;
             const userId = req.Ma_nguoi_dung;
 
-            const result = await profileModel.updateProfile(fullName, birthDay, gender, address, avatar, userId);
+            const result = await profileModel.updateProfile(fullName, birthDay, gender, address, avatar, phone, userId);
 
             if(result) return res.status(200).json({
                 succeeded: true,

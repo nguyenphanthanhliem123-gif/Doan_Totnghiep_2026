@@ -36,6 +36,7 @@ export default class profileModel{
                     nd.Ma_nguoi_dung,
                     nd.Ten_nguoi_dung,
                     nd.Email,
+                    nd.Dien_thoai,
                     nd.Dang_nhap_Oauth,
                     nd.Ma_DN_Oauth,
                     nd.Phan_quyen,
@@ -75,7 +76,7 @@ export default class profileModel{
         }
     }
 
-    static async updateProfile(fullName, birthDay, gender, address, avatar, userID){
+    static async updateProfile(fullName, birthDay, gender, address, avatar, phone, userID){
         let conn;
         
         console.log("==== DEBUG THÔNG TIN GỬI LÊN ====");
@@ -84,6 +85,7 @@ export default class profileModel{
         console.log("=== gender: ", gender);
         console.log("=== address: ", address);
         console.log("=== avatar: ", avatar);
+        console.log("=== phone: ", phone);
         console.log("=== userID: ", userID);
 
         try {
@@ -95,14 +97,14 @@ export default class profileModel{
             const safeGender = gender ?? null;
             const safeAddress = address ?? null;
             const safeAvatar = avatar ?? null;
-
+            const safePhone = phone ?? null;
 
             const sqlNguoiDung = `
                 UPDATE nguoi_dung 
-                SET Ten_nguoi_dung = ?, Anh_dai_dien = ? 
+                SET Ten_nguoi_dung = ?, Anh_dai_dien = ?, Dien_thoai = ?
                 WHERE Ma_nguoi_dung = ?
             `;
-            await conn.execute(sqlNguoiDung, [safeFullName, safeAvatar, userID]);
+            await conn.execute(sqlNguoiDung, [safeFullName, safeAvatar, safePhone, userID]);
 
 
             const sqlBenhNhan = `

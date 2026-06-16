@@ -12,6 +12,7 @@ class UpdateHealthRecordScreen extends StatefulWidget {
 
 class _UpdateHealthRecordScreenState extends State<UpdateHealthRecordScreen> {
   final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController(); // ✅ ĐÃ THÊM: Controller SĐT
   final TextEditingController _dobController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _allergyController = TextEditingController();
@@ -35,6 +36,7 @@ class _UpdateHealthRecordScreenState extends State<UpdateHealthRecordScreen> {
       if (record != null) {
         setState(() {
           _nameController.text = record.recordName;
+          _phoneController.text = record.phone ?? ''; // ✅ ĐÃ THÊM: Gán SĐT cũ vào ô nhập
           _addressController.text = record.address;
           _allergyController.text = record.allergy ?? '';
           _diseaseController.text = record.underlyingDisease ?? '';
@@ -81,6 +83,7 @@ class _UpdateHealthRecordScreenState extends State<UpdateHealthRecordScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _phoneController.dispose(); // ✅ ĐÃ THÊM: Giải phóng RAM
     _dobController.dispose();
     _addressController.dispose();
     _allergyController.dispose();
@@ -116,6 +119,10 @@ class _UpdateHealthRecordScreenState extends State<UpdateHealthRecordScreen> {
                   const SizedBox(height: 15),
                   
                   _buildTextField(_nameController, 'Họ và tên *'),
+                  const SizedBox(height: 15),
+
+                  // ✅ ĐÃ THÊM: Ô nhập số điện thoại
+                  _buildTextField(_phoneController, 'Số điện thoại liên hệ (Tùy chọn)', icon: Icons.phone_android_outlined, keyboardType: TextInputType.phone),
                   const SizedBox(height: 15),
                   
                   DropdownButtonFormField<String>(
@@ -188,11 +195,13 @@ class _UpdateHealthRecordScreenState extends State<UpdateHealthRecordScreen> {
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, String label, {bool readOnly = false, VoidCallback? onTap, IconData? icon}) {
+  // ✅ ĐÃ SỬA: Bổ sung tham số keyboardType để hiển thị đúng bàn phím số
+  Widget _buildTextField(TextEditingController controller, String label, {bool readOnly = false, VoidCallback? onTap, IconData? icon, TextInputType keyboardType = TextInputType.text}) {
     return TextFormField(
       controller: controller,
       readOnly: readOnly,
       onTap: onTap,
+      keyboardType: keyboardType, // Bổ sung
       decoration: InputDecoration(
         labelText: label,
         fillColor: kInputBackgroundColor,
@@ -206,6 +215,7 @@ class _UpdateHealthRecordScreenState extends State<UpdateHealthRecordScreen> {
   void _submitForm(BuildContext context) async {
     final name = _nameController.text.trim();
     final address = _addressController.text.trim();
+    final phone = _phoneController.text.trim(); // ✅ Lấy chuỗi số điện thoại
 
     if (name.isEmpty || address.isEmpty || _selectedDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Vui lòng điền đủ Họ tên, Ngày sinh và Địa chỉ')));
@@ -213,17 +223,19 @@ class _UpdateHealthRecordScreenState extends State<UpdateHealthRecordScreen> {
     }
 
     final healthVM = context.read<HealthRecordViewModel>();
-    final currentRecord = healthVM.record; // Lấy ra ID của record đang sửa
+    final currentRecord = healthVM.record; 
     
     if (currentRecord == null) return;
 
+    // ✅ GỌI HÀM VÀ TRUYỀN BIẾN PHONE VÀO
     await healthVM.updateRecord(
-      maBenhNhan: currentRecord.id, // Bắt buộc truyền ID vào
+      maBenhNhan: currentRecord.id, 
       tenHoSo: name,
       moiQuanHe: _selectedRelation,
       birthDay: _selectedDate!,
       gender: _selectedGender,
       address: address,
+      phone: phone.isEmpty ? null : phone, // Truyền null nếu để trống
       nhomMau: _selectedBloodType == 'Không rõ' ? null : _selectedBloodType,
       diUng: _allergyController.text.isEmpty ? null : _allergyController.text.trim(),
       benhNen: _diseaseController.text.isEmpty ? null : _diseaseController.text.trim(),
