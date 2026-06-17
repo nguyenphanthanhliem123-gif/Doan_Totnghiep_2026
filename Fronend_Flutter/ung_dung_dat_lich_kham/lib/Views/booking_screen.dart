@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:ung_dung_dat_lich_kham/models/health_record_model.dart';
+import 'package:ung_dung_dat_lich_kham/viewmodels/health_record_viewmodel.dart';
+import 'package:ung_dung_dat_lich_kham/views/add_health_record.dart';
 import '../constants/ui_constants.dart';
 import '../viewmodels/booking_viewmodel.dart';
-import '../viewmodels/auth_viewmodel.dart'; 
-import '../models/doctor_detail_model.dart'; 
-import '../viewmodels/health_record_viewmodel.dart';
-import '../models/health_record_model.dart';
-import './add_health_record.dart';
+import '../viewmodels/auth_viewmodel.dart'; // Import để lấy ID bệnh nhân
+import '../models/doctor_detail_model.dart'; // Import Model bác sĩ
+import 'package:url_launcher/url_launcher.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 class BookingScreen extends StatefulWidget {
   final DoctorDetailModel doctor; 
@@ -542,12 +544,23 @@ class _BookingScreenState extends State<BookingScreen> {
   // --- HÀM GỌI API ĐẶT LỊCH CHÍNH THỨC ---
   Future<void> _executeBooking(BuildContext bottomSheetContext) async {
     final authVM = context.read<AuthViewModel>();
-    final patientIdStr = await authVM.getSavedUserId();
+    final bookingVM = context.read<BookingViewModel>();
     
-    if (patientIdStr == null || patientIdStr.isEmpty) return;
+    final patientIdStr = await authVM.getSavedUserId();
+    if (patientIdStr == null || patientIdStr.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Vui lòng đăng nhập để đặt lịch!'))
+        );
+      }
+      return;
+    }
+
+    int patientId = int.parse(patientIdStr);
 
     if (mounted) {
-      final result = await context.read<BookingViewModel>().submitBooking(
+      // 1. Tạo đơn đặt lịch trên hệ thống thông qua ViewModel
+      final result = await bookingVM.submitBooking(
         doctorId: widget.doctor.id, 
         patientId: int.parse(patientIdStr), // Đây là Ma_nguoi_dung
         // CHỖ NÀY ĐÃ ĐƯỢC GẮN DỮ LIỆU THẬT TỪ DROPDOWN VÀO
@@ -561,44 +574,146 @@ class _BookingScreenState extends State<BookingScreen> {
 
       if (mounted) {
         if (result['succeeded'] == true) {
-          Navigator.pop(bottomSheetContext); 
+          Navigator.pop(bottomSheetContext);
+          
+          String bookingCode = result['data']['Ma_booking'];
+          String amount = result['data']['Tong_tien'].toString();
+
           if (_paymentMethod != 'cash') {
-            _showQRCodeScreen(result['data']['Ma_booking'], result['data']['Tong_tien'].toString());
+            // 🌟 CHUẨN MVVM: Gọi logic khởi tạo MoMo thông qua hàm đã viết ở ViewModel
+            final momoResult = await bookingVM.createMomoPayment(
+              bookingCode: bookingCode,
+              amount: amount,
+            );
+
+            if (mounted) {
+              if (momoResult['succeeded'] == true) {
+                // Nhận link sạch từ ViewModel trả về và mở Popup hiển thị QR Code
+                _showQRCodeScreen(
+                  bookingCode, 
+                  amount, 
+                  momoResult['payUrl'], 
+                  momoResult['deeplink'],
+                );
+              } else {
+                // Hiển thị thông báo lỗi xử lý từ ViewModel
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(momoResult['message'] ?? "Lỗi cổng thanh toán"))
+                );
+              }
+            }
           } else {
-            _showSuccessDialog(result['message'], result['data']['Ma_booking']);
+            // Nếu chọn tiền mặt thì báo thành công luôn
+            _showSuccessDialog(result['message'], bookingCode);
           }
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['message'] ?? "Đặt lịch thất bại")));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(result['message'] ?? "Đặt lịch thất bại"))
+          );
         }
       }
     }
   }
 
-  void _showQRCodeScreen(String bookingCode, String amount) {
+  // --- HIỂN THỊ MÀN HÌNH QUÉT QR ẢO ---
+  void _showQRCodeScreen(String bookingCode, String amount, String payUrl, String deeplink) {
+    // Định dạng lại tiền tệ hiển thị dạng VND (Ví dụ: 200.000)
+    final String formattedAmount = "${amount.replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')} VNĐ";
+
     showDialog(
       context: context, barrierDismissible: false, 
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Center(child: Text("Thanh toán ${_paymentMethod == 'momo' ? 'MoMo' : 'Chuyển khoản'}", style: const TextStyle(color: kPrimaryColor, fontWeight: FontWeight.bold))),
+        title: Center(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.network(
+                'https://upload.wikimedia.org/wikipedia/vi/f/fe/MoMo_Logo.png', 
+                width: 24, 
+                height: 24, 
+                errorBuilder: (c, e, s) => const Icon(Icons.payment),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                "Thanh toán MoMo", 
+                style: TextStyle(color: Colors.pink.shade700, fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+            ],
+          )
+        ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text("Quét mã dưới đây để hoàn tất đặt lịch", textAlign: TextAlign.center, style: TextStyle(color: kGreyTextColor)),
+            const Text(
+              "Quét mã QR bằng ứng dụng MoMo hoặc nhấn nút bên dưới để mở ví thanh toán", 
+              textAlign: TextAlign.center, 
+              style: TextStyle(color: kGreyTextColor, fontSize: 13),
+            ),
             const SizedBox(height: 20),
-            Container(width: 200, height: 200, decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(15)), child: const Icon(Icons.qr_code_2, size: 150, color: Colors.black87)),
+            
+            // Tự vẽ mã QR thật từ link MoMo trả về qua dữ liệu sạch từ ViewModel
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white, 
+                borderRadius: BorderRadius.circular(15), 
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: QrImageView(
+                data: payUrl,
+                version: QrVersions.auto,
+                size: 200.0,
+              ),
+            ),
             const SizedBox(height: 20),
-            Text("Số tiền: $amount Đ", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.red)),
-            Text("Nội dung: $bookingCode", style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text("Số tiền: $formattedAmount", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.redAccent)),
+            const SizedBox(height: 4),
+            Text("Nội dung: $bookingCode", style: const TextStyle(fontWeight: FontWeight.w500, color: kTextColor)),
           ],
         ),
         actions: [
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () { Navigator.pop(ctx); _showSuccessDialog("Thanh toán & Đặt lịch thành công!", bookingCode); },
-              style: ElevatedButton.styleFrom(backgroundColor: kPrimaryColor, padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-              child: const Text("Tôi đã thanh toán", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            ),
+          Column(
+            children: [
+              // Nút mở link tự động kích hoạt nhảy thẳng vào app MoMo thiết bị
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.open_in_new, color: Colors.white, size: 18),
+                  label: const Text("Mở Ứng Dụng MoMo", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  onPressed: () async {
+                    final Uri url = Uri.parse(deeplink);
+                    if (await canLaunchUrl(url)) {
+                      await launchUrl(url, mode: LaunchMode.externalApplication);
+                    } else {
+                      await launchUrl(Uri.parse(payUrl), mode: LaunchMode.externalApplication);
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.pink.shade600, 
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              // Nút quay về màn hình cũ
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () {
+                    Navigator.pop(ctx); // Đóng hộp thoại QR
+                    _showSuccessDialog("Hệ thống đang ghi nhận thanh toán của bạn!", bookingCode);
+                  },
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    side: BorderSide(color: Colors.pink.shade600),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: Text("Tôi đã thanh toán xong", style: TextStyle(color: Colors.pink.shade600, fontWeight: FontWeight.bold)),
+                ),
+              )
+            ],
           )
         ],
       ),
