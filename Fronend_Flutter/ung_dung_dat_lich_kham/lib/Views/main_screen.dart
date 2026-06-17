@@ -10,6 +10,7 @@ import 'package:ung_dung_dat_lich_kham/Views/profile_detail_screen.dart';
 import 'profile_screen.dart';
 import 'update_profile_screen.dart';
 import 'change_password_screen.dart';
+import 'package:ung_dung_dat_lich_kham/views/appointment_list_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -24,9 +25,9 @@ class _MainScreenState extends State<MainScreen> {
     //const HealthRecordMenuScreen(),
     //const HealthRecordMenuScreen(),
     const HomeScreen(),
-    const ProfileScreen(),
     const DoctorListScreen(),
-    const SpecialtyListScreen(),
+    const ProfileScreen(),
+    const AppointmentScreen(),
     //const GlobalSearchScreen(),
     //const UpdateProfileScreen(),
     //const ChangePasswordScreen(),
@@ -49,7 +50,7 @@ class _MainScreenState extends State<MainScreen> {
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Trang chủ'),
           BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), label: 'Tin nhắn'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Cá nhân'),
-          BottomNavigationBarItem(icon: Icon(Icons.calendar_month), label: 'Lịch'),
+          BottomNavigationBarItem(icon: Icon(Icons.calendar_month), label: 'Lịch hẹn'),
         ],
       ),
     );

@@ -11,6 +11,7 @@ import 'package:ung_dung_dat_lich_kham/viewmodels/auth_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/profile_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/specialty_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/views/health_record_menu_screen.dart';
+import 'package:ung_dung_dat_lich_kham/views/appointment_list_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -503,9 +504,17 @@ class _HomeScreenState extends State<HomeScreen> {
                   alignment: Alignment.topRight,
                   child: InkWell(
                     onTap: () {
-                      // TODO: Điều hướng sang trang "Tất cả lịch trình"
+                      if (!mounted) return;
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const AppointmentScreen()
+                        ),
+                      );
                     },
-                    child: Text('Xem tất cả', style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 12)),
+                    child: Padding(
+                      padding: const EdgeInsets.all(4.0),
+                      child: Text('Xem tất cả', style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 12)),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 10),
