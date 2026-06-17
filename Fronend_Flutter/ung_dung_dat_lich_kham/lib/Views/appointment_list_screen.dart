@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../constants/ui_constants.dart';
 import '../viewmodels/appointment_viewmodel.dart';
 import '../models/appointment_model.dart';
+import 'appointment_detail_screen.dart';
+import 'doctor_detail_screen.dart';
 
 class AppointmentScreen extends StatefulWidget {
   const AppointmentScreen({super.key});
@@ -90,21 +92,26 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
           BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
         ],
       ),
-      // Bọc Material và InkWell để toàn bộ thẻ có thể bấm được kèm hiệu ứng gợn sóng (ripple)
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(15),
           onTap: () {
-            // TODO: Chuyển sang trang Chi tiết lịch hẹn
-            print("Mở chi tiết lịch hẹn mã: ${appointment.bookingCode}");
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => AppointmentDetailScreen(
+                  appointmentId: appointment.id,
+                ),
+              ),
+            );
           },
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 1. HEADER (Bác sĩ & Trạng thái)
+                // 1. HEADER
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -125,7 +132,7 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
                         ],
                       ),
                     ),
-                    _buildStatusBadge(tabType), // Gộp nhãn dựa trên Tab hiện tại
+                    _buildStatusBadge(tabType), 
                   ],
                 ),
                 
@@ -134,7 +141,7 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
                   child: Divider(height: 1, color: Colors.black12),
                 ),
 
-                // 2. BODY (Thời gian & Hình thức)
+                // 2. BODY
                 Text(
                   'Thời gian: ${appointment.startTime.hour.toString().padLeft(2, '0')}:${appointment.startTime.minute.toString().padLeft(2, '0')} - ${appointment.endTime.hour.toString().padLeft(2, '0')}:${appointment.endTime.minute.toString().padLeft(2, '0')} • ${appointment.startTime.day.toString().padLeft(2, '0')}/${appointment.startTime.month.toString().padLeft(2, '0')}/${appointment.startTime.year}',
                   style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
@@ -147,8 +154,8 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
 
                 const SizedBox(height: 16),
 
-                // 3. FOOTER (Nút hành động)
-                _buildFooterButtons(appointment, tabType),
+                // 3. FOOTER (Truyền thêm context vào để hiển thị Dialog/Chuyển trang)
+                _buildFooterButtons(context, appointment, tabType),
               ],
             ),
           ),
@@ -159,16 +166,14 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
 
   // --- LOGIC GẮN NHÃN TRẠNG THÁI ---
   Widget _buildStatusBadge(String tabType) {
-    Color bgColor;
-    Color textColor;
-    String text;
+    Color bgColor; Color textColor; String text;
 
     if (tabType == 'upcoming') {
       bgColor = Colors.blue.shade50; textColor = Colors.blue; text = 'Sắp tới';
     } else if (tabType == 'completed') {
       bgColor = Colors.green.shade50; textColor = Colors.green; text = 'Đã khám';
     } else {
-      bgColor = Colors.red.shade100; textColor = Colors.grey.shade700; text = 'Đã hủy';
+      bgColor = Colors.red.shade100; textColor = Colors.red; text = 'Đã hủy';
     }
 
     return Container(
@@ -178,8 +183,70 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
     );
   }
 
+  // --- HÀM BẬT DIALOG XÁC NHẬN HỦY LỊCH ---
+  void _showCancelDialog(BuildContext context, AppointmentModel appointment) {
+    final now = DateTime.now();
+    final difference = appointment.startTime.difference(now);
+
+    if (difference.inHours < 2) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Không thể hủy! Bạn chỉ được phép hủy lịch khám trước giờ bắt đầu ít nhất 2 tiếng.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        title: const Text('Xác nhận hủy lịch', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: const Text('Bạn có chắc chắn muốn hủy lịch hẹn khám này không? Thao tác này không thể hoàn tác.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Bỏ qua', style: TextStyle(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(dialogContext); 
+              
+              final appVM = context.read<AppointmentViewModel>();
+              final result = await appVM.cancelAppointment(appointment.id);
+
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(result['message']),
+                    backgroundColor: result['succeeded'] ? Colors.green : Colors.red,
+                  ),
+                );
+              }
+            },
+            child: const Text('Đồng ý hủy', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   // --- LOGIC CHỌN NÚT THEO TAB ---
-  Widget _buildFooterButtons(AppointmentModel appointment, String tabType) {
+  Widget _buildFooterButtons(BuildContext context, AppointmentModel appointment, String tabType) {
+    
+    // Logic Đặt lại lịch (Chuyển trang)
+    void navigateToDoctorDetail() {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => DoctorDetailScreen(
+            doctorId: appointment.doctorId,
+          ),
+        ),
+      );
+    }
+
     if (tabType == 'upcoming') {
       return Row(
         children: [
@@ -193,7 +260,8 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
           Expanded(
             child: _buildActionBtn(
               icon: Icons.cancel_outlined, text: 'Hủy lịch hẹn', 
-              color: Colors.red, bgColor: Colors.red.shade50, onTap: () { /* TODO: Hủy */ }
+              color: Colors.red, bgColor: Colors.red.shade50, 
+              onTap: () => _showCancelDialog(context, appointment), // ✅ Gắn hàm hủy
             ),
           ),
           const SizedBox(width: 8),
@@ -211,7 +279,8 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
           Expanded(
             child: _buildActionBtn(
               icon: Icons.replay, text: 'Đặt lại lịch', 
-              color: kPrimaryColor, bgColor: Colors.cyan.shade50, onTap: () { /* TODO: Đặt lại lịch */ }
+              color: kPrimaryColor, bgColor: Colors.cyan.shade50, 
+              onTap: navigateToDoctorDetail, // ✅ Gắn chuyển hướng Đặt lại
             ),
           ),
           const SizedBox(width: 12),
@@ -230,7 +299,8 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
           Expanded(
             child: _buildActionBtn(
               icon: Icons.replay, text: 'Đặt lại lịch', 
-              color: Colors.white, bgColor: kPrimaryColor, onTap: () { /* TODO: Quay lại đặt lịch */ }
+              color: Colors.white, bgColor: kPrimaryColor, 
+              onTap: navigateToDoctorDetail, // ✅ Gắn chuyển hướng Đặt lại
             ),
           ),
         ],
@@ -238,7 +308,7 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
     }
   }
 
-  // Widget Button phụ trợ dùng chung cho dễ tùy biến màu sắc và tỷ lệ dàn trang
+  // Widget Button phụ trợ dùng chung
   Widget _buildActionBtn({required IconData icon, required String text, required Color color, required Color bgColor, required VoidCallback onTap}) {
     return InkWell(
       onTap: onTap,
