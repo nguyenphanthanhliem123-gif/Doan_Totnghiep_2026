@@ -25,22 +25,21 @@ export default class healthRecordController{
     static async addRelativeProfile(req,res){
         try{
             const userID = req.Ma_nguoi_dung;
-            const {tenNguoiThan, moiQuanHe, birthDay, gender, address, nhomMau, diUng, benhNen} = req.body;
+            const {tenNguoiThan, moiQuanHe, birthDay, gender, address, nhomMau, diUng, benhNen, phone} = req.body;
 
-            if(!tenNguoiThan || !moiQuanHe || !birthDay || !gender || !address) return res.status(400).json({
-                succeeded: false,
-                message: "Không được bỏ trống các thông tin họ tên, ngày sinh, địa chỉ"
-            });
+            // ✅ SỬA LỖI GIỚI TÍNH NỮ (gender = 0): Dùng gender === undefined
+            if(!tenNguoiThan || !moiQuanHe || !birthDay || gender === undefined || !address) {
+                return res.status(400).json({
+                    succeeded: false,
+                    message: "Không được bỏ trống các thông tin họ tên, ngày sinh, giới tính, địa chỉ"
+                });
+            }
 
+            const result = await healthRecordModel.addRelativeProfile(userID, tenNguoiThan, moiQuanHe, birthDay, gender, address, nhomMau ?? null, diUng ?? null, benhNen ?? null, phone ?? null);
 
+            if(!result) return res.status(500).json({succeeded: false, message: "Thêm hồ sơ sức khỏe thất bại"});
 
-            const result = await healthRecordModel.addRelativeProfile(userID, tenNguoiThan, moiQuanHe, birthDay, gender, address, nhomMau ?? null, diUng ?? null, benhNen ?? null);
-
-            if(!result) return res.status(500).json({succeeded: false, message: "Thêm hồ sơ sức khỏe thất bại: " + result});
-
-            return res.status(200).json({
-                succeeded: true,
-            });
+            return res.status(200).json({ succeeded: true });
         }
         catch(error){
             return res.status(500).json({succeeded: false, message: "Thêm hồ sơ sức khỏe thất bại: " + error.message});
@@ -49,23 +48,9 @@ export default class healthRecordController{
 
     static async updateHealthRecord(req, res) {
         try {
-            // Lấy ID tài khoản từ token (do middleware auth.js bóc tách)
             const userID = req.Ma_nguoi_dung; 
-            
-            // Lấy dữ liệu từ body của Frontend gửi lên
-            const { 
-                maBenhNhan, // Bắt buộc phải có ID của hồ sơ cần sửa
-                tenHoSo, 
-                moiQuanHe, 
-                birthDay, 
-                gender, 
-                address, 
-                nhomMau, 
-                diUng, 
-                benhNen 
-            } = req.body;
+            const { maBenhNhan, tenHoSo, moiQuanHe, birthDay, gender, address, nhomMau, diUng, benhNen, phone } = req.body;
 
-            // Kiểm tra các trường bắt buộc
             if (!maBenhNhan || !birthDay || gender === undefined || !address) {
                 return res.status(400).json({
                     succeeded: false,
@@ -73,25 +58,17 @@ export default class healthRecordController{
                 });
             }
 
-            // Gọi model để thực thi
             await healthRecordModel.updateHealthRecord(
                 maBenhNhan, userID, tenHoSo, moiQuanHe, birthDay, gender, address, 
                 nhomMau ?? null, 
                 diUng ?? null, 
-                benhNen ?? null
+                benhNen ?? null,
+                phone ?? null
             );
 
-            // Trả về thành công
-            return res.status(200).json({
-                succeeded: true,
-                message: "Cập nhật hồ sơ sức khỏe thành công!"
-            });
-
+            return res.status(200).json({ succeeded: true, message: "Cập nhật hồ sơ sức khỏe thành công!" });
         } catch (error) {
-            return res.status(500).json({
-                succeeded: false, 
-                message: "Cập nhật hồ sơ thất bại: " + error.message
-            });
+            return res.status(500).json({ succeeded: false, message: "Cập nhật hồ sơ thất bại: " + error.message });
         }
     }
 
@@ -130,7 +107,8 @@ export default class healthRecordController{
                     Dia_chi: record.Dia_chi,
                     Nhom_mau: record.Nhom_mau,
                     Di_ung: record.Di_ung,
-                    Benh_nen: record.Benh_nen
+                    Benh_nen: record.Benh_nen,
+                    Dien_thoai: record.Dien_thoai
                 }
             });
 

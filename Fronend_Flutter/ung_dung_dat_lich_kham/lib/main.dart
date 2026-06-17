@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:ung_dung_dat_lich_kham/ViewModels/payment_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/ViewModels/schedule_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/search_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/health_record_viewmodel.dart';
@@ -11,6 +12,7 @@ import 'package:ung_dung_dat_lich_kham/viewmodels/doctor_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/clinic_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/review_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/booking_viewmodel.dart';
+import 'package:ung_dung_dat_lich_kham/viewmodels/appointment_viewmodel.dart';
 
 void main() {
   runApp(const MyApp());
@@ -33,6 +35,8 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ReviewViewModel()),
         ChangeNotifierProvider(create: (_) => BookingViewModel()),
         ChangeNotifierProvider(create: (_) => ScheduleViewModel()),
+        ChangeNotifierProvider(create: (_) => AppointmentViewModel()),
+        ChangeNotifierProvider(create: (_) => PaymentViewmodel())
       ],
       child: MaterialApp(
         title: 'Hệ thống đặt lịch khám bệnh',

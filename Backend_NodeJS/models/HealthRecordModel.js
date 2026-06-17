@@ -8,6 +8,7 @@ export default class healthRecordModel{
             SELECT 
                 bn.Ma_benh_nhan,
                 bn.Ma_nguoi_dung,
+                nt.Ma_nguoi_than,
                 
                 -- Xử lý Tên hiển thị của hồ sơ
                 COALESCE(nt.Ten_nguoi_than, nd.Ten_nguoi_dung) AS Ten_ho_so,
@@ -20,7 +21,8 @@ export default class healthRecordModel{
                 bn.Dia_chi, 
                 bn.Nhom_mau, 
                 bn.Di_ung, 
-                bn.Benh_nen
+                bn.Benh_nen,
+                CASE WHEN nt.Ma_nguoi_than IS NOT NULL THEN nt.Dien_thoai ELSE nd.Dien_thoai END AS Dien_thoai
                 
             FROM benh_nhan bn
             JOIN nguoi_dung nd ON bn.Ma_nguoi_dung = nd.Ma_nguoi_dung
@@ -39,7 +41,7 @@ export default class healthRecordModel{
         }
     }
 
-    static async addRelativeProfile(userID, tenNguoiThan, moiQuanHe, birthDay, gender, address, nhomMau, diUng, benhNen){
+    static async addRelativeProfile(userID, tenNguoiThan, moiQuanHe, birthDay, gender, address, nhomMau, diUng, benhNen, phone){
         let conn;
         try{
             conn = await beginTransaction();
@@ -60,15 +62,16 @@ export default class healthRecordModel{
 
             const sqlNguoiThan = `
                 INSERT INTO nguoi_than 
-                (Ma_benh_nhan, Ten_nguoi_than, Quan_he, Ngay_sinh) 
-                VALUES (?, ?, ?, ?)
+                (Ma_benh_nhan, Ten_nguoi_than, Quan_he, Ngay_sinh, Dien_thoai) 
+                VALUES (?, ?, ?, ?, ?)
             `;
 
             await conn.execute(sqlNguoiThan, [
                 newMaBenhNhan, 
                 tenNguoiThan || null, 
                 moiQuanHe || null,
-                birthDay
+                birthDay,
+                phone || null
             ]);
 
             await commitTransaction(conn);
@@ -80,7 +83,7 @@ export default class healthRecordModel{
         }
     }
 
-    static async updateHealthRecord(maBenhNhan, userID, tenHoSo, moiQuanHe, birthDay, gender, address, nhomMau, diUng, benhNen) {
+    static async updateHealthRecord(maBenhNhan, userID, tenHoSo, moiQuanHe, birthDay, gender, address, nhomMau, diUng, benhNen, phone) {
         let conn;
         try {
             conn = await beginTransaction();
@@ -105,15 +108,27 @@ export default class healthRecordModel{
                 throw new Error("Không tìm thấy hồ sơ hoặc bạn không có quyền chỉnh sửa.");
             }
 
-            // 3. Cập nhật bảng nguoi_than (Nếu có tên người thân và mối quan hệ gửi lên)
-            // Cột Quan_he hay Moi_quan_he tùy thuộc vào DB của bạn (tôi đang dùng Quan_he dựa theo log lỗi của bạn ở trên)
-            if (tenHoSo && moiQuanHe) {
+            // 3. Cập nhật bảng nguoi_than hoặc nguoi_dung tùy theo vai trò của hồ sơ này
+            // Kiểm tra xem hồ sơ này là Chủ tài khoản hay Người thân
+            const [checkRelative] = await conn.execute(`SELECT Ma_nguoi_than FROM nguoi_than WHERE Ma_benh_nhan = ?`, [maBenhNhan]);
+
+            if (checkRelative.length > 0) {
+                // Tình huống 1: Là người thân -> Lưu SĐT vào bảng nguoi_than
                 const sqlNguoiThan = `
                     UPDATE nguoi_than 
-                    SET Ten_nguoi_than = ?, Quan_he = ?
+                    SET Ten_nguoi_than = ?, Quan_he = ?, Dien_thoai = ?
                     WHERE Ma_benh_nhan = ?
                 `;
-                await conn.execute(sqlNguoiThan, [tenHoSo, moiQuanHe, maBenhNhan]);
+                await conn.execute(sqlNguoiThan, [tenHoSo, moiQuanHe, phone || null, maBenhNhan]);
+            } else {
+                // Tình huống 2: Là Bản thân (Chủ tài khoản) -> Lưu SĐT vào bảng nguoi_dung
+                const sqlNguoiDung = `
+                    UPDATE nguoi_dung 
+                    SET Dien_thoai = ? 
+                    WHERE Ma_nguoi_dung = ?
+                `;
+                // Dùng userID vì Chủ tài khoản sở hữu Ma_nguoi_dung này
+                await conn.execute(sqlNguoiDung, [phone || null, userID]);
             }
 
             await commitTransaction(conn);
@@ -139,7 +154,8 @@ export default class healthRecordModel{
                     bn.Di_ung, 
                     bn.Benh_nen,
                     COALESCE(nt.Ten_nguoi_than, nd.Ten_nguoi_dung) AS Ten_ho_so, 
-                    COALESCE(nt.Quan_he, 'Chủ tài khoản') AS Vai_tro
+                    COALESCE(nt.Quan_he, 'Chủ tài khoản') AS Vai_tro,
+                    CASE WHEN nt.Ma_nguoi_than IS NOT NULL THEN nt.Dien_thoai ELSE nd.Dien_thoai END AS Dien_thoai
                 FROM benh_nhan bn
                 JOIN nguoi_dung nd ON bn.Ma_nguoi_dung = nd.Ma_nguoi_dung
                 LEFT JOIN nguoi_than nt ON bn.Ma_benh_nhan = nt.Ma_benh_nhan

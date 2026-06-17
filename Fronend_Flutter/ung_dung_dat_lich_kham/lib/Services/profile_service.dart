@@ -68,7 +68,7 @@ class APIProfileService{
     }
   }
 
-  Future<bool> updateProfile(String fullName, DateTime birth, String avatar, String address, int gender ) async{
+  Future<bool> updateProfile(String fullName, DateTime birth, String avatar, String address, int gender, String phone ) async{
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
     if (token == null) throw Exception('Phiên đăng nhập đã hết hạn.');
@@ -85,7 +85,8 @@ class APIProfileService{
           "birthDay": "${birth.year}-${birth.month.toString().padLeft(2, '0')}-${birth.day.toString().padLeft(2, '0')}", 
           "gender": gender, 
           "address": address, 
-          "avatar": avatar
+          "avatar": avatar,
+          "phone": phone
         })
       );
 

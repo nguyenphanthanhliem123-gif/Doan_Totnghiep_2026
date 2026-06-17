@@ -36,14 +36,14 @@ class ProfileViewModel extends ChangeNotifier {
     }
   }
 
-  Future<void> updateProfile(String fullName, DateTime birth, String avatar, String address, int gender) async {
+  Future<void> updateProfile(String fullName, DateTime birth, String avatar, String address, int gender, String phone) async {
     _isLoading = true;
     _errorMessage = '';
     _updateProfileResult = false;
     notifyListeners();
 
     try{
-      _updateProfileResult = await _apiProfileService.updateProfile(fullName, birth, avatar, address, gender);
+      _updateProfileResult = await _apiProfileService.updateProfile(fullName, birth, avatar, address, gender, phone);
 
       if (_updateProfileResult == true && _userModel != null) {
         _userModel = UserModel(
@@ -54,6 +54,7 @@ class ProfileViewModel extends ChangeNotifier {
           avatar: avatar,
           address: address,
           gender: gender,
+          phone: phone,
         );
         
         notifyListeners();

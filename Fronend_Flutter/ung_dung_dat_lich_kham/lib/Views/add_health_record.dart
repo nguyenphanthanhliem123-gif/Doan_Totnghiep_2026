@@ -12,12 +12,13 @@ class AddHealthRecordScreen extends StatefulWidget {
 
 class _AddHealthRecordScreenState extends State<AddHealthRecordScreen> {
   final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController(); // ✅ ĐÃ THÊM: Controller cho SĐT
   final TextEditingController _dobController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _allergyController = TextEditingController();
   final TextEditingController _diseaseController = TextEditingController();
 
-  int _selectedGender = 1; // 1: Nam, 0: Nữ
+  int _selectedGender = 1; 
   String _selectedRelation = 'Bản thân';
   String _selectedBloodType = 'Không rõ';
 
@@ -28,31 +29,20 @@ class _AddHealthRecordScreenState extends State<AddHealthRecordScreen> {
 
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(1900),
-      lastDate: DateTime.now(),
+      context: context, initialDate: DateTime.now(), firstDate: DateTime(1900), lastDate: DateTime.now(),
       builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: const ColorScheme.light(primary: kPrimaryColor),
-          ),
-          child: child!,
-        );
+        return Theme(data: Theme.of(context).copyWith(colorScheme: const ColorScheme.light(primary: kPrimaryColor)), child: child!);
       },
     );
-
     if (picked != null && picked != _selectedDate) {
-      setState(() {
-        _selectedDate = picked;
-        _dobController.text = "${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}";
-      });
+      setState(() { _selectedDate = picked; _dobController.text = "${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}"; });
     }
   }
 
   @override
   void dispose() {
     _nameController.dispose();
+    _phoneController.dispose(); // ✅ Giải phóng RAM
     _dobController.dispose();
     _addressController.dispose();
     _allergyController.dispose();
@@ -67,15 +57,7 @@ class _AddHealthRecordScreenState extends State<AddHealthRecordScreen> {
     return Scaffold(
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(60),
-        child: AppBar(
-          backgroundColor: kPrimaryColor,
-          title: const Text('Thêm hồ sơ người thân', style: TextStyle(color: Colors.white)),
-          centerTitle: true,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
-            onPressed: () => Navigator.pop(context),
-          ),
-        ),
+        child: AppBar(backgroundColor: kPrimaryColor, title: const Text('Thêm hồ sơ người thân', style: TextStyle(color: Colors.white)), centerTitle: true, leading: IconButton(icon: const Icon(Icons.arrow_back_ios, color: Colors.white), onPressed: () => Navigator.pop(context))),
       ),
       body: healthVM.isLoading
           ? const Center(child: CircularProgressIndicator(color: kPrimaryColor))
@@ -89,11 +71,13 @@ class _AddHealthRecordScreenState extends State<AddHealthRecordScreen> {
                   
                   _buildTextField(_nameController, 'Họ và tên *'),
                   const SizedBox(height: 15),
+
+                  // ✅ ĐÃ THÊM: Ô nhập số điện thoại (Có thể để trống)
+                  _buildTextField(_phoneController, 'Số điện thoại liên hệ (Tùy chọn)', icon: Icons.phone_android_outlined, keyboardType: TextInputType.phone),
+                  const SizedBox(height: 15),
                   
-                  // Combobox Mối quan hệ
                   DropdownButtonFormField<String>(
-                    value: _selectedRelation,
-                    decoration: _inputDecoration('Mối quan hệ *'),
+                    value: _selectedRelation, decoration: _inputDecoration('Mối quan hệ *'),
                     items: _relations.map((rel) => DropdownMenuItem(value: rel, child: Text(rel))).toList(),
                     onChanged: (val) => setState(() => _selectedRelation = val!),
                   ),
@@ -102,14 +86,9 @@ class _AddHealthRecordScreenState extends State<AddHealthRecordScreen> {
                   _buildTextField(_dobController, 'Ngày sinh *', readOnly: true, onTap: () => _selectDate(context), icon: Icons.calendar_month),
                   const SizedBox(height: 15),
 
-                  // Combobox Giới tính
                   DropdownButtonFormField<int>(
-                    value: _selectedGender,
-                    decoration: _inputDecoration('Giới tính *'),
-                    items: const [
-                      DropdownMenuItem(value: 1, child: Text('Nam')),
-                      DropdownMenuItem(value: 0, child: Text('Nữ')),
-                    ],
+                    value: _selectedGender, decoration: _inputDecoration('Giới tính *'),
+                    items: const [DropdownMenuItem(value: 1, child: Text('Nam')), DropdownMenuItem(value: 0, child: Text('Nữ'))],
                     onChanged: (val) => setState(() => _selectedGender = val!),
                   ),
                   const SizedBox(height: 15),
@@ -120,10 +99,8 @@ class _AddHealthRecordScreenState extends State<AddHealthRecordScreen> {
                   const Text('Thông tin y tế (Tùy chọn)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: kPrimaryColor)),
                   const SizedBox(height: 15),
 
-                  // Combobox Nhóm máu
                   DropdownButtonFormField<String>(
-                    value: _selectedBloodType,
-                    decoration: _inputDecoration('Nhóm máu'),
+                    value: _selectedBloodType, decoration: _inputDecoration('Nhóm máu'),
                     items: _bloodTypes.map((blood) => DropdownMenuItem(value: blood, child: Text(blood))).toList(),
                     onChanged: (val) => setState(() => _selectedBloodType = val!),
                   ),
@@ -135,16 +112,11 @@ class _AddHealthRecordScreenState extends State<AddHealthRecordScreen> {
                   _buildTextField(_diseaseController, 'Bệnh nền (VD: Huyết áp, Tiểu đường...)'),
                   const SizedBox(height: 40),
 
-                  // Nút Lưu
                   SizedBox(
-                    width: double.infinity,
-                    height: 50,
+                    width: double.infinity, height: 50,
                     child: ElevatedButton(
                       onPressed: () => _submitForm(context),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: kPrimaryColor,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
-                      ),
+                      style: ElevatedButton.styleFrom(backgroundColor: kPrimaryColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25))),
                       child: const Text('Lưu hồ sơ', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
                     ),
                   ),
@@ -155,32 +127,21 @@ class _AddHealthRecordScreenState extends State<AddHealthRecordScreen> {
   }
 
   InputDecoration _inputDecoration(String label) {
-    return InputDecoration(
-      labelText: label,
-      fillColor: kInputBackgroundColor,
-      filled: true,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-    );
+    return InputDecoration(labelText: label, fillColor: kInputBackgroundColor, filled: true, border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none));
   }
 
-  Widget _buildTextField(TextEditingController controller, String label, {bool readOnly = false, VoidCallback? onTap, IconData? icon}) {
+  // ✅ ĐÃ SỬA: Thêm keyboardType
+  Widget _buildTextField(TextEditingController controller, String label, {bool readOnly = false, VoidCallback? onTap, IconData? icon, TextInputType keyboardType = TextInputType.text}) {
     return TextFormField(
-      controller: controller,
-      readOnly: readOnly,
-      onTap: onTap,
-      decoration: InputDecoration(
-        labelText: label,
-        fillColor: kInputBackgroundColor,
-        filled: true,
-        suffixIcon: icon != null ? Icon(icon, color: kGreyTextColor) : null,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-      ),
+      controller: controller, readOnly: readOnly, onTap: onTap, keyboardType: keyboardType,
+      decoration: InputDecoration(labelText: label, fillColor: kInputBackgroundColor, filled: true, suffixIcon: icon != null ? Icon(icon, color: kGreyTextColor) : null, border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none)),
     );
   }
 
   void _submitForm(BuildContext context) async {
     final name = _nameController.text.trim();
     final address = _addressController.text.trim();
+    final phone = _phoneController.text.trim(); // Lấy số điện thoại
 
     if (name.isEmpty || address.isEmpty || _selectedDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Vui lòng điền đủ Họ tên, Ngày sinh và Địa chỉ')));
@@ -189,12 +150,14 @@ class _AddHealthRecordScreenState extends State<AddHealthRecordScreen> {
 
     final healthVM = context.read<HealthRecordViewModel>();
     
+    // GỌI HÀM LƯU VÀ TRUYỀN BIẾN PHONE
     await healthVM.addRelativeRecord(
       tenNguoiThan: name,
       moiQuanHe: _selectedRelation,
       birthDay: _selectedDate!,
       gender: _selectedGender,
       address: address,
+      phone: phone.isEmpty ? null : phone, // ✅ Truyền số điện thoại
       nhomMau: _selectedBloodType == 'Không rõ' ? null : _selectedBloodType,
       diUng: _allergyController.text.isEmpty ? null : _allergyController.text.trim(),
       benhNen: _diseaseController.text.isEmpty ? null : _diseaseController.text.trim(),
@@ -204,7 +167,7 @@ class _AddHealthRecordScreenState extends State<AddHealthRecordScreen> {
 
     if (healthVM.addRecordResult) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Thêm hồ sơ thành công!', style: TextStyle(color: Colors.white)), backgroundColor: Colors.green));
-      Navigator.pop(context); // Quay về trang danh sách hồ sơ
+      Navigator.pop(context); 
     } else {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(healthVM.errorMessage), backgroundColor: Colors.red));
     }

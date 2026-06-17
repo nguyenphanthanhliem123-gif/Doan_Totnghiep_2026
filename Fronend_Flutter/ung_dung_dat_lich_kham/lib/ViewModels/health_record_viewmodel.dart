@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:ung_dung_dat_lich_kham/Services/healthRecord_service.dart';
-import '../Models/health_record_model.dart';
+import '../models/health_record_model.dart';
 
 class HealthRecordViewModel extends ChangeNotifier {
   final APIHealRecordService _apiHealRecordService = APIHealRecordService();
@@ -45,6 +45,7 @@ class HealthRecordViewModel extends ChangeNotifier {
     String? nhomMau,
     String? diUng,
     String? benhNen,
+    String? phone,
   }) async {
     _isLoading = true;
     _errorMessage = '';
@@ -61,6 +62,7 @@ class HealthRecordViewModel extends ChangeNotifier {
         nhomMau: nhomMau,
         diUng: diUng,
         benhNen: benhNen,
+        phone: phone,
       );
 
       // Nếu thêm thành công, gọi lại hàm fetch data để cập nhật danh sách
@@ -87,6 +89,7 @@ class HealthRecordViewModel extends ChangeNotifier {
     String? nhomMau,
     String? diUng,
     String? benhNen,
+    String? phone,
   }) async {
     _isLoading = true;
     _errorMessage = '';
@@ -104,6 +107,7 @@ class HealthRecordViewModel extends ChangeNotifier {
         nhomMau: nhomMau,
         diUng: diUng,
         benhNen: benhNen,
+        phone: phone,
       );
 
       // Nếu cập nhật thành công, gọi API kéo lại danh sách mới nhất
