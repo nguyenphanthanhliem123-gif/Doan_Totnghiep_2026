@@ -7,6 +7,7 @@ class JitsiService {
     required String patientName,
     required String patientEmail,
   }) async {
+    final serverUrl = "https://meet.ffmuc.net";
     try {
       // 1. Tạo tên phòng ĐỘC NHẤT dựa trên mã lịch hẹn (Không chứa dấu cách, ký tự đặc biệt)
       String roomName = "PhongKhamOnline_$bookingCode";
@@ -15,7 +16,7 @@ class JitsiService {
       var options = JitsiMeetingOptions(
         roomNameOrUrl: roomName,
         //serverUrl: "https://meet.jit.si", // Dùng server miễn phí của Jitsi
-        serverUrl: "https://meet.ffmuc.net",
+        serverUrl: serverUrl,
         subject: "Phòng khám Online - Lịch hẹn $bookingCode",
         userDisplayName: patientName,
         userEmail: patientEmail,

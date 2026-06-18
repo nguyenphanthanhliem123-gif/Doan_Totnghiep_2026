@@ -44,7 +44,8 @@ class BookingViewModel extends ChangeNotifier {
     required int serviceId,
     required int slotId,
     required String type,
-    required String symptoms, required String paymentMethod,
+    required String symptoms, 
+    required String paymentMethod,
   }) async {
     try {
       final url = Uri.parse(_baseUrl);

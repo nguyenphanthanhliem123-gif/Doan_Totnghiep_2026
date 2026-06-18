@@ -7,6 +7,7 @@ class AppointmentDetailModel {
   final String? note;
   final DateTime startTime;
   final DateTime endTime;
+  final String jitsiLink;
   
   final String doctorName;
   final String? doctorAvatar;
@@ -25,6 +26,7 @@ class AppointmentDetailModel {
   final String relation;
 
   AppointmentDetailModel({
+    required this.jitsiLink,
     required this.id,
     required this.bookingCode,
     required this.doctorId,
@@ -53,6 +55,7 @@ class AppointmentDetailModel {
       bookingCode: json['Ma_booking'] ?? '',
       doctorId: json['Ma_bac_si'] ?? 0,
       type: json['Hinh_thuc'] ?? 'offline',
+      jitsiLink: json['Link_video_call'] ?? '',
       status: json['Trang_thai_lich_hen'] ?? 'pending',
       note: json['Ghi_chu'] ?? 'Không có ghi chú.',
       startTime: DateTime.parse(json['Thoi_gian_Bdau']).toLocal(),
