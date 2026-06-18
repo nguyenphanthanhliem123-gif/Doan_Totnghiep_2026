@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:ung_dung_dat_lich_kham/Config/BASE_URL.dart';
 import 'package:ung_dung_dat_lich_kham/Models/doctor_model.dart';
 import 'package:ung_dung_dat_lich_kham/Services/doctor_service.dart';
 import 'dart:convert';
@@ -28,7 +29,7 @@ class DoctorViewModel extends ChangeNotifier {
   DoctorTimeSlotModel? get selectedSlot => _selectedSlot;
 
   // Cấu hình URL gọi tới API lấy chi tiết bác sĩ
-  final String _baseUrl = "http://localhost:3001/api/doctors";
+  final String _baseUrl = "$BASE_URL/api/doctors";
 
   Future<void> loadDoctors({
     int? specialtyId, String? location, double? minPrice, 

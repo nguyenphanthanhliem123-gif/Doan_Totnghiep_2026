@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:ung_dung_dat_lich_kham/Services/jitsi_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../constants/ui_constants.dart';
 import '../viewmodels/appointment_viewmodel.dart'; 
@@ -23,6 +24,14 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<AppointmentViewModel>().fetchDetail(widget.appointmentId);
     });
+  }
+
+  // Hàm kiểm tra đã đến giờ khám chưa
+  bool _canJoinMeeting(DateTime startTime) {
+    final now = DateTime.now();
+    final startTimeBuffer = startTime.subtract(const Duration(minutes: 15));
+    final endTimeBuffer = startTime.add(const Duration(hours: 1)); // Cho phép vào sau 1 tiếng
+    return now.isAfter(startTimeBuffer) && now.isBefore(endTimeBuffer);
   }
 
   // ==========================================
@@ -54,6 +63,21 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Không thể mở liên kết này!')));
       }
+    }
+  }
+
+  // Hàm gọi Jitsi Meet
+  void _handleJoinMeeting(String bookingCode, String patientName) async {
+    try {
+      print("Đang bắt đầu gọi Jitsi cho: $bookingCode");
+      await JitsiService.joinOnlineConsultation(
+        bookingCode: bookingCode,
+        patientName: patientName, 
+        patientEmail: "patient@email.com",
+      );
+      print("Đã gọi hàm Jitsi thành công");
+    } catch (e) {
+      print("LỖI KHI GỌI JITSI: $e"); // 🌟 DÒNG NÀY RẤT QUAN TRỌNG
     }
   }
 
@@ -129,7 +153,10 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                           CircleAvatar(
                             radius: 40,
                             backgroundColor: Colors.white,
-                            backgroundImage: (appointment.doctorAvatar != null && appointment.doctorAvatar!.isNotEmpty)
+                            // 🌟 FIX LỖI 2: Chỉ load dạng Network khi chuỗi bắt đầu bằng http tránh crash app
+                            backgroundImage: (appointment.doctorAvatar != null && 
+                                             appointment.doctorAvatar!.isNotEmpty && 
+                                             appointment.doctorAvatar!.startsWith('http'))
                                 ? NetworkImage(appointment.doctorAvatar!)
                                 : const AssetImage('assets/images/doctor_placeholder.png') as ImageProvider,
                           ),
@@ -221,18 +248,45 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                           ],
                         ),
                       ),
-                      if (appointment.type == 'online')
-                        ElevatedButton(
-                          onPressed: () { /* TODO: Mở link Video Call */ },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blueAccent,
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-                            minimumSize: const Size(0, 30),
-                          ),
-                          child: const Text("Tham gia", style: TextStyle(color: Colors.white, fontSize: 12)),
-                        )
                     ],
                   ),
+                  
+                  // 🌟 FIX LỖI 1: Tách Consumer ra khỏi Row, đưa xuống đây để làm nút full-width an toàn trong Column
+                  if (appointment.type == 'online' && appointment.status != 'done' && appointment.status != 'cancelled') ...[
+                    const SizedBox(height: 15),
+                    Consumer<AppointmentViewModel>(
+                      builder: (context, vm, child) {
+                        bool canJoin = _canJoinMeeting(appointment.startTime);
+                        return SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: canJoin 
+                                ? () { 
+                                    print("Đã nhấn nút tham gia!");
+                                    _handleJoinMeeting(appointment.bookingCode, appointment.patientName); 
+                                  }
+                                : null, 
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: canJoin ? Colors.blueAccent : Colors.grey[300],
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              elevation: canJoin ? 2 : 0,
+                            ),
+                            icon: Icon(Icons.videocam, color: canJoin ? Colors.white : Colors.grey),
+                            label: Text(
+                              canJoin ? "Tham gia phòng khám" : "Chưa đến giờ khám",
+                              style: TextStyle(
+                                fontSize: 14, 
+                                fontWeight: FontWeight.bold,
+                                color: canJoin ? Colors.white : Colors.grey.shade600
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ]
                 ],
               ),
             ),
@@ -327,7 +381,7 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
         const SizedBox(width: 20),
         Expanded(
           child: customValueWidget != null
-              ? Align(alignment: Alignment.centerRight, child: customValueWidget) // Ép nhãn sát lề phải
+              ? Align(alignment: Alignment.centerRight, child: customValueWidget) 
               : Text(
                   value, 
                   textAlign: TextAlign.right,

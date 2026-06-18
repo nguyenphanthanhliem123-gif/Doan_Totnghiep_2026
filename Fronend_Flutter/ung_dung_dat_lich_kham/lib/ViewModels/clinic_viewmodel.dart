@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:ung_dung_dat_lich_kham/Config/BASE_URL.dart';
 import 'dart:convert';
 import '../models/clinic_model.dart';
 
@@ -10,7 +11,7 @@ class ClinicViewModel extends ChangeNotifier {
   ClinicModel? _clinicDetail;
   ClinicModel? get clinicDetail => _clinicDetail;
 
-  final String _baseUrl = "http://localhost:3001/api/clinics";
+  final String _baseUrl = "$BASE_URL/api/clinics";
 
   // Hàm gọi API lấy chi tiết phòng khám theo ID
   Future<void> fetchClinicDetail(int clinicId) async {

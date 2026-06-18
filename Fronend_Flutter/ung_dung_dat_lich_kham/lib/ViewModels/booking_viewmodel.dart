@@ -11,7 +11,7 @@ class BookingViewModel extends ChangeNotifier {
   List<String> _availableDates = [];
   List<String> get availableDates => _availableDates;
 
-  final String _baseUrl = "http://localhost:3001/api/bookings";
+  final String _baseUrl = "$BASE_URL/api/bookings";
 
   // Hàm gọi API lấy danh sách các ngày còn slot trống của bác sĩ
   Future<void> fetchAvailableDates(int doctorId) async {

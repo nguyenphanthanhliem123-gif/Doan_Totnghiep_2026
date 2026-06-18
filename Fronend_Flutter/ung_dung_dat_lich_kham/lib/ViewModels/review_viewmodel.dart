@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:ung_dung_dat_lich_kham/Config/BASE_URL.dart';
 import 'dart:convert';
 import '../models/review_model.dart';
 
@@ -20,7 +21,7 @@ class ReviewViewModel extends ChangeNotifier {
   int _selectedFilter = 0; // 0: Tất cả, 5: 5 sao, 4: 4 sao...
   int get selectedFilter => _selectedFilter;
 
-  final String _baseUrl = "http://localhost:3001/api/reviews/doctor";
+  final String _baseUrl = "$BASE_URL/api/reviews/doctor";
 
   // Hàm gọi API để lấy danh sách đánh giá của bác sĩ theo Ma_bac_si
   Future<void> fetchReviews(int doctorId) async {

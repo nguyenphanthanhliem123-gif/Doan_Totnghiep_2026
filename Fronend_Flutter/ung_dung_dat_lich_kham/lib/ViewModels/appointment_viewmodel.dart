@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:ung_dung_dat_lich_kham/Config/BASE_URL.dart';
 import '../models/appointment_model.dart';
 import '../models/appointment_detail_model.dart'; // ✅ Nhớ import file Model chi tiết nhé
 
@@ -20,7 +21,7 @@ class AppointmentViewModel extends ChangeNotifier {
   AppointmentDetailModel? get appointmentDetail => _appointmentDetail;
 
   // Cấu hình URL đồng bộ
-  final String _baseUrl = "http://localhost:3001/api/appointments";
+  final String _baseUrl = "$BASE_URL/api/appointments";
 
   // --- Tự động lọc danh sách cho 3 Tab ---
   List<AppointmentModel> get upcomingList => _allAppointments

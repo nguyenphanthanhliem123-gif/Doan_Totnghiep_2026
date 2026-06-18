@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:ung_dung_dat_lich_kham/Config/BASE_URL.dart';
 
 class AuthViewModel extends ChangeNotifier {
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
   // Điểm cấu hình URL của API Backend Node.js
-  final String _baseUrl = "http://localhost:3001/api/auth";
+  final String _baseUrl = "$BASE_URL/api/auth";
 
   // Hàm kết nối API Đăng nhập
   Future<Map<String, dynamic>> login(String email, String password) async {
