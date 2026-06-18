@@ -3,7 +3,9 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../constants/ui_constants.dart';
 import '../viewmodels/appointment_viewmodel.dart'; 
-import 'doctor_detail_screen.dart'; 
+import 'doctor_detail_screen.dart';
+import 'reschedule_bottom_sheet.dart'; 
+import '../utils/add_to_google_calendar_utils.dart';
 
 class AppointmentDetailScreen extends StatefulWidget {
   final int appointmentId;
@@ -44,6 +46,15 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
     if (status == 'pending' || status == 'confirmed') return 'upcoming';
     if (status == 'done') return 'completed';
     return 'cancelled';
+  }
+
+  Future<void> _launchExternalUrl(String urlString) async {
+    final Uri url = Uri.parse(urlString);
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Không thể mở liên kết này!')));
+      }
+    }
   }
 
   @override
@@ -279,7 +290,6 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
           color: Colors.white, 
           boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))]
         ),
-        // ✅ Truyền context và appointment xuống để xài lệnh chuyển trang
         child: SafeArea(child: _buildBottomActions(context, appointment, generalStatus)),
       ),
     );
@@ -316,15 +326,17 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
         Text(title, style: const TextStyle(color: kGreyTextColor, fontSize: 14)),
         const SizedBox(width: 20),
         Expanded(
-          child: customValueWidget ?? Text(
-            value, 
-            textAlign: TextAlign.right,
-            style: TextStyle(
-              color: valueColor ?? kTextColor, 
-              fontSize: valueSize, 
-              fontWeight: isBoldValue ? FontWeight.bold : FontWeight.normal
-            )
-          ),
+          child: customValueWidget != null
+              ? Align(alignment: Alignment.centerRight, child: customValueWidget) // Ép nhãn sát lề phải
+              : Text(
+                  value, 
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                    color: valueColor ?? kTextColor, 
+                    fontSize: valueSize, 
+                    fontWeight: isBoldValue ? FontWeight.bold : FontWeight.normal
+                  )
+                ),
         ),
       ],
     );
@@ -348,13 +360,10 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
     );
   }
 
-  // Hàm hiển thị hộp thoại xác nhận hủy lịch và check điều kiện thời gian trực quan
   void _showCancelDialog(BuildContext context, dynamic appointment) {
     final now = DateTime.now();
-    // Tính toán khoảng cách thời gian giữa thời điểm hiện tại và giờ khám
     final difference = appointment.startTime.difference(now);
 
-    // Kiểm tra nếu thời gian còn lại dưới 2 tiếng thì chặn ngay tại giao diện
     if (difference.inHours < 2) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -365,7 +374,6 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
       return;
     }
 
-    // Nếu thỏa điều kiện, mở Dialog xác nhận gợn sóng
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -379,9 +387,8 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
           ),
           TextButton(
             onPressed: () async {
-              Navigator.pop(dialogContext); // Đóng nhanh dialog
+              Navigator.pop(dialogContext); 
               
-              // Thực thi gọi hàm hủy lịch trong ViewModel tổng
               final appVM = context.read<AppointmentViewModel>();
               final result = await appVM.cancelAppointment(appointment.id);
 
@@ -394,7 +401,6 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                 );
                 
                 if (result['succeeded'] == true) {
-                  // Đẩy lệnh tải lại chi tiết để UI cập nhật nhãn tức thì sang chữ "Đã hủy"
                   appVM.fetchDetail(appointment.id);
                 }
               }
@@ -406,10 +412,7 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
     );
   }
 
-  // Hàm xây dựng thanh hành động dưới cùng với logic hiển thị nút dựa trên trạng thái chung của lịch hẹn
   Widget _buildBottomActions(BuildContext context, dynamic appointment, String generalStatus) {
-    
-    // Hàm đặt lại lịch
     void navigateToDoctorDetail() {
       Navigator.push(
         context,
@@ -424,17 +427,47 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
     if (generalStatus == 'upcoming') {
       return Row(
         children: [
-          Expanded(child: _buildOutlinedButton('Đổi lịch', Colors.green, () { /* TODO: Đổi lịch */ })),
+          Expanded(
+            child: _buildOutlinedButton(
+              'Đổi lịch', 
+              Colors.green, 
+              () {
+                final now = DateTime.now();
+                final difference = appointment.startTime.difference(now);
+                if (difference.inHours < 2) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Không thể đổi! Bạn chỉ được dời lịch trước giờ bắt đầu ít nhất 2 tiếng.'), backgroundColor: Colors.redAccent));
+                  return;
+                }
+                
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true, 
+                  backgroundColor: Colors.transparent,
+                  builder: (ctx) => RescheduleBottomSheet(
+                    appointmentId: appointment.id,
+                    doctorId: appointment.doctorId,
+                  ),
+                );
+              }
+            )
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: _buildOutlinedButton(
               'Hủy lịch', 
               Colors.red, 
-              () => _showCancelDialog(context, appointment) // ✅ Đã gắn hàm mở Dialog
+              () => _showCancelDialog(context, appointment) 
             )
           ),
           const SizedBox(width: 10),
-          Expanded(child: _buildSolidButton('Thêm Lịch', Icons.calendar_month, Colors.black87, () { /* TODO: Lịch Google */ })),
+          Expanded(
+            child: _buildSolidButton(
+              'Thêm Lịch', 
+              Icons.calendar_month, 
+              Colors.black87, 
+              () => CalendarUtils.addToCalendar(context, appointment)
+            )
+          ),
         ],
       );
     } else if (generalStatus == 'completed') {

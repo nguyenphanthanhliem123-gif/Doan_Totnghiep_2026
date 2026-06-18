@@ -17,6 +17,9 @@ authAppointmentRoutes.get('/detail/:id', appointmentController.getDetails);
 // API Hủy lịch hẹn với điều kiện chặn hủy trước 2 giờ
 authAppointmentRoutes.put('/cancel/:id', appointmentController.cancel);
 
+// API Đổi lịch hẹn với điều kiện chặn đổi trước 2 giờ
+authAppointmentRoutes.put('/reschedule/:id', appointmentController.reschedule);
+
 // Gộp cụm bảo mật vào route chính
 appointmentRoutes.use('/', authAppointmentRoutes);
 

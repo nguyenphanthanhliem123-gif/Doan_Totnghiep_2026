@@ -57,19 +57,39 @@ export default class AppointmentController {
         }
     }
 
-    // API Hủy lịch hẹn với điều kiện chặn hủy trước 2 giờ
+    // Hủy lịch hẹn với điều kiện chặn hủy trước 2 giờ
     static async cancel(req, res) {
-    try {
-        const appointmentID = req.params.id;
-        const result = await AppointmentModel.cancelAppointment(appointmentID);
+        try {
+            const appointmentID = req.params.id;
+            const result = await AppointmentModel.cancelAppointment(appointmentID);
 
-        if (!result.success) {
-            return res.status(400).json({ succeeded: false, message: result.message });
+            if (!result.success) {
+                return res.status(400).json({ succeeded: false, message: result.message });
+            }
+
+            return res.status(200).json({ succeeded: true, message: result.message });
+        } catch (error) {
+            return res.status(500).json({ succeeded: false, message: "Lỗi hệ thống: " + error.message });
         }
-
-        return res.status(200).json({ succeeded: true, message: result.message });
-    } catch (error) {
-        return res.status(500).json({ succeeded: false, message: "Lỗi hệ thống: " + error.message });
     }
-}
+
+    // Đổi lịch hẹn với điều kiện chặn đổi trước 2 giờ và kiểm tra slot mới
+    static async reschedule(req, res) {
+        try {
+            const appointmentID = req.params.id;
+            const { newSlotId } = req.body; // Lấy slot mới từ body
+
+            if (!newSlotId) return res.status(400).json({ succeeded: false, message: "Thiếu mã khung giờ mới." });
+
+            const result = await AppointmentModel.rescheduleAppointment(appointmentID, newSlotId);
+
+            if (!result.success) {
+                return res.status(400).json({ succeeded: false, message: result.message });
+            }
+
+            return res.status(200).json({ succeeded: true, message: result.message });
+        } catch (error) {
+            return res.status(500).json({ succeeded: false, message: "Lỗi hệ thống: " + error.message });
+        }
+    }
 }

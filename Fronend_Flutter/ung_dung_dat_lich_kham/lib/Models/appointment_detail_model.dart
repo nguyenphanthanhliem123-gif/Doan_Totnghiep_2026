@@ -10,7 +10,6 @@ class AppointmentDetailModel {
   
   final String doctorName;
   final String? doctorAvatar;
-  // Lưu ý: Học vị và Chuyên khoa có thể null nếu API chưa join bảng này
   final String? doctorDegree; 
   final String? specialty;
 

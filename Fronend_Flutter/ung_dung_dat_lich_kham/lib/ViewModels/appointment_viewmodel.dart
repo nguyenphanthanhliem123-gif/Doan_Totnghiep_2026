@@ -157,4 +157,37 @@ class AppointmentViewModel extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  // Hàm gọi API Đổi lịch hẹn với điều kiện chặn đổi trước 2 giờ
+  Future<Map<String, dynamic>> rescheduleAppointment(int appointmentId, int newSlotId) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+
+      if (token == null) return {"succeeded": false, "message": "Vui lòng đăng nhập lại."};
+
+      final url = Uri.parse('$_baseUrl/reschedule/$appointmentId');
+      final response = await http.put(
+        url,
+        headers: {"Content-Type": "application/json", "Authorization": "Bearer $token"},
+        body: jsonEncode({"newSlotId": newSlotId}),
+      );
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data['succeeded'] == true) {
+        await loadMyAppointments(); // Đồng bộ lại list
+        return {"succeeded": true, "message": data['message']};
+      } else {
+        return {"succeeded": false, "message": data['message'] ?? "Đổi lịch thất bại."};
+      }
+    } catch (e) {
+      return {"succeeded": false, "message": "Lỗi kết nối Server: $e"};
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 }

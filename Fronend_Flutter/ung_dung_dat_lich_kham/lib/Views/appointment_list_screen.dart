@@ -5,6 +5,8 @@ import '../viewmodels/appointment_viewmodel.dart';
 import '../models/appointment_model.dart';
 import 'appointment_detail_screen.dart';
 import 'doctor_detail_screen.dart';
+import 'reschedule_bottom_sheet.dart';
+import '../utils/add_to_google_calendar_utils.dart';
 
 class AppointmentScreen extends StatefulWidget {
   const AppointmentScreen({super.key});
@@ -27,9 +29,9 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
     final appVM = context.watch<AppointmentViewModel>();
 
     return DefaultTabController(
-      length: 3, // 3 Tabs
+      length: 3,
       child: Scaffold(
-        backgroundColor: const Color(0xFFF5F5F5), // Nền xám nhạt
+        backgroundColor: const Color(0xFFF5F5F5),
         appBar: AppBar(
           backgroundColor: kPrimaryColor,
           title: const Text('Lịch hẹn của tôi', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
@@ -59,7 +61,6 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
     );
   }
 
-  // --- HÀM BUILD DANH SÁCH ---
   Widget _buildList(List<AppointmentModel> list, String tabType) {
     if (list.isEmpty) {
       return const Center(
@@ -80,7 +81,6 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
     );
   }
 
-  // --- HÀM BUILD TỪNG THẺ (CARD) ---
   Widget _buildAppointmentCard(AppointmentModel appointment, String tabType) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -111,7 +111,6 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 1. HEADER
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -141,7 +140,6 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
                   child: Divider(height: 1, color: Colors.black12),
                 ),
 
-                // 2. BODY
                 Text(
                   'Thời gian: ${appointment.startTime.hour.toString().padLeft(2, '0')}:${appointment.startTime.minute.toString().padLeft(2, '0')} - ${appointment.endTime.hour.toString().padLeft(2, '0')}:${appointment.endTime.minute.toString().padLeft(2, '0')} • ${appointment.startTime.day.toString().padLeft(2, '0')}/${appointment.startTime.month.toString().padLeft(2, '0')}/${appointment.startTime.year}',
                   style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
@@ -154,7 +152,6 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
 
                 const SizedBox(height: 16),
 
-                // 3. FOOTER (Truyền thêm context vào để hiển thị Dialog/Chuyển trang)
                 _buildFooterButtons(context, appointment, tabType),
               ],
             ),
@@ -164,7 +161,6 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
     );
   }
 
-  // --- LOGIC GẮN NHÃN TRẠNG THÁI ---
   Widget _buildStatusBadge(String tabType) {
     Color bgColor; Color textColor; String text;
 
@@ -183,7 +179,6 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
     );
   }
 
-  // --- HÀM BẬT DIALOG XÁC NHẬN HỦY LỊCH ---
   void _showCancelDialog(BuildContext context, AppointmentModel appointment) {
     final now = DateTime.now();
     final difference = appointment.startTime.difference(now);
@@ -232,10 +227,8 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
     );
   }
 
-  // --- LOGIC CHỌN NÚT THEO TAB ---
   Widget _buildFooterButtons(BuildContext context, AppointmentModel appointment, String tabType) {
     
-    // Logic Đặt lại lịch (Chuyển trang)
     void navigateToDoctorDetail() {
       Navigator.push(
         context,
@@ -253,7 +246,31 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
           Expanded(
             child: _buildActionBtn(
               icon: Icons.refresh, text: 'Đổi lịch hẹn', 
-              color: Colors.green, bgColor: Colors.green.shade50, onTap: () { /* TODO: Đổi lịch */ }
+              color: Colors.green, bgColor: Colors.green.shade50, 
+              onTap: () {
+                // ✅ LOGIC ĐỔI LỊCH
+                final now = DateTime.now();
+                final difference = appointment.startTime.difference(now);
+                if (difference.inHours < 2) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Không thể đổi! Bạn chỉ được dời lịch trước giờ bắt đầu ít nhất 2 tiếng.'), 
+                      backgroundColor: Colors.redAccent
+                    )
+                  );
+                  return;
+                }
+                
+                showModalBottomSheet(
+                  context: context,
+                  isScrollControlled: true, 
+                  backgroundColor: Colors.transparent,
+                  builder: (ctx) => RescheduleBottomSheet(
+                    appointmentId: appointment.id,
+                    doctorId: appointment.doctorId,
+                  ),
+                );
+              }
             ),
           ),
           const SizedBox(width: 8),
@@ -261,14 +278,17 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
             child: _buildActionBtn(
               icon: Icons.cancel_outlined, text: 'Hủy lịch hẹn', 
               color: Colors.red, bgColor: Colors.red.shade50, 
-              onTap: () => _showCancelDialog(context, appointment), // ✅ Gắn hàm hủy
+              onTap: () => _showCancelDialog(context, appointment),
             ),
           ),
           const SizedBox(width: 8),
           Expanded(
             child: _buildActionBtn(
-              icon: Icons.calendar_month, text: 'Thêm vào\nGoogle Calendar', 
-              color: Colors.grey.shade800, bgColor: Colors.grey.shade200, onTap: () { /* TODO: Lịch Google */ }
+              icon: Icons.calendar_month, 
+              text: 'Thêm vào\nGoogle Calendar', 
+              color: Colors.grey.shade800, 
+              bgColor: Colors.grey.shade200, 
+              onTap: () => CalendarUtils.addToCalendar(context, appointment)
             ),
           ),
         ],
@@ -280,7 +300,7 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
             child: _buildActionBtn(
               icon: Icons.replay, text: 'Đặt lại lịch', 
               color: kPrimaryColor, bgColor: Colors.cyan.shade50, 
-              onTap: navigateToDoctorDetail, // ✅ Gắn chuyển hướng Đặt lại
+              onTap: navigateToDoctorDetail,
             ),
           ),
           const SizedBox(width: 12),
@@ -293,14 +313,13 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
         ],
       );
     } else {
-      // Tab Đã hủy
       return Row(
         children: [
           Expanded(
             child: _buildActionBtn(
               icon: Icons.replay, text: 'Đặt lại lịch', 
               color: Colors.white, bgColor: kPrimaryColor, 
-              onTap: navigateToDoctorDetail, // ✅ Gắn chuyển hướng Đặt lại
+              onTap: navigateToDoctorDetail,
             ),
           ),
         ],
@@ -308,7 +327,6 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
     }
   }
 
-  // Widget Button phụ trợ dùng chung
   Widget _buildActionBtn({required IconData icon, required String text, required Color color, required Color bgColor, required VoidCallback onTap}) {
     return InkWell(
       onTap: onTap,

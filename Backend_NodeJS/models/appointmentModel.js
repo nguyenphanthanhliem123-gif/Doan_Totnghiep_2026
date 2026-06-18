@@ -9,6 +9,7 @@ export default class appointmentModel {
                 SELECT 
                     lh.Ma_lich_hen,
                     lh.Ma_booking,
+                    lh.Ma_bac_si,
                     lh.Trang_thai_lich_hen,
                     lh.Hinh_thuc,
                     kg.Thoi_gian_Bdau,
@@ -130,6 +131,46 @@ export default class appointmentModel {
 
         } catch (error) {
             throw new Error('Lỗi khi xử lý hủy lịch: ' + error.message);
+        }
+    }
+
+    static async rescheduleAppointment(appointmentID, newSlotID) {
+        try {
+            // 1. Kiểm tra chính sách chặn đổi lịch trước 2 giờ
+            const checkSql = `
+                SELECT lh.Ma_khung_gio, kg.Thoi_gian_Bdau 
+                FROM lich_hen lh
+                JOIN khung_gio_kham kg ON lh.Ma_khung_gio = kg.Ma_khung_gio
+                WHERE lh.Ma_lich_hen = ?
+            `;
+            const [rows] = await execute(checkSql, [appointmentID]);
+            if (rows.length === 0) return { success: false, message: "Không tìm thấy lịch hẹn." };
+            
+            const oldSlotID = rows[0].Ma_khung_gio;
+            const startTime = new Date(rows[0].Thoi_gian_Bdau);
+            const now = new Date();
+            
+            if ((startTime - now) / (1000 * 60 * 60) < 2) {
+                return { success: false, message: "Chỉ được đổi lịch trước giờ khám tối thiểu 2 tiếng." };
+            }
+
+            // 2. Kiểm tra slot mới có thực sự còn trống không (chống double booking)
+            const checkNewSlot = await execute(`SELECT Trang_thai FROM khung_gio_kham WHERE Ma_khung_gio = ?`, [newSlotID]);
+            if (checkNewSlot[0].length === 0 || checkNewSlot[0][0].Trang_thai !== 'available') {
+                return { success: false, message: "Khung giờ này đã có người đặt hoặc không tồn tại." };
+            }
+
+            // 3. Thực hiện đổi lịch
+            // Nhả slot cũ thành available
+            await execute(`UPDATE khung_gio_kham SET Trang_thai = 'available' WHERE Ma_khung_gio = ?`, [oldSlotID]);
+            // Khóa slot mới thành booked
+            await execute(`UPDATE khung_gio_kham SET Trang_thai = 'booked' WHERE Ma_khung_gio = ?`, [newSlotID]);
+            // Cập nhật slot mới cho lịch hẹn
+            await execute(`UPDATE lich_hen SET Ma_khung_gio = ? WHERE Ma_lich_hen = ?`, [newSlotID, appointmentID]);
+
+            return { success: true, message: "Đổi lịch khám thành công!" };
+        } catch (error) {
+            throw new Error('Lỗi khi đổi lịch: ' + error.message);
         }
     }
 }
