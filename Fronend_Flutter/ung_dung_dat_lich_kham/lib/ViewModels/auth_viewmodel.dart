@@ -44,18 +44,18 @@ class AuthViewModel extends ChangeNotifier {
       if (response.statusCode == 200 && responseData['succeeded'] == true) {
         final prefs = await SharedPreferences.getInstance();
                 
-          // Lấy mã người dùng từ JSON trả về của Backend. 
-          String maNguoiDung = responseData['id']?.toString() ?? responseData['userId']?.toString() ?? '';
-          
-          if (maNguoiDung.isNotEmpty) {
-            await prefs.setString('ma_nguoi_dung', maNguoiDung);
-            print("Lưu ma_nguoi_dung thành công: $maNguoiDung"); // Log ra màn hình để bạn dễ debug
-          }
-          final token = responseData['token']?.toString() ?? '';
-          if (token.isNotEmpty) {
-            await prefs.setString('token', token);
-            print("Lưu token thành công");
-          }
+        // Lấy mã người dùng từ JSON trả về của Backend. 
+        String maNguoiDung = responseData['id']?.toString() ?? responseData['userId']?.toString() ?? '';
+        
+        if (maNguoiDung.isNotEmpty) {
+          await prefs.setString('ma_nguoi_dung', maNguoiDung);
+          print("Lưu ma_nguoi_dung thành công: $maNguoiDung"); // Log ra màn hình để bạn dễ debug
+        }
+        final token = responseData['token']?.toString() ?? '';
+        if (token.isNotEmpty) {
+          await prefs.setString('token', token);
+          print("Lưu token thành công");
+        }
         // Trả về kết quả thành công và kèm theo token nếu cần lưu trữ sau này
         return {
           "success": true,
@@ -130,7 +130,19 @@ class AuthViewModel extends ChangeNotifier {
   // Hàm lấy ID người dùng đã lưu trong SharedPreferences (sau khi đăng nhập thành công)
   Future<String?> getSavedUserId() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('ma_nguoi_dung');
+    
+    // Ưu tiên tìm key 'ma_nguoi_dung' (String)
+    String? id = prefs.getString('ma_nguoi_dung');
+    
+    // Nếu không thấy, thử tìm key 'userId' (Int) rồi ép sang String 
+    if (id == null) {
+      int? intId = prefs.getInt('userId');
+      if (intId != null) {
+        id = intId.toString();
+      }
+    }
+    
+    return id;
   }
 
   // Hàm xóa sạch dữ liệu khi người dùng bấm Đăng xuất (Logout)
@@ -250,7 +262,12 @@ class AuthViewModel extends ChangeNotifier {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('token', responseData['token'] ?? '');
         await prefs.setString('role', responseData['role'] ?? '');
-        await prefs.setInt('userId', responseData['id'] ?? 0);
+        
+        // Ép kiểu sang String và lưu với key 'ma_nguoi_dung' thay vì 'userId'
+        String maNguoiDung = responseData['id']?.toString() ?? responseData['userId']?.toString() ?? '';
+        if (maNguoiDung.isNotEmpty) {
+          await prefs.setString('ma_nguoi_dung', maNguoiDung);
+        }
         
         return {"success": true, "message": "Đăng nhập thành công!"};
       } else {
