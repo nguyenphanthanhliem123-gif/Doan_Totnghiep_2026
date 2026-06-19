@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:ung_dung_dat_lich_kham/Views/change_password_screen.dart';
 import 'package:ung_dung_dat_lich_kham/Views/health_record_menu_screen.dart';
 import 'package:ung_dung_dat_lich_kham/Views/profile_detail_screen.dart';
+import 'package:ung_dung_dat_lich_kham/Views/payment_history_screen.dart';
 import '../constants/ui_constants.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/profile_viewmodel.dart';
 import '../viewmodels/auth_viewmodel.dart';
@@ -128,6 +129,15 @@ class _ProfileScreen extends State<ProfileScreen> {
                             );
                           }),
                           _buildOptionItem(Icons.payment, 'Phương thức thanh toán', true, (){}),
+                          
+                          // MỚI THÊM: Lịch sử giao dịch
+                          _buildOptionItem(Icons.receipt_long, 'Lịch sử giao dịch', true, (){
+                            if(!context.mounted) return;
+                            Navigator.of(context).push(
+                              MaterialPageRoute(builder: (context) => const TransactionHistoryScreen())
+                            );
+                          }),
+
                           _buildOptionItem(Icons.lock_outline, 'Quản lý mật khẩu', true, (){
                             if(!context.mounted) return;
                             Navigator.of(context).push(

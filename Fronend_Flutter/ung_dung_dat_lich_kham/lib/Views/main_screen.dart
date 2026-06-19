@@ -29,7 +29,8 @@ class _MainScreenState extends State<MainScreen> {
     const DoctorListScreen(),
     const ProfileScreen(),
     //const AppointmentScreen(),
-    const TransactionHistoryScreen()
+    const AppointmentScreen(),
+    //const TransactionHistoryScreen(),
     //const GlobalSearchScreen(),
     //const UpdateProfileScreen(),
     //const ChangePasswordScreen(),

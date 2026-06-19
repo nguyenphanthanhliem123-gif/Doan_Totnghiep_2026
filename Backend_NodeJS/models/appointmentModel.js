@@ -87,9 +87,9 @@ export default class appointmentModel {
     // Hủy lịch hẹn với điều kiện chặn hủy trước 2 giờ
     static async cancelAppointment(appointmentID) {
         try {
-            // 1. Lấy thời gian bắt đầu khám và trạng thái hiện tại để kiểm tra điều kiện
+            // 1. Lấy thời gian bắt đầu khám, trạng thái VÀ LẤY THÊM Ma_khung_gio
             const checkSql = `
-                SELECT kg.Thoi_gian_Bdau, lh.Trang_thai_lich_hen 
+                SELECT lh.Ma_khung_gio, kg.Thoi_gian_Bdau, lh.Trang_thai_lich_hen 
                 FROM lich_hen lh
                 JOIN khung_gio_kham kg ON lh.Ma_khung_gio = kg.Ma_khung_gio
                 WHERE lh.Ma_lich_hen = ?
@@ -100,6 +100,7 @@ export default class appointmentModel {
             }
 
             const appointment = rows[0];
+            const maKhungGio = appointment.Ma_khung_gio; // LẤY MÃ KHUNG GIỜ ĐỂ TÍNH SAU SẼ NHẢ RA
             
             // Chặn nếu lịch đã xử lý rồi
             if (appointment.Trang_thai_lich_hen === 'cancelled' || appointment.Trang_thai_lich_hen === 'absent') {
@@ -112,7 +113,7 @@ export default class appointmentModel {
             // Kiểm tra chính sách chặn hủy trước 2 giờ
             const startTime = new Date(appointment.Thoi_gian_Bdau);
             const now = new Date();
-            const diffInHours = (startTime - now) / (1000 * 60 * 60); // Đổi mili-giây ra giờ
+            const diffInHours = (startTime - now) / (1000 * 60 * 60);
 
             if (diffInHours < 2) {
                 return { success: false, message: "Theo chính sách, bạn chỉ được phép hủy lịch khám trước giờ bắt đầu tối thiểu 2 tiếng." };
@@ -122,10 +123,11 @@ export default class appointmentModel {
             const updateSql = `UPDATE lich_hen SET Trang_thai_lich_hen = 'cancelled' WHERE Ma_lich_hen = ?`;
             await execute(updateSql, [appointmentID]);
 
-            // 3. 🌟 TODO: KHỞI TẠO HOÀN TIỀN TỰ ĐỘNG (KHI KẾT NỐI VÍ MOMO / CỔNG THANH TOÁN)
-            // - Kiểm tra bảng thanh_toan xem: Trang_thai_thanh_toan == 'paid' và Phương thức online hay không.
-            // - Gọi sang API Hoàn tiền (Refund) của MoMo / Ngân hàng qua Ma_giao_dich.
-            // - Cập nhật trạng thái bảng thanh_toan thành 'refunded'.
+            // 🌟 3. BƯỚC MỚI THÊM: Nhả khung giờ về lại trạng thái 'available'
+            const releaseSlotSql = `UPDATE khung_gio_kham SET Trang_thai = 'available' WHERE Ma_khung_gio = ?`;
+            await execute(releaseSlotSql, [maKhungGio]);
+
+            // 4. TODO: KHỞI TẠO HOÀN TIỀN TỰ ĐỘNG...
             console.log(`[TODO_REFUND]: Lịch hẹn ${appointmentID} thỏa điều kiện hoàn tiền nếu đã thanh toán online.`);
 
             return { success: true, message: "Hủy lịch khám thành công." };
@@ -135,6 +137,7 @@ export default class appointmentModel {
         }
     }
 
+    // Đổi lịch hẹn với điều kiện chặn đổi trước 2 giờ và kiểm tra slot mới
     static async rescheduleAppointment(appointmentID, newSlotID) {
         try {
             // 1. Kiểm tra chính sách chặn đổi lịch trước 2 giờ
