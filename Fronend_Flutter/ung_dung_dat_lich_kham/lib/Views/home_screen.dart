@@ -3,13 +3,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ung_dung_dat_lich_kham/Constants/ui_constants.dart';
-import 'package:ung_dung_dat_lich_kham/ViewModels/schedule_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/Views/doctor_list_screen.dart';
 import 'package:ung_dung_dat_lich_kham/Views/global_search_screen.dart';
 import 'package:ung_dung_dat_lich_kham/Views/specialty_list_screen.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/auth_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/profile_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/specialty_viewmodel.dart';
+// Đã thay thế Schedule bằng Appointment
+import 'package:ung_dung_dat_lich_kham/viewmodels/appointment_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/views/health_record_menu_screen.dart';
 import 'package:ung_dung_dat_lich_kham/views/appointment_list_screen.dart';
 
@@ -25,87 +26,53 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _maNguoiDung;
   bool _isLoading = false;
 
-  // BIẾN TRẠNG THÁI CHO LỊCH TRÌNH ĐỘNG
-  DateTime _selectedDate = DateTime.now(); // Ngày đang được chọn
-  List<DateTime> _daysInMonth = [];        // Danh sách các ngày trong tháng hiện tại
+  // BIẾN TRẠNG THÁI CHO LỊCH TRÌNH 7 NGÀY
+  DateTime _selectedDate = DateTime.now(); 
+  List<DateTime> _next7Days = [];          
   
-  // 🌟 THÊM SCROLL CONTROLLER ĐỂ ĐIỀU KHIỂN VUỐT/CUỘN TỰ ĐỘNG
   final ScrollController _calendarScrollController = ScrollController();
-
-  Timer? _debounceTimer;
 
   @override
   void initState() {
     super.initState();
     _loadUserIdThenFetch();
     
-    // Tự động tạo danh sách ngày của tháng hiện tại khi mở app
-    _generateDaysForMonth(_selectedDate);
+    // Tự động tạo danh sách 7 ngày tới
+    _generateNext7Days();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<SpecialtyViewModel>().loadAllSpecialties();
-      // Cuộn đến ngày hiện tại khi vừa mở màn hình lên
       _scrollToSelectedDate(animate: false);
-      _fetchSchedulesDebounced();
     });
   }
 
   @override
   void dispose() {
-    // 🌟 GIẢI PHÓNG BỘ NHỚ SCROLL CONTROLLER
     _calendarScrollController.dispose();
-    _debounceTimer?.cancel();
     super.dispose();
   }
 
-  void _fetchSchedulesDebounced() {
-    // Nếu có một Timer đang chạy (do người dùng vừa bấm trước đó vài mili-giây), hủy nó đi
-    if (_debounceTimer?.isActive ?? false) {
-      _debounceTimer!.cancel();
-    }
-
-    // Đặt Timer mới: Sau đúng 500 mili-giây (0.5s) không ai bấm nữa thì mới chạy code bên trong
-    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
-      if (!mounted) return;
-
-      // Định dạng ngày thành chuẩn YYYY-MM-DD để gửi lên API
-      String formattedDate = "${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}";
-      
-      // Gọi API lấy dữ liệu lịch trình
-      context.read<ScheduleViewModel>().loadDoctorSchedules(formattedDate);
-    });
-  }
-
-  // Hàm tính toán tất cả các ngày trong một tháng cụ thể
-  void _generateDaysForMonth(DateTime date) {
-    final int totalDays = DateTime(date.year, date.month + 1, 0).day;
-    
+  void _generateNext7Days() {
+    final now = DateTime.now();
     setState(() {
-      _daysInMonth = List.generate(
-        totalDays,
-        (index) => DateTime(date.year, date.month, index + 1),
-      );
+      _next7Days = List.generate(7, (index) => now.add(Duration(days: index)));
+      _selectedDate = _next7Days.first; // Mặc định chọn ngày hôm nay
     });
   }
 
-  // 🌟 HÀM TỰ ĐỘNG CUỘN ĐẾN NGÀY ĐANG ĐƯỢC CHỌN
   void _scrollToSelectedDate({bool animate = true}) {
     if (!_calendarScrollController.hasClients) return;
     
-    // Tìm vị trí index của ngày đang chọn trong danh sách tháng
-    int index = _daysInMonth.indexWhere((d) => 
+    int index = _next7Days.indexWhere((d) => 
       d.day == _selectedDate.day && 
       d.month == _selectedDate.month && 
       d.year == _selectedDate.year
     );
 
     if (index != -1) {
-      // Giả định mỗi Item ngày rộng khoảng 62px (bao gồm cả margin ngang)
       double itemWidth = 62.0;
-      // Tính toán vị trí offset để ngày được chọn nằm gần giữa thanh cuộn
-      double offset = (index * itemWidth) - (MediaQuery.of(context).size.width / 2) + (itemWidth / 2) + 40;
+      double offset = (index * itemWidth) - (MediaQuery.of(context).size.width / 2) + (itemWidth / 2) + 20; 
       
-      // Khống chế offset không vượt quá giới hạn cuộn
       if (offset < 0) offset = 0;
       final maxScroll = _calendarScrollController.position.maxScrollExtent;
       if (offset > maxScroll) offset = maxScroll;
@@ -122,45 +89,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // 🌟 HÀM XỬ LÝ KHI BẤM MŨI TÊN TRÁI (LÙI 1 NGÀY)
-  void _navigateToPreviousDay() {
-    final previousDay = _selectedDate.subtract(const Duration(days: 1));
-    final bool isDifferentMonth = previousDay.month != _selectedDate.month || previousDay.year != _selectedDate.year;
-    
-    setState(() {
-      _selectedDate = previousDay;
-    });
-
-    if (isDifferentMonth) {
-      _generateDaysForMonth(previousDay);
-    }
-    
-    // Đợi UI render xong thì cuộn theo ngày mới
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelectedDate());
-
-    _fetchSchedulesDebounced();
-  }
-
-  // 🌟 HÀM XỬ LÝ KHI BẤM MŨI TÊN PHẢI (TIẾN 1 NGÀY)
-  void _navigateToNextDay() {
-    final nextDay = _selectedDate.add(const Duration(days: 1));
-    final bool isDifferentMonth = nextDay.month != _selectedDate.month || nextDay.year != _selectedDate.year;
-    
-    setState(() {
-      _selectedDate = nextDay;
-    });
-
-    if (isDifferentMonth) {
-      _generateDaysForMonth(nextDay);
-    }
-
-    // Đợi UI render xong thì cuộn theo ngày mới
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelectedDate());
-
-    _fetchSchedulesDebounced();
-  }
-
-  // Hàm chuyển đổi thứ sang chuỗi tiếng Việt
   String _getWeekdayName(int weekday) {
     switch (weekday) {
       case DateTime.monday: return 'T2';
@@ -174,30 +102,8 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // Hàm mở bộ chọn Tháng / Năm
-  Future<void> _selectMonth(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate,
-      firstDate: DateTime(DateTime.now().year - 2),
-      lastDate: DateTime(DateTime.now().year + 5),
-      initialDatePickerMode: DatePickerMode.year,
-      helpText: 'CHỌN THÁNG XEM LỊCH TRÌNH',
-    );
-    if (picked != null && (picked.month != _selectedDate.month || picked.year != _selectedDate.year)) {
-      setState(() {
-        _selectedDate = picked;
-      });
-      _generateDaysForMonth(picked);
-      WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToSelectedDate(animate: false));
-
-      _fetchSchedulesDebounced();
-    }
-  }
-
   Future<void> _loadUserIdThenFetch() async {
-    final id = await Provider.of<AuthViewModel>(context, listen: false)
-        .getSavedUserId();
+    final id = await Provider.of<AuthViewModel>(context, listen: false).getSavedUserId();
 
     if (!mounted) return;
 
@@ -209,6 +115,11 @@ class _HomeScreenState extends State<HomeScreen> {
       final maNguoiDung = int.tryParse(id);
       if (maNguoiDung != null) {
         await context.read<ProfileViewModel>().getUserProfile(maNguoiDung);
+        
+        // GỌI API LẤY LỊCH CÁ NHÂN NGAY KHI VỪA VÀO HOME
+        if (mounted) {
+          await context.read<AppointmentViewModel>().loadMyAppointments();
+        }
       }
     }
 
@@ -238,7 +149,7 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 15),
               _buildCategoryIcons(),
               const SizedBox(height: 25),
-              // 3. LỊCH TRÌNH SẮP TỚI SECTION
+              // 3. LỊCH TRÌNH SẮP TỚI CỦA BỆNH NHÂN
               _buildUpcomingSchedule(),
               const SizedBox(height: 25),
               _buildSpecialtyHeader(),
@@ -252,7 +163,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // 1. Header bao gồm Nút chức năng bên trái và Avatar bên phải
   Widget _buildHeader() {
     final profileViewModel = context.watch<ProfileViewModel>();
     final user = profileViewModel.userProfile;
@@ -295,8 +205,6 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               _buildHeaderIcon(Icons.notifications_none_outlined,(){}),
               const SizedBox(width: 10),
-              _buildHeaderIcon(Icons.settings_outlined,(){}),
-              const SizedBox(width: 10),
               _buildHeaderIcon(Icons.search, () {
                 Navigator.of(context).push(
                   MaterialPageRoute(builder: (context) => GlobalSearchScreen())
@@ -326,7 +234,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // 2. Thể loại
   Widget _buildCategoryTitle() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20.0),
@@ -386,9 +293,17 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // 3. Khối Lịch trình sắp tới (Có Mũi tên 2 bên & Tự động cuộn theo ngày)
   Widget _buildUpcomingSchedule() {
-    final scheduleVM = context.watch<ScheduleViewModel>();
+    // 🌟 Lấy data từ ViewModel lịch hẹn
+    final appointmentVM = context.watch<AppointmentViewModel>();
+
+    // 🌟 Lọc ra các lịch sắp tới (pending/confirmed) trùng với ngày đang chọn
+    final filteredAppointments = appointmentVM.upcomingList.where((app) {
+      return app.startTime.year == _selectedDate.year && 
+             app.startTime.month == _selectedDate.month && 
+             app.startTime.day == _selectedDate.day;
+    }).toList();
+    
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -401,96 +316,54 @@ class _HomeScreenState extends State<HomeScreen> {
       padding: const EdgeInsets.symmetric(vertical: 20),
       child: Column(
         children: [
-          // Tiêu đề Lịch trình & Nút bấm chọn Tháng bên phải
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20.0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text('Lịch Trình Sắp Tới', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                InkWell(
-                  onTap: () => _selectMonth(context),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        Text(
-                          'Tháng ${_selectedDate.month}/${_selectedDate.year}', 
-                          style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)
-                        ),
-                        const Icon(Icons.arrow_drop_down, color: Colors.white,)
-                      ],
-                    ),
-                  ),
-                ),
               ],
             ),
           ),
-          const SizedBox(height: 10,),
-          const Divider(color: Colors.white54),
-          const SizedBox(height: 5),
+          const SizedBox(height: 15),
           
-          // 🌟 KHỐI ĐIỀU HƯỚNG NGÀY: Bao gồm Mũi tên trái - Thanh cuộn giữa - Mũi tên phải
+          // Thanh cuộn 7 ngày
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4.0),
-            child: Row(
-              children: [
-                // 1. Mũi tên lùi ngày bên trái
-                IconButton(
-                  icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 18),
-                  onPressed: _navigateToPreviousDay,
-                ),
-                
-                // 2. Danh sách ngày cuộn ở giữa
-                Expanded(
-                  child: SizedBox(
-                    height: 65,
-                    child: ListView.builder(
-                      controller: _calendarScrollController, // Gắn bộ điều khiển cuộn vào đây
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _daysInMonth.length,
-                      padding: const EdgeInsets.symmetric(horizontal: 5),
-                      itemBuilder: (context, index) {
-                        final DateTime dayData = _daysInMonth[index];
-                        final bool isSelected = dayData.day == _selectedDate.day &&
-                                                dayData.month == _selectedDate.month &&
-                                                dayData.year == _selectedDate.year;
+            child: SizedBox(
+              height: 65,
+              child: ListView.builder(
+                controller: _calendarScrollController, 
+                scrollDirection: Axis.horizontal,
+                itemCount: _next7Days.length,
+                padding: const EdgeInsets.symmetric(horizontal: 15),
+                itemBuilder: (context, index) {
+                  final DateTime dayData = _next7Days[index];
+                  final bool isSelected = dayData.day == _selectedDate.day &&
+                                          dayData.month == _selectedDate.month &&
+                                          dayData.year == _selectedDate.year;
 
-                        return GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _selectedDate = dayData;
-                            });
-                            _scrollToSelectedDate();
-
-                            _fetchSchedulesDebounced();
-                          },
-                          child: _buildDayInWeek(
-                            dayData.day.toString(),
-                            _getWeekdayName(dayData.weekday),
-                            active: isSelected,
-                          ),
-                        );
-                      },
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedDate = dayData;
+                      });
+                      _scrollToSelectedDate();
+                      // Không gọi API ở đây nữa vì data đã tải 1 lần ở initState
+                    },
+                    child: _buildDayInWeek(
+                      dayData.day.toString(),
+                      index == 0 ? "Hôm nay" : _getWeekdayName(dayData.weekday),
+                      active: isSelected,
                     ),
-                  ),
-                ),
-                
-                // 3. Mũi tên tiến ngày bên phải
-                IconButton(
-                  icon: const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 18),
-                  onPressed: _navigateToNextDay,
-                ),
-              ],
+                  );
+                },
+              ),
             ),
           ),
           const SizedBox(height: 20),
 
-          // Khung chứa các ca hẹn chi tiết theo ngày được chọn
+          // Khung hiển thị chi tiết lịch hẹn
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 20),
             padding: const EdgeInsets.all(15),
@@ -519,41 +392,36 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 10),
 
-                // Hiển thị Loading khi đang gọi API
-                if (scheduleVM.isLoading)
+                // Hiển thị trạng thái Loading
+                if (appointmentVM.isLoading)
                   const Padding(
                     padding: EdgeInsets.all(20.0),
                     child: CircularProgressIndicator(color: Colors.white),
                   )
                 // Hiển thị Lỗi nếu có
-                else if (scheduleVM.errorMessage.isNotEmpty)
+                else if (appointmentVM.errorMessage.isNotEmpty && appointmentVM.allAppointments.isEmpty)
                   Padding(
                     padding: const EdgeInsets.all(10.0),
-                    child: Text(scheduleVM.errorMessage, style: const TextStyle(color: Colors.redAccent)),
+                    child: Text(appointmentVM.errorMessage, style: const TextStyle(color: Colors.redAccent)),
                   )
-                // Hiển thị thông báo trống nếu không có lịch
-                else if (scheduleVM.schedules == null || scheduleVM.schedules!.isEmpty)
+                // Hiển thị thông báo trống
+                else if (filteredAppointments.isEmpty)
                   const Padding(
                     padding: EdgeInsets.all(20.0),
-                    child: Text('Không có lịch khám nào trong ngày này', style: TextStyle(color: Colors.white70)),
+                    child: Text('Bạn không có lịch khám nào trong ngày này', style: TextStyle(color: Colors.white70)),
                   )
-                // Hiển thị danh sách nếu có data
+                // Render List lịch hẹn sau khi lọc
                 else
-                  ...scheduleVM.schedules!.take(5).map((schedule) {
-                    // 🌟 Hàm take(5) giúp cắt mảng chỉ lấy tối đa 5 phần tử đầu tiên
+                  ...filteredAppointments.take(5).map((app) {
                     
-                    // Format thời gian hiển thị, ví dụ "08:00"
-                    String timeStr = "";
-                    if (schedule.thoiGianBdau != null) {
-                      timeStr = "${schedule.thoiGianBdau!.hour.toString().padLeft(2, '0')}:${schedule.thoiGianBdau!.minute.toString().padLeft(2, '0')}";
-                    }
+                    String timeStr = "${app.startTime.hour.toString().padLeft(2, '0')}:${app.startTime.minute.toString().padLeft(2, '0')}";
 
                     return Column(
                       children: [
                         _buildAppointmentRow(
                           'Ngày ${_selectedDate.day} Th. ${_selectedDate.month}', 
                           timeStr, 
-                          schedule.tenNguoiDung ?? 'Bác sĩ ẩn danh'
+                          app.doctorName
                         ),
                         const Divider(color: Colors.white60, height: 20),
                       ],
@@ -618,7 +486,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // 4. Chuyên khoa
   Widget _buildSpecialtyHeader() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20.0),

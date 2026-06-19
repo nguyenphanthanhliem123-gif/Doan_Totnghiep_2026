@@ -204,10 +204,8 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
                             ),
                             const SizedBox(height: 25),
 
-                            // ==========================================
-                            // GIAO DIỆN LỊCH MỚI KIỂU ACCORDION SỐ 2
-                            // ==========================================
-                            _buildSectionTitle("Lịch làm việc sắp tới"),
+                            // CẬP NHẬT: Đổi tiêu đề cho phù hợp với 7 ngày
+                            _buildSectionTitle("Lịch làm việc 7 ngày tới"),
                             _buildExpandableSchedule(doctor.schedules),
 
                             const SizedBox(height: 35),
@@ -392,52 +390,57 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
   }
 
   // ==========================================
-  // WIDGET MỚI: BẢNG LỊCH XỔ XUỐNG (ACCORDION)
+  // CẬP NHẬT: HIỂN THỊ CỐ ĐỊNH 7 NGÀY TIẾP THEO
   // ==========================================
   Widget _buildExpandableSchedule(List<DoctorScheduleModel> schedules) {
-    if (schedules.isEmpty) {
-      return const Text("Bác sĩ hiện chưa có lịch làm việc.", style: TextStyle(color: kGreyTextColor));
-    }
-
-    // Lọc ra các ngày CÓ CA KHÁM, bỏ qua những ngày nghỉ (tất cả các slot đều 'locked')
-    final activeSchedules = schedules.where((schedule) {
-      return schedule.slots.any((slot) => slot.status != 'locked');
-    }).toList();
-
-    if (activeSchedules.isEmpty) {
-      return const Text("Bác sĩ hiện đã kín lịch tuần này.", style: TextStyle(color: kGreyTextColor));
-    }
-
-    // Hiển thị tối đa 5 ngày sắp tới để màn hình đỡ dài
-    final upcomingSchedules = activeSchedules.take(5).toList();
+    // Lấy ngày giờ hiện tại
+    final DateTime now = DateTime.now();
+    
+    // Tạo danh sách 7 ngày liên tiếp tính từ hôm nay
+    final List<DateTime> next7Days = List.generate(7, (index) => now.add(Duration(days: index)));
 
     return Column(
-      children: upcomingSchedules.map((schedule) {
-        DateTime parsedDate;
-        try {
-          parsedDate = DateTime.parse(schedule.date);
-        } catch (e) {
-          parsedDate = DateTime.now();
-        }
+      children: next7Days.map((currentDate) {
+        // Format ngày hiện tại thành chuỗi yyyy-MM-dd để so sánh với Database
+        String dateString = "${currentDate.year}-${currentDate.month.toString().padLeft(2, '0')}-${currentDate.day.toString().padLeft(2, '0')}";
 
+        // Tìm trong danh sách API xem ngày này bác sĩ có lịch không
+        var matchedSchedules = schedules.where((s) {
+          // Xử lý cắt chuỗi nếu API trả về dạng ISO (VD: 2024-06-19T00:00:00.000Z)
+          String sDate = s.date.length >= 10 ? s.date.substring(0, 10) : s.date;
+          return sDate == dateString;
+        });
+
+        DoctorScheduleModel? dailySchedule = matchedSchedules.isNotEmpty ? matchedSchedules.first : null;
+
+        // Xử lý hiển thị "Thứ" trong tuần
         List<String> weekdays = ["", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7", "Chủ Nhật"];
-        String weekdayStr = weekdays[parsedDate.weekday];
-        String dateDisplay = "$weekdayStr (${parsedDate.day.toString().padLeft(2, '0')}/${parsedDate.month.toString().padLeft(2, '0')})";
+        
+        // Nếu là ngày hôm nay thì in chữ "Hôm nay" thay vì "Thứ..."
+        String weekdayStr = (currentDate.day == now.day && currentDate.month == now.month) 
+            ? "Hôm nay" 
+            : weekdays[currentDate.weekday];
+            
+        String dateDisplay = "$weekdayStr (${currentDate.day.toString().padLeft(2, '0')}/${currentDate.month.toString().padLeft(2, '0')})";
 
-        // Phân loại slot Sáng / Chiều
+        // Phân loại slot Sáng / Chiều nếu có lịch
         List<DoctorTimeSlotModel> morningSlots = [];
         List<DoctorTimeSlotModel> afternoonSlots = [];
 
-        for (var slot in schedule.slots) {
-          if (slot.status != 'locked') {
-            int hour = int.tryParse(slot.time.split(':')[0]) ?? 0;
-            if (hour < 12) {
-              morningSlots.add(slot);
-            } else {
-              afternoonSlots.add(slot);
+        if (dailySchedule != null) {
+          for (var slot in dailySchedule.slots) {
+            if (slot.status != 'locked') {
+              int hour = int.tryParse(slot.time.split(':')[0]) ?? 0;
+              if (hour < 12) {
+                morningSlots.add(slot);
+              } else {
+                afternoonSlots.add(slot);
+              }
             }
           }
         }
+
+        bool hasSlots = morningSlots.isNotEmpty || afternoonSlots.isNotEmpty;
 
         return Container(
           margin: const EdgeInsets.only(bottom: 10),
@@ -446,17 +449,24 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
             borderRadius: BorderRadius.circular(15),
           ),
           child: Theme(
-            data: Theme.of(context).copyWith(dividerColor: Colors.transparent), // Xóa vạch kẻ ngang mặc định
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent), 
             child: ExpansionTile(
               title: Text(
-                "$dateDisplay - Có lịch khám",
-                style: const TextStyle(fontWeight: FontWeight.w600, color: kTextColor, fontSize: 14),
+                hasSlots ? "$dateDisplay - Có lịch khám" : "$dateDisplay - Không có lịch",
+                style: TextStyle(
+                  fontWeight: FontWeight.w600, 
+                  color: hasSlots ? kTextColor : kGreyTextColor, // Màu xám nếu không có lịch
+                  fontSize: 14
+                ),
               ),
               iconColor: kPrimaryColor,
               collapsedIconColor: Colors.grey,
               childrenPadding: const EdgeInsets.only(left: 15, right: 15, bottom: 20),
               expandedCrossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (!hasSlots)
+                  const Text("Bác sĩ không có ca khám nào trong ngày này.", style: TextStyle(color: kGreyTextColor, fontStyle: FontStyle.italic)),
+
                 // Render list ca Sáng
                 if (morningSlots.isNotEmpty) ...[
                   const Text("☀️ Ca Sáng", style: TextStyle(fontWeight: FontWeight.bold, color: kPrimaryColor, fontSize: 13)),
