@@ -14,7 +14,6 @@ import specialtyRoutes from "./routes/specialtyRoutes.js";
 import searchRoutes from "./routes/searchRoutes.js";
 import reviewRoutes from './routes/reviewRoutes.js';
 import bookingRoutes from './routes/bookingRoutes.js';
-import momoRouter from "./momo/momoPayment.js";
 import appointmentRoutes from './routes/appointmentRoutes.js';
 import paymentRoute from "./routes/paymentRoutes.js";
 
@@ -38,7 +37,6 @@ app.use('/api/specialty', specialtyRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/bookings', bookingRoutes);
-app.use('/api/booking-momo', momoRouter);
 app.use('/api/payment', paymentRoute);
 
 app.use('/api/appointments', appointmentRoutes);

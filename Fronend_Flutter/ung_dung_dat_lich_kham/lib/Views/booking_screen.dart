@@ -8,7 +8,6 @@ import '../viewmodels/booking_viewmodel.dart';
 import '../viewmodels/auth_viewmodel.dart'; // Import để lấy ID bệnh nhân
 import '../models/doctor_detail_model.dart'; // Import Model bác sĩ
 import 'package:url_launcher/url_launcher.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 
 class BookingScreen extends StatefulWidget {
   final DoctorDetailModel doctor; 
@@ -183,7 +182,7 @@ class _BookingScreenState extends State<BookingScreen> {
                   const SizedBox(height: 25),
 
                   // ==========================================
-                  // 3. TÙY CHỌN ĐẶT CHO BAN THÂN HAY NGƯỜI THÂN + HÌNH THỨC KHÁM
+                  // 3. TÙY CHỌN ĐẶT CHO BẢN THÂN HAY NGƯỜI THÂN + HÌNH THỨC KHÁM
                   // ==========================================
                   _buildSectionTitle("Khám cho"),
                   Row(
@@ -411,9 +410,10 @@ class _BookingScreenState extends State<BookingScreen> {
 
     final selectedSlot = activeSlots.firstWhere((slot) => slot.id == _selectedSlotId);
     final String formattedPrice = "${_selectedService!.price.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')} Đ";
-    if (!_isOffline && _paymentMethod == 'cash') _paymentMethod = 'momo'; 
+    
+    // 🌟 THAY ĐỔI: Nếu chọn khám Online thì tự động ép phương thức sang vnpay thay vì momo
+    if (!_isOffline && _paymentMethod == 'cash') _paymentMethod = 'vnpay'; 
 
-    // Tự động ghép chuỗi tên nếu đặt cho người thân
     String forWhom = _isForSelf ? "Bản thân" : "Người thân (${_selectedRelative!.recordName})";
 
     showModalBottomSheet(
@@ -455,7 +455,7 @@ class _BookingScreenState extends State<BookingScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  _buildSummaryRow("Đặt cho", forWhom), // <-- Hiển thị tên người thân ở đây
+                  _buildSummaryRow("Đặt cho", forWhom), 
                   _buildSummaryRow("Hình thức", _isOffline ? "Tại phòng khám" : "Khám Online"),
                   _buildSummaryRow("Dịch vụ", _selectedService!.name),
                   const Divider(height: 30),
@@ -468,7 +468,8 @@ class _BookingScreenState extends State<BookingScreen> {
                     children: [
                       if (_isOffline) _buildPaymentButton("Tiền mặt", "cash", Icons.money, setModalState),
                       if (_isOffline) const SizedBox(width: 10),
-                      _buildPaymentButton("MoMo", "momo", Icons.account_balance_wallet, setModalState),
+                      // 🌟 THAY ĐỔI: Đổi nút MoMo thành VNPay
+                      _buildPaymentButton("VNPay", "vnpay", Icons.payment_rounded, setModalState),
                       const SizedBox(width: 10),
                       _buildPaymentButton("Chuyển khoản", "transfer", Icons.account_balance, setModalState),
                     ],
@@ -556,14 +557,11 @@ class _BookingScreenState extends State<BookingScreen> {
       return;
     }
 
-    int patientId = int.parse(patientIdStr);
-
     if (mounted) {
       // 1. Tạo đơn đặt lịch trên hệ thống thông qua ViewModel
       final result = await bookingVM.submitBooking(
         doctorId: widget.doctor.id, 
-        patientId: int.parse(patientIdStr), // Đây là Ma_nguoi_dung
-        // CHỖ NÀY ĐÃ ĐƯỢC GẮN DỮ LIỆU THẬT TỪ DROPDOWN VÀO
+        patientId: int.parse(patientIdStr), 
         relativeId: _isForSelf ? null : _selectedRelative?.relativeId, 
         serviceId: _selectedService!.id,
         slotId: _selectedSlotId!,
@@ -579,31 +577,29 @@ class _BookingScreenState extends State<BookingScreen> {
           String bookingCode = result['data']['Ma_booking'];
           String amount = result['data']['Tong_tien'].toString();
 
-          if (_paymentMethod != 'cash') {
-            // 🌟 CHUẨN MVVM: Gọi logic khởi tạo MoMo thông qua hàm đã viết ở ViewModel
-            final momoResult = await bookingVM.createMomoPayment(
+          // 🌟 THAY ĐỔI: Chuyển đổi logic xử lý từ MoMo sang cổng VNPay
+          if (_paymentMethod == 'vnpay') {
+            // Gọi hàm tạo link VNPay từ ViewModel của bạn (Hãy đảm bảo trong ViewModel có hàm này)
+            final vnpayResult = await bookingVM.createVnpayPayment(
               bookingCode: bookingCode,
-              amount: amount,
             );
 
             if (mounted) {
-              if (momoResult['succeeded'] == true) {
-                // Nhận link sạch từ ViewModel trả về và mở Popup hiển thị QR Code
-                _showQRCodeScreen(
+              if (vnpayResult['succeeded'] == true) {
+                // Mở popup hướng dẫn dẫn liên kết web cổng VNPay
+                _showVNPayDialog(
                   bookingCode, 
                   amount, 
-                  momoResult['payUrl'], 
-                  momoResult['deeplink'],
+                  vnpayResult['paymentUrl'], // Link thanh toán từ Backend cấp sinh ra từ VNPay Sandbox
                 );
               } else {
-                // Hiển thị thông báo lỗi xử lý từ ViewModel
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(momoResult['message'] ?? "Lỗi cổng thanh toán"))
+                  SnackBar(content: Text(vnpayResult['message'] ?? "Lỗi cổng thanh toán VNPay"))
                 );
               }
             }
           } else {
-            // Nếu chọn tiền mặt thì báo thành công luôn
+            // Nếu chọn tiền mặt hoặc chuyển khoản thủ công thì báo thành công luôn
             _showSuccessDialog(result['message'], bookingCode);
           }
         } else {
@@ -615,9 +611,8 @@ class _BookingScreenState extends State<BookingScreen> {
     }
   }
 
-  // --- HIỂN THỊ MÀN HÌNH QUÉT QR ẢO ---
-  void _showQRCodeScreen(String bookingCode, String amount, String payUrl, String deeplink) {
-    // Định dạng lại tiền tệ hiển thị dạng VND (Ví dụ: 200.000)
+  // --- 🌟 THAY ĐỔI: HIỂN THỊ MÀN HÌNH ĐIỀU HƯỚNG WEB VNPAY ---
+  void _showVNPayDialog(String bookingCode, String amount, String paymentUrl) {
     final String formattedAmount = "${amount.replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')} VNĐ";
 
     showDialog(
@@ -628,16 +623,11 @@ class _BookingScreenState extends State<BookingScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Image.network(
-                'https://upload.wikimedia.org/wikipedia/vi/f/fe/MoMo_Logo.png', 
-                width: 24, 
-                height: 24, 
-                errorBuilder: (c, e, s) => const Icon(Icons.payment),
-              ),
+              const Icon(Icons.payment_rounded, color: Colors.blue, size: 24),
               const SizedBox(width: 8),
               Text(
-                "Thanh toán MoMo", 
-                style: TextStyle(color: Colors.pink.shade700, fontWeight: FontWeight.bold, fontSize: 18),
+                "Thanh toán VNPay", 
+                style: TextStyle(color: Colors.blue.shade800, fontWeight: FontWeight.bold, fontSize: 18),
               ),
             ],
           )
@@ -646,25 +636,9 @@ class _BookingScreenState extends State<BookingScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
-              "Quét mã QR bằng ứng dụng MoMo hoặc nhấn nút bên dưới để mở ví thanh toán", 
+              "Nhấn nút dưới đây để mở website cổng thanh toán VNPay ảo để tiến hành thanh toán.", 
               textAlign: TextAlign.center, 
               style: TextStyle(color: kGreyTextColor, fontSize: 13),
-            ),
-            const SizedBox(height: 20),
-            
-            // Tự vẽ mã QR thật từ link MoMo trả về qua dữ liệu sạch từ ViewModel
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.white, 
-                borderRadius: BorderRadius.circular(15), 
-                border: Border.all(color: Colors.grey.shade200),
-              ),
-              child: QrImageView(
-                data: payUrl,
-                version: QrVersions.auto,
-                size: 200.0,
-              ),
             ),
             const SizedBox(height: 20),
             Text("Số tiền: $formattedAmount", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.redAccent)),
@@ -675,42 +649,60 @@ class _BookingScreenState extends State<BookingScreen> {
         actions: [
           Column(
             children: [
-              // Nút mở link tự động kích hoạt nhảy thẳng vào app MoMo thiết bị
+              // Nút mở link VNPay nhảy thẳng vào trình duyệt web điện thoại
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   icon: const Icon(Icons.open_in_new, color: Colors.white, size: 18),
-                  label: const Text("Mở Ứng Dụng MoMo", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  label: const Text("Mở Cổng VNPay", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   onPressed: () async {
-                    final Uri url = Uri.parse(deeplink);
-                    if (await canLaunchUrl(url)) {
-                      await launchUrl(url, mode: LaunchMode.externalApplication);
-                    } else {
-                      await launchUrl(Uri.parse(payUrl), mode: LaunchMode.externalApplication);
+                    // 1. Dọn dẹp link: Xóa sạch khoảng trắng thừa ở đầu/cuối link (nếu có)
+                    final String cleanUrl = paymentUrl.trim();
+                    final Uri url = Uri.parse(cleanUrl);
+
+                    try {
+                      // 2. ÉP MỞ TRÌNH DUYỆT BÊN NGOÀI BỎ QUA canLaunchUrl
+                      bool launched = await launchUrl(
+                        url, 
+                        mode: LaunchMode.externalApplication,
+                      );
+                      
+                      // 3. Nếu điện thoại chặn mở app ngoài, ta mở web ẩn ngay bên trong app (Dự phòng)
+                      if (!launched) {
+                        await launchUrl(
+                          url, 
+                          mode: LaunchMode.inAppWebView, // Mở bằng trình duyệt tích hợp của app
+                        );
+                      }
+                    } catch (e) {
+                      print("🚨 LỖI MỞ TRÌNH DUYỆT: $e");
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Không thể mở cổng thanh toán. Lỗi: $e')),
+                      );
                     }
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.pink.shade600, 
+                    backgroundColor: Colors.blue.shade700, 
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
               ),
               const SizedBox(height: 8),
-              // Nút quay về màn hình cũ
+              // Nút quay về hoàn tất
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton(
                   onPressed: () {
-                    Navigator.pop(ctx); // Đóng hộp thoại QR
+                    Navigator.pop(ctx); // Đóng hộp thoại VNPay
                     _showSuccessDialog("Hệ thống đang ghi nhận thanh toán của bạn!", bookingCode);
                   },
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 12),
-                    side: BorderSide(color: Colors.pink.shade600),
+                    side: BorderSide(color: Colors.blue.shade700),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: Text("Tôi đã thanh toán xong", style: TextStyle(color: Colors.pink.shade600, fontWeight: FontWeight.bold)),
+                  child: Text("Tôi đã thanh toán xong", style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.bold)),
                 ),
               )
             ],

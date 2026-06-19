@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ung_dung_dat_lich_kham/Views/doctor_detail_screen.dart';
 import 'package:ung_dung_dat_lich_kham/Views/doctor_list_screen.dart';
+import 'package:ung_dung_dat_lich_kham/viewmodels/search_viewmodel.dart';
 import '../constants/ui_constants.dart';
-import '../viewmodels/search_viewmodel.dart';
+
 
 class GlobalSearchScreen extends StatefulWidget {
   const GlobalSearchScreen({super.key});
@@ -14,6 +15,15 @@ class GlobalSearchScreen extends StatefulWidget {
 
 class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
   final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    // 🌟 Tải lịch sử tìm kiếm từ LocalStorage ngay khi vừa vào màn hình
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<SearchViewModel>().loadSearchHistory();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,14 +41,13 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
         ),
         title: TextField(
           controller: _searchController,
-          autofocus: true, // Tự động bật bàn phím khi mở trang
+          autofocus: true, 
           decoration: InputDecoration(
             hintText: 'Tìm bác sĩ, chuyên khoa, phòng khám...',
             border: InputBorder.none,
             hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 15),
           ),
           onChanged: (value) {
-            // ✅ Gọi hàm xử lý Debounce 300ms
             context.read<SearchViewModel>().onSearchQueryChanged(value);
           },
         ),
@@ -56,7 +65,7 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
       body: searchVM.isLoading
           ? const Center(child: CircularProgressIndicator(color: kPrimaryColor))
           : _searchController.text.isEmpty
-              ? _buildEmptyState()
+              ? _buildHistoryOrEmptyState(searchVM) // 🌟 THAY ĐỔI Ở ĐÂY
               : ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
@@ -126,6 +135,59 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
                       )
                   ],
                 ),
+    );
+  }
+
+  // 🌟 GIAO DIỆN MỚI: Nếu có lịch sử thì hiển thị, nếu trống hoàn toàn thì hiện empty state cũ
+  Widget _buildHistoryOrEmptyState(SearchViewModel searchVM) {
+    if (searchVM.searchHistory.isEmpty) {
+      return _buildEmptyState();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                '🕒 Lịch sử tìm kiếm gần đây',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.grey),
+              ),
+              TextButton(
+                onPressed: () => searchVM.clearSearchHistory(),
+                child: const Text('Xóa hết', style: TextStyle(color: Colors.redAccent, fontSize: 13, fontWeight: FontWeight.bold)),
+              )
+            ],
+          ),
+        ),
+        Expanded(
+          child: ListView.builder(
+            itemCount: searchVM.searchHistory.length,
+            itemBuilder: (context, index) {
+              final historyItem = searchVM.searchHistory[index];
+              return ListTile(
+                leading: const Icon(Icons.history, color: Colors.black26, size: 20),
+                title: Text(historyItem, style: const TextStyle(color: Colors.black87, fontSize: 15)),
+                trailing: IconButton(
+                  icon: const Icon(Icons.close, color: Colors.grey, size: 16),
+                  onPressed: () => searchVM.deleteHistoryItem(historyItem),
+                ),
+                onTap: () {
+                  // Khi ấn vào từ khóa lịch sử:
+                  _searchController.text = historyItem; // Gán chữ lên thanh tìm kiếm
+                  _searchController.selection = TextSelection.fromPosition(
+                    TextPosition(offset: historyItem.length), // Đẩy con trỏ xuống cuối chữ
+                  );
+                  searchVM.onSearchQueryChanged(historyItem); // Kích hoạt tìm kiếm dữ liệu luôn
+                },
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 

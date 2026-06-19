@@ -53,5 +53,10 @@
 	<string>Ứng dụng cần quyền sử dụng Camera để bác sĩ có thể nhìn thấy bạn trong lúc khám.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Ứng dụng cần quyền sử dụng Micro để bạn có thể trao đổi với bác sĩ.</string>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+	<string>http</string>
+	<string>https</string>
+	</array>
 </dict>
 </plist>

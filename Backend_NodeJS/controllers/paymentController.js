@@ -1,22 +1,182 @@
 import paymentModel from "../models/paymentModel.js";
+import moment from 'moment';
+import crypto from 'crypto';
+import qs from 'qs';
+import { taoVaGuiHoaDonPDF } from "../utils/invoiceService.js";
 
-export default class paymentController{
-    static async getPaymentHistory(req,res){
-        try{
+// Hàm bắt buộc của VNPay dùng để sắp xếp các tham số theo bảng chữ cái trước khi mã hóa (Hash)
+function sortObject(obj) {
+    let sorted = {};
+    let str = [];
+    let key;
+    for (key in obj) {
+        // Sử dụng Object.prototype.hasOwnProperty.call thay vì obj.hasOwnProperty
+        if (Object.prototype.hasOwnProperty.call(obj, key)) {
+            str.push(encodeURIComponent(key));
+        }
+    }
+    str.sort();
+    for (key = 0; key < str.length; key++) {
+        sorted[str[key]] = encodeURIComponent(obj[str[key]]).replace(/%20/g, "+");
+    }
+    return sorted;
+}
+
+export default class paymentController {
+    static async getPaymentHistory(req, res) {
+        try {
             const userID = req.Ma_nguoi_dung;
-
             const result = await paymentModel.getPaymentHistory(userID);
 
             return res.status(200).json({
                 succeeded: true,
                 paymentHistory: result
             });
-        }
-        catch(error){
+        } catch (error) {
             return res.status(500).json({
                 succeeded: false,
                 message: "Lỗi server " + error.message
             });
+        }
+    }
+
+    static async createVNPayUrl(req, res) {
+        try {
+            const { bookingId } = req.body;
+
+            if (!bookingId) {
+                return res.status(400).json({ 
+                    succeeded: false, 
+                    message: "Thiếu thông tin mã lịch hẹn (bookingId)!" 
+                });
+            }
+
+            // Lấy số tiền từ Database
+            const rows = await paymentModel.getTotalMoney(bookingId, bookingId);
+
+            if (!rows || rows.length === 0) {
+                return res.status(404).json({ 
+                    succeeded: false, 
+                    message: "Không tìm thấy thông tin lịch hẹn trong hệ thống!" 
+                });
+            }
+
+            const giaGocTuDB = parseFloat(rows[0].Tong_tien);
+
+            // Quy đổi số tiền theo yêu cầu của VNPay (Nhân với 100)
+            const vnpayAmount = Math.round(giaGocTuDB * 100);
+
+            // ✅ Log số tiền sau khi lấy từ DB thành công để kiểm tra
+            console.log(`=== bookingId: ${bookingId} | Giá gốc DB: ${giaGocTuDB} | Gửi VNPay: ${vnpayAmount}`);
+
+            process.env.TZ = 'Asia/Ho_Chi_Minh';
+            let date = new Date();
+            let createDate = moment(date).format('YYYYMMDDHHmmss');
+            
+            // Lấy IP của thiết bị
+            let ipAddr = req.headers['x-forwarded-for'] || 
+                         req.connection.remoteAddress || 
+                         req.socket.remoteAddress || 
+                         req.connection.socket.remoteAddress;
+
+            let tmnCode = process.env.VNP_TMN_CODE;
+            let secretKey = process.env.VNP_HASH_SECRET;
+            let vnpUrl = process.env.VNP_URL;
+            let returnUrl = process.env.VNP_RETURN_URL;
+            
+            let orderId = bookingId || moment(date).format('DDHHmmss');
+
+            let vnp_Params = {};
+            vnp_Params['vnp_Version'] = '2.1.0';
+            vnp_Params['vnp_Command'] = 'pay';
+            vnp_Params['vnp_TmnCode'] = tmnCode;
+            vnp_Params['vnp_Locale'] = 'vn';
+            vnp_Params['vnp_CurrCode'] = 'VND';
+            vnp_Params['vnp_TxnRef'] = orderId;
+            vnp_Params['vnp_OrderInfo'] = 'Thanh toan lich kham ' + orderId;
+            vnp_Params['vnp_OrderType'] = 'other';
+            vnp_Params['vnp_ReturnUrl'] = returnUrl;
+            vnp_Params['vnp_IpAddr'] = ipAddr;
+            vnp_Params['vnp_CreateDate'] = createDate;
+            vnp_Params['vnp_Amount'] = vnpayAmount; // ✅ Đã loại bỏ dòng gán "amount * 100" gây lỗi
+
+            // Sắp xếp dữ liệu
+            vnp_Params = sortObject(vnp_Params);
+
+            // Tạo chữ ký bảo mật (Hash)
+            let signData = qs.stringify(vnp_Params, { encode: false });
+            let hmac = crypto.createHmac("sha512", secretKey);
+            let signed = hmac.update(new Buffer.from(signData, 'utf-8')).digest("hex"); 
+            vnp_Params['vnp_SecureHash'] = signed;
+            
+            vnpUrl += '?' + qs.stringify(vnp_Params, { encode: false });
+
+            // Trả link về cho Flutter
+            return res.status(200).json({
+                succeeded: true,
+                message: "Tạo link VNPay thành công",
+                data: {
+                    paymentUrl: vnpUrl
+                }
+            });
+
+        } catch (error) {
+            console.error("Lỗi tạo VNPay URL: ", error);
+            return res.status(500).json({ succeeded: false, message: "Lỗi Server" });
+        }
+    }
+
+    // 2. API Hứng kết quả trả về từ VNPay
+    static async vnpayReturn(req, res) {
+        try {
+            let vnp_Params = req.query;
+            let secureHash = vnp_Params['vnp_SecureHash'];
+
+            // Xóa hash ra khỏi tham số để xác thực lại
+            delete vnp_Params['vnp_SecureHash'];
+            delete vnp_Params['vnp_SecureHashType'];
+
+            vnp_Params = sortObject(vnp_Params);
+
+            let secretKey = process.env.VNP_HASH_SECRET;
+            let signData = qs.stringify(vnp_Params, { encode: false });
+            let hmac = crypto.createHmac("sha512", secretKey);
+            let signed = hmac.update(new Buffer.from(signData, 'utf-8')).digest("hex");
+
+            if (secureHash === signed) {
+                let responseCode = vnp_Params['vnp_ResponseCode'];
+                let bookingId = vnp_Params['vnp_TxnRef'];
+                const updatePayment = await paymentModel.updateStatus(bookingId);
+                const rows = await paymentModel.getPayment(bookingId);
+
+                if (responseCode === '00') {
+                    console.log(`Booking ${bookingId} thanh toán THÀNH CÔNG!`);
+                    if (rows.length > 0) {
+                        const thongTinHoaDon = {
+                            maGiaoDich: rows[0].Ma_giao_dich,
+                            maBooking: rows[0].Ma_booking,
+                            tenBenhNhan: rows[0].Ten_benh_nhan,
+                            emailNguoiDung: rows[0].Email,
+                            tenBacSi: rows[0].Ten_bac_si,
+                            tenDichVu: rows[0].Ten_dich_vu,
+                            soTien: rows[0].Tong_tien,
+                            tenPhongKham: rows[0].Ten_phong_kham,
+                            viTriPhongKham: rows[0].Vi_tri
+                        };
+
+                        // Chạy ngầm việc gửi email để không làm chậm phản hồi (response) về MoMo
+                        taoVaGuiHoaDonPDF(thongTinHoaDon).catch(err => console.error("Lỗi gửi email ngầm:", err));
+                    }
+                    return res.status(200).send("Thanh toán thành công. Vui lòng quay lại ứng dụng.");
+                } else {
+                    return res.status(200).send("Thanh toán thất bại hoặc đã bị hủy.");
+                }
+            } else {
+                return res.status(400).send("Chữ ký bảo mật không hợp lệ (Sai Checksum)!");
+            }
+        } catch (error) {
+            console.error("Lỗi VNPay Return: ", error);
+            return res.status(500).send("Lỗi xử lý giao dịch.");
         }
     }
 }

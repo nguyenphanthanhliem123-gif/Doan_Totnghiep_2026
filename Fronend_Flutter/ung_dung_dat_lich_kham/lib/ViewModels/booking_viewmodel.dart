@@ -70,44 +70,54 @@ class BookingViewModel extends ChangeNotifier {
     }
   }
 
-  Future<Map<String, dynamic>> createMomoPayment({
-    required String bookingCode,
-    required String amount,
+  Future<Map<String, dynamic>> createVnpayPayment({
+    required String bookingCode, 
   }) async {
     try {
-      final res = await http.post(
-        Uri.parse('$BASE_URL/api/booking-momo/create-momo-payment'),
-        headers: {"Content-Type": "application/json"},
+
+      // 2. Gửi request gọi API Backend Node.js
+      final response = await http.post(
+        Uri.parse('$BASE_URL/api/payment/create-vnpay-url'),
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: jsonEncode({
-          "bookingCode": bookingCode,
-          "amount": amount,
+          "bookingId": bookingCode,
         }),
       );
 
-      if (res.statusCode == 200) {
-        final Map<String, dynamic> body = jsonDecode(res.body);
+      // 3. Xử lý kết quả Backend trả về
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body);
+        
         if (body['succeeded'] == true) {
+          // Trả về link thành công để BookingScreen mở URL
           return {
-            'succeeded': true,
-            'payUrl': body['payUrl'],
-            'deeplink': body['deeplink'],
+            "succeeded": true,
+            "paymentUrl": body['data']['paymentUrl'],
+          };
+        } else {
+          // Lỗi logic từ Backend (Dữ liệu sai, lỗi băm chuỗi bảo mật,...)
+          return {
+            "succeeded": false,
+            "message": body['message'] ?? "Lỗi tạo giao dịch VNPay từ máy chủ.",
           };
         }
-        return {
-          'succeeded': false,
-          'message': body['message'] ?? 'Khởi tạo cổng thanh toán MoMo thất bại'
-        };
       } else {
+        // Lỗi sập server hoặc sai URL (404, 500)
         return {
-          'succeeded': false,
-          'message': 'Lỗi kết nối Server: ${res.statusCode}'
+          "succeeded": false,
+          "message": "Lỗi kết nối máy chủ (${response.statusCode}).",
         };
       }
     } catch (e) {
+      // Lỗi mất mạng hoặc máy chủ không phản hồi
+      print("Exception tại createVnpayPayment: $e");
       return {
-        'succeeded': false,
-        'message': 'Lỗi hệ thống cổng thanh toán: $e'
+        "succeeded": false,
+        "message": "Mất kết nối mạng. Không thể khởi tạo cổng thanh toán.",
       };
     }
   }
+
 }
