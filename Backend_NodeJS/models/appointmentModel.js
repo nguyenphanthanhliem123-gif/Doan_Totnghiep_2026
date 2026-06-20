@@ -1,4 +1,4 @@
-import { execute } from "../config/db.js";
+import { beginTransaction, commitTransaction, execute, rollbackTransaction } from "../config/db.js";
 
 export default class appointmentModel {
 
@@ -96,7 +96,9 @@ export default class appointmentModel {
 
     // Hủy lịch hẹn với điều kiện chặn hủy trước 2 giờ
     static async cancelAppointment(appointmentID) {
+        let conn;
         try {
+            conn = await beginTransaction();
             // 1. Lấy thời gian bắt đầu khám, trạng thái VÀ LẤY THÊM Ma_khung_gio
             const checkSql = `
                 SELECT lh.Ma_khung_gio, kg.Thoi_gian_Bdau, lh.Trang_thai_lich_hen 
@@ -104,7 +106,7 @@ export default class appointmentModel {
                 JOIN khung_gio_kham kg ON lh.Ma_khung_gio = kg.Ma_khung_gio
                 WHERE lh.Ma_lich_hen = ?
             `;
-            const [rows] = await execute(checkSql, [appointmentID]);
+            const [rows] = await conn.execute(checkSql, [appointmentID]);
             if (rows.length === 0) {
                 return { success: false, message: "Không tìm thấy lịch hẹn này." };
             }
@@ -131,18 +133,19 @@ export default class appointmentModel {
 
             // 2. Cập nhật trạng thái lịch hẹn thành 'cancelled'
             const updateSql = `UPDATE lich_hen SET Trang_thai_lich_hen = 'cancelled' WHERE Ma_lich_hen = ?`;
-            await execute(updateSql, [appointmentID]);
+            await conn.execute(updateSql, [appointmentID]);
 
             // 🌟 3. Nhả khung giờ về lại trạng thái 'available'
             const releaseSlotSql = `UPDATE khung_gio_kham SET Trang_thai = 'available' WHERE Ma_khung_gio = ?`;
-            await execute(releaseSlotSql, [maKhungGio]);
+            await conn.execute(releaseSlotSql, [maKhungGio]);
 
-            // 4. TODO: KHỞI TẠO HOÀN TIỀN TỰ ĐỘNG...
-            console.log(`[TODO_REFUND]: Lịch hẹn ${appointmentID} thỏa điều kiện hoàn tiền nếu đã thanh toán online.`);
+            await commitTransaction(conn);
 
             return { success: true, message: "Hủy lịch khám thành công." };
 
         } catch (error) {
+            if(conn)
+            await rollbackTransaction(conn);
             throw new Error('Lỗi khi xử lý hủy lịch: ' + error.message);
         }
     }
@@ -343,5 +346,25 @@ export default class appointmentModel {
         } catch (error) {
             throw new Error('Lỗi truy vấn danh sách lịch hẹn bác sĩ: ' + error.message);
         }
+    }
+
+    // Lấy thông tin thanh toán và giờ khám của 1 lịch hẹn
+    static async getAppointmentForRefund(appointmentID) {
+        // Truy vấn nối bảng: lich_hen -> khung_gio_kham -> thanh_toan
+        const sql = `
+            SELECT 
+                lh.Ma_booking, 
+                kg.Thoi_gian_Bdau, 
+                tt.Ma_giao_dich, 
+                tt.Tong_tien, 
+                tt.Thoi_diem_thanh_toan,
+                tt.Trang_thai_thanh_toan
+            FROM lich_hen lh
+            JOIN khung_gio_kham kg ON lh.Ma_khung_gio = kg.Ma_khung_gio
+            LEFT JOIN thanh_toan tt ON lh.Ma_lich_hen = tt.Ma_lich_hen
+            WHERE lh.Ma_lich_hen = ?
+        `;
+        const [rows] = await execute(sql, [appointmentID]);
+        return rows.length > 0 ? rows[0] : null;
     }
 }

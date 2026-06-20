@@ -28,6 +28,21 @@ export default class bookingModel {
         return rows.length ? rows[0] : null;
     }
 
+    static async getSlotReal(Ma_khung_gio){
+        try{
+               const checkSql = `
+                    SELECT COUNT(*) as count 
+                    FROM lich_hen 
+                    WHERE Ma_khung_gio = ? AND Trang_thai_lich_hen != 'cancelled'
+                `;
+                const [rows] = await execute(checkSql, [Ma_khung_gio]);
+
+                return rows;
+        }catch(error){
+            throw new Error("Lỗi bookingModel.getSlotReal: " + error.message);
+        }
+    }
+
 
     // Tạo lịch hẹn mới vào Database
     static async createAppointment(data) {
@@ -88,5 +103,21 @@ export default class bookingModel {
             paymentData.Tong_tien
         ]);
         return result.insertId;
+    }
+
+    static async saveTransactionCode(transactionCode, date, paymentCode){
+        try{
+            const query = `
+                UPDATE thanh_toan 
+                SET Ma_giao_dich = ?, Thoi_diem_thanh_toan = ?
+                WHERE Ma_thanh_toan = ?
+            `;
+
+            const [result] = await execute(query, [transactionCode, date, paymentCode]);
+
+            return result.affectedRows;
+        }catch(error){
+            throw new Error("Lỗi paymentModel.saveTransactionCode: " + error.message);
+        }
     }
 }

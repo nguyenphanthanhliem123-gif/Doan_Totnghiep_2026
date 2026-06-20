@@ -26,6 +26,14 @@ export default class bookingController {
                 return res.status(400).json({ succeeded: false, message: "Tài khoản của bạn chưa có hồ sơ bệnh nhân!" });
             }
 
+            const rows = await bookingModel.getSlotReal(Ma_khung_gio);
+            if (rows[0].count > 0) {
+                return res.status(400).json({ 
+                    succeeded: false, 
+                    message: "Rất tiếc, khung giờ này vừa có người khác đặt mất rồi!" 
+                });
+            }
+
             // 1. Kiểm tra slot khám có còn trống không?
             const slot = await bookingModel.getSlot(Ma_khung_gio);
             if (!slot) return res.status(404).json({ succeeded: false, message: "Không tìm thấy khung giờ này." });

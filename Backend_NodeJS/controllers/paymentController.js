@@ -2,7 +2,10 @@ import paymentModel from "../models/paymentModel.js";
 import moment from 'moment';
 import crypto from 'crypto';
 import qs from 'qs';
+import VNPayServices from "../services/vnpayService.js";
 import { taoVaGuiHoaDonPDF } from "../utils/invoiceService.js";
+import appointmentModel from "../models/AppointmentModel.js";
+import bookingModel from "../models/bookingModel.js";
 
 // Hàm bắt buộc của VNPay dùng để sắp xếp các tham số theo bảng chữ cái trước khi mã hóa (Hash)
 function sortObject(obj) {
@@ -146,10 +149,14 @@ export default class paymentController {
             if (secureHash === signed) {
                 let responseCode = vnp_Params['vnp_ResponseCode'];
                 let bookingId = vnp_Params['vnp_TxnRef'];
-                const updatePayment = await paymentModel.updateStatus(bookingId);
+                let vnp_PayDate = vnp_Params['vnp_PayDate'];
+                let vnp_TransactionNo = vnp_Params['vnp_TransactionNo'];
+                let thoiDiemThanhToanChuan = moment(vnp_PayDate, 'YYYYMMDDHHmmss').format('YYYY-MM-DD HH:mm:ss');
                 const rows = await paymentModel.getPayment(bookingId);
 
                 if (responseCode === '00') {
+                    await paymentModel.updateStatus(bookingId, 'paid');
+                    await bookingModel.saveTransactionCode(vnp_TransactionNo, thoiDiemThanhToanChuan, rows[0].Ma_thanh_toan);
                     console.log(`Booking ${bookingId} thanh toán THÀNH CÔNG!`);
                     if (rows.length > 0) {
                         const thongTinHoaDon = {

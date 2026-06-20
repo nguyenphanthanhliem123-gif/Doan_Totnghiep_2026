@@ -1,5 +1,6 @@
 import { execute } from '../config/db.js';
 
+
 export default class paymentModel{
     static async getPaymentHistory(userID){
         try{
@@ -68,10 +69,10 @@ export default class paymentModel{
         }
     }
 
-    static async updateStatus(bookingCode){
+    static async updateStatus(bookingCode, status){
         try{
-            const [result] = await execute(`UPDATE thanh_toan SET Trang_thai_thanh_toan = 'paid' WHERE Ma_lich_hen = (SELECT Ma_lich_hen FROM lich_hen WHERE Ma_booking = ?)`,
-                [bookingCode]);
+            const [result] = await execute(`UPDATE thanh_toan SET Trang_thai_thanh_toan = ? WHERE Ma_lich_hen = (SELECT Ma_lich_hen FROM lich_hen WHERE Ma_booking = ?)`,
+                [status, bookingCode]);
             return result.affectedRows;
         }
         catch(error){
@@ -83,6 +84,7 @@ export default class paymentModel{
         try{
             const queryData = `
                 SELECT 
+                    tt.Ma_thanh_toan,
                     tt.Ma_giao_dich, 
                     lh.Ma_booking, 
                     nt.Ten_nguoi_than AS Ten_benh_nhan, 
@@ -91,7 +93,8 @@ export default class paymentModel{
                     lh.Tong_tien,
                     dv.Ten_dich_vu,
                     pk.Ten_phong_kham,
-                    pk.Vi_tri
+                    pk.Vi_tri,
+                    kgk.Thoi_gian_Bdau AS Ngay_kham
                 FROM thanh_toan tt
                 JOIN lich_hen lh ON tt.Ma_lich_hen = lh.Ma_lich_hen
                 JOIN benh_nhan bn ON lh.Ma_benh_nhan = bn.Ma_benh_nhan
