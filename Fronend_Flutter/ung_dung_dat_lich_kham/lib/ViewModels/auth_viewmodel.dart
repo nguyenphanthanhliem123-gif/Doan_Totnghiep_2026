@@ -51,11 +51,21 @@ class AuthViewModel extends ChangeNotifier {
           await prefs.setString('ma_nguoi_dung', maNguoiDung);
           print("Lưu ma_nguoi_dung thành công: $maNguoiDung"); // Log ra màn hình để bạn dễ debug
         }
+
+        // Lưu token của người dùng vào SharedPreferences để sử dụng cho các request bảo mật sau này
         final token = responseData['token']?.toString() ?? '';
         if (token.isNotEmpty) {
           await prefs.setString('token', token);
           print("Lưu token thành công");
         }
+
+        // Lưu role của người dùng (ví dụ: "Benh_nhan", "Bac_si", "Admin") vào SharedPreferences
+        final role = responseData['role']?.toString() ?? '';
+        if (role.isNotEmpty) {
+          await prefs.setString('role', role);
+          print("Lưu role thành công: $role");
+        }
+        
         // Trả về kết quả thành công và kèm theo token nếu cần lưu trữ sau này
         return {
           "success": true,

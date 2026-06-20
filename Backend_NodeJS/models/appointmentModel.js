@@ -5,6 +5,16 @@ export default class appointmentModel {
     // Lấy danh sách lịch hẹn của bệnh nhân dựa trên userID
     static async getPatientAppointments(userID) {
         try {
+            // Quét và hủy các ca 'pending' quá hạn trước khi query
+            const cleanupSql = `
+                UPDATE lich_hen lh
+                JOIN khung_gio_kham kg ON lh.Ma_khung_gio = kg.Ma_khung_gio
+                SET lh.Trang_thai_lich_hen = 'cancelled'
+                WHERE lh.Trang_thai_lich_hen = 'pending' AND kg.Thoi_gian_Bdau < NOW()
+            `;
+            await execute(cleanupSql);
+
+            // Lấy danh sách lịch hẹn của bệnh nhân dựa trên userID
             const sql = `
                 SELECT 
                     lh.Ma_lich_hen,
@@ -123,7 +133,7 @@ export default class appointmentModel {
             const updateSql = `UPDATE lich_hen SET Trang_thai_lich_hen = 'cancelled' WHERE Ma_lich_hen = ?`;
             await execute(updateSql, [appointmentID]);
 
-            // 🌟 3. BƯỚC MỚI THÊM: Nhả khung giờ về lại trạng thái 'available'
+            // 🌟 3. Nhả khung giờ về lại trạng thái 'available'
             const releaseSlotSql = `UPDATE khung_gio_kham SET Trang_thai = 'available' WHERE Ma_khung_gio = ?`;
             await execute(releaseSlotSql, [maKhungGio]);
 
@@ -175,6 +185,163 @@ export default class appointmentModel {
             return { success: true, message: "Đổi lịch khám thành công!" };
         } catch (error) {
             throw new Error('Lỗi khi đổi lịch: ' + error.message);
+        }
+    }
+
+    // =====================================================================
+    // CÁC HÀM DÀNH CHO BÁC SĨ (DOCTOR PORTAL)
+    // =====================================================================
+
+    // Lấy dữ liệu tổng hợp cho Trang chủ (Dashboard) của Bác sĩ
+    static async getDoctorDashboard(userID) {
+        try {
+            // Quét và hủy các ca 'pending' quá hạn trước khi query
+            const cleanupSql = `
+                UPDATE lich_hen lh
+                JOIN khung_gio_kham kg ON lh.Ma_khung_gio = kg.Ma_khung_gio
+                SET lh.Trang_thai_lich_hen = 'cancelled'
+                WHERE lh.Trang_thai_lich_hen = 'pending' AND kg.Thoi_gian_Bdau < NOW()
+            `;
+            await execute(cleanupSql);
+
+            // 1. Lấy Ma_bac_si dựa trên userID
+            const [doctorInfo] = await execute(`SELECT Ma_bac_si FROM bac_si WHERE Ma_nguoi_dung = ?`, [userID]);
+            if (doctorInfo.length === 0) throw new Error('Tài khoản này không phải là bác sĩ.');
+            const maBacSi = doctorInfo[0].Ma_bac_si;
+
+            // 2. Lịch chờ xác nhận: CHỈ lấy những ca có giờ bắt đầu TRONG TƯƠNG LAI
+            const pendingSql = `
+                SELECT lh.Ma_lich_hen, nd.Ten_nguoi_dung AS Ten_benh_nhan, kg.Thoi_gian_Bdau, lh.Trieu_chung
+                FROM lich_hen lh
+                JOIN khung_gio_kham kg ON lh.Ma_khung_gio = kg.Ma_khung_gio
+                JOIN benh_nhan bn ON lh.Ma_benh_nhan = bn.Ma_benh_nhan
+                JOIN nguoi_dung nd ON bn.Ma_nguoi_dung = nd.Ma_nguoi_dung
+                WHERE lh.Ma_bac_si = ? 
+                AND lh.Trang_thai_lich_hen = 'pending'
+                AND kg.Thoi_gian_Bdau >= NOW() -- 🌟 Thêm dòng này để ẩn ca quá hạn
+                ORDER BY kg.Thoi_gian_Bdau ASC
+            `;
+            const [pendingList] = await execute(pendingSql, [maBacSi]);
+
+            // 3. Lấy danh sách lịch khám hôm nay (Hiển thị tất cả ca confirmed của ngày hôm nay chưa xử lý)
+            const todaySql = `
+                SELECT lh.Ma_lich_hen, nd.Ten_nguoi_dung AS Ten_benh_nhan, kg.Thoi_gian_Bdau, lh.Hinh_thuc
+                FROM lich_hen lh
+                JOIN khung_gio_kham kg ON lh.Ma_khung_gio = kg.Ma_khung_gio
+                JOIN benh_nhan bn ON lh.Ma_benh_nhan = bn.Ma_benh_nhan
+                JOIN nguoi_dung nd ON bn.Ma_nguoi_dung = nd.Ma_nguoi_dung
+                WHERE lh.Ma_bac_si = ? 
+                AND lh.Trang_thai_lich_hen = 'confirmed' 
+                AND DATE(kg.Thoi_gian_Bdau) = CURDATE() -- 🌟 Chỉ giữ lại điều kiện ngày hôm nay, bỏ điều kiện NOW() của giờ kết thúc
+                ORDER BY kg.Thoi_gian_Bdau ASC
+            `;
+            const [todayList] = await execute(todaySql, [maBacSi]);
+
+            // 4. Thống kê số lượng lịch hẹn đã hủy hôm nay
+            const cancelSql = `
+                SELECT COUNT(*) as CancelCount 
+                FROM lich_hen lh
+                JOIN khung_gio_kham kg ON lh.Ma_khung_gio = kg.Ma_khung_gio
+                WHERE lh.Ma_bac_si = ? AND lh.Trang_thai_lich_hen = 'cancelled'
+                AND DATE(kg.Thoi_gian_Bdau) = CURDATE()
+            `;
+            const [cancelCount] = await execute(cancelSql, [maBacSi]);
+
+            return {
+                stats: {
+                    pendingCount: pendingList.length,
+                    todayCount: todayList.length,
+                    cancelledCount: cancelCount[0].CancelCount
+                },
+                pendingAppointments: pendingList,
+                todayAppointments: todayList
+            };
+
+        } catch (error) {
+            throw new Error('Lỗi truy vấn Dashboard Bác sĩ: ' + error.message);
+        }
+    }
+
+    // Bác sĩ xác nhận hoặc từ chối lịch hẹn
+    static async updateAppointmentStatus(appointmentID, status, userID) {
+        try {
+            // 1. Xác thực quyền bác sĩ
+            const [doctorInfo] = await execute(`SELECT Ma_bac_si FROM bac_si WHERE Ma_nguoi_dung = ?`, [userID]);
+            if (doctorInfo.length === 0) throw new Error('Không có quyền truy cập.');
+            const maBacSi = doctorInfo[0].Ma_bac_si;
+
+            // 2. Lấy Mã khung giờ của lịch hẹn hiện tại
+            const [apptInfo] = await execute(
+                `SELECT Ma_khung_gio FROM lich_hen WHERE Ma_lich_hen = ? AND Ma_bac_si = ?`, 
+                [appointmentID, maBacSi]
+            );
+            
+            if (apptInfo.length === 0) {
+                throw new Error('Lịch hẹn không tồn tại hoặc không thuộc thẩm quyền của bạn.');
+            }
+
+            const maKhungGio = apptInfo[0].Ma_khung_gio;
+
+            // 3. Xử lý logic dựa trên hành động của bác sĩ
+            if (status === 'cancelled') {
+                // 🌟 Nhả khung giờ về lại trạng thái trống để người khác đặt
+                await execute(`UPDATE khung_gio_kham SET Trang_thai = 'available' WHERE Ma_khung_gio = ?`, [maKhungGio]);
+            } else if (status === 'confirmed') {
+                // Đảm bảo chắc chắn slot này đã bị khóa khi bác sĩ duyệt
+                await execute(`UPDATE khung_gio_kham SET Trang_thai = 'booked' WHERE Ma_khung_gio = ?`, [maKhungGio]);
+            }
+
+            // 4. Cập nhật trạng thái cho bảng Lịch Hẹn
+            await execute(`UPDATE lich_hen SET Trang_thai_lich_hen = ? WHERE Ma_lich_hen = ?`, [status, appointmentID]);
+
+            return { success: true, message: status === 'cancelled' ? "Đã từ chối và giải phóng khung giờ." : "Đã xác nhận lịch hẹn." };
+        } catch (error) {
+            throw new Error('Lỗi cập nhật trạng thái lịch hẹn: ' + error.message);
+        }
+    }
+
+    // Lấy tất cả lịch hẹn của một bác sĩ (Dành cho màn hình Danh sách 5 Tabs)
+    static async getAllDoctorAppointments(userID) {
+        try {
+            // Xác thực và lấy mã bác sĩ
+            const [doctorInfo] = await execute(`SELECT Ma_bac_si FROM bac_si WHERE Ma_nguoi_dung = ?`, [userID]);
+            if (doctorInfo.length === 0) throw new Error('Tài khoản này không phải là bác sĩ.');
+            const maBacSi = doctorInfo[0].Ma_bac_si;
+
+            // Quét dọn các ca 'pending' quá hạn của chính bác sĩ này
+            const cleanupSql = `
+                UPDATE lich_hen lh
+                JOIN khung_gio_kham kg ON lh.Ma_khung_gio = kg.Ma_khung_gio
+                SET lh.Trang_thai_lich_hen = 'cancelled'
+                WHERE lh.Trang_thai_lich_hen = 'pending' 
+                AND kg.Thoi_gian_Bdau < NOW() 
+                AND lh.Ma_bac_si = ?
+            `;
+            await execute(cleanupSql, [maBacSi]);
+
+            // Truy vấn lấy toàn bộ lịch hẹn
+            const sql = `
+                SELECT 
+                    lh.Ma_lich_hen,
+                    lh.Ma_booking,
+                    lh.Trang_thai_lich_hen,
+                    lh.Hinh_thuc,
+                    kg.Thoi_gian_Bdau,
+                    kg.Thoi_gian_Kthuc,
+                    nd.Ten_nguoi_dung AS Ten_benh_nhan,
+                    nd.Anh_dai_dien AS Anh_benh_nhan
+                FROM lich_hen lh
+                JOIN khung_gio_kham kg ON lh.Ma_khung_gio = kg.Ma_khung_gio
+                JOIN benh_nhan bn ON lh.Ma_benh_nhan = bn.Ma_benh_nhan
+                JOIN nguoi_dung nd ON bn.Ma_nguoi_dung = nd.Ma_nguoi_dung
+                WHERE lh.Ma_bac_si = ?
+                ORDER BY kg.Thoi_gian_Bdau DESC -- Xếp ca mới nhất lên đầu
+            `;
+            
+            const [list] = await execute(sql, [maBacSi]);
+            return list;
+        } catch (error) {
+            throw new Error('Lỗi truy vấn danh sách lịch hẹn bác sĩ: ' + error.message);
         }
     }
 }

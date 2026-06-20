@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../viewmodels/auth_viewmodel.dart';
-import 'signup_screen.dart';
 import 'main_screen.dart';
 import 'forgot_password_screen.dart';
-import 'package:google_sign_in/google_sign_in.dart';
+import 'doctor_main_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -21,60 +20,6 @@ class _LoginScreenState extends State<LoginScreen> {
   // Màu sắc chủ đạo từ thiết kế
   final Color primaryColor = const Color(0xFF4BCBEB);
   final Color textFieldBgColor = const Color(0xFFEAF8FB);
-
-  Future<void> _handleGoogleSignIn(BuildContext context) async {
-    try {
-      // 1. Khởi tạo cấu hình rõ ràng: Xin quyền truy cập Email
-      final GoogleSignIn googleSignIn = GoogleSignIn(
-        // Lấy clientId từ Google Cloud Console sau khi tạo OAuth 2.0 Client ID
-        clientId: '103197146336-5c1d0231e2327rmp9793808d43i3hhfo.apps.googleusercontent.com',
-        scopes: <String>[
-          'email',
-        ],
-      );
-
-      // 2. Gọi cửa sổ đăng nhập của Google hiện lên
-      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
-
-      // Nếu người dùng bấm nút "Hủy" hoặc đóng bảng Google
-      if (googleUser == null) return; 
-
-      final authVM = Provider.of<AuthViewModel>(context, listen: false);
-
-      // 3. Truyền dữ liệu Google trả về xuống Backend
-      final result = await authVM.oauthLogin(
-        email: googleUser.email,
-        fullName: googleUser.displayName ?? 'Người dùng',
-        provider: 'Google',
-        providerId: googleUser.id,
-        avatar: googleUser.photoUrl ?? '',
-      );
-
-      // 4. Xử lý kết quả
-      if (result['success'] == true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Đăng nhập Google thành công!')),
-        );
-        
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const MainScreen()),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(result['message'])),
-        );
-      }
-    } catch (error) {
-      // In lỗi màu đỏ ra Terminal của VS Code để bạn đọc được
-      debugPrint("LỖI ĐĂNG NHẬP GOOGLE: $error"); 
-      
-      // Hiện thẳng cái lỗi thật lên màn hình app luôn
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi thật sự: $error')), 
-      );
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -101,10 +46,15 @@ class _LoginScreenState extends State<LoginScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const SizedBox(height: 20),
+            
+            // Hình ảnh minh họa (Tùy chọn: bạn có thể thêm logo bệnh viện ở đây cho đẹp)
+            Icon(Icons.local_hospital, size: 80, color: primaryColor),
+            const SizedBox(height: 30),
+
             _buildLabel('Email'),
             _buildTextField(
               controller: _emailController,
-              hintText: 'example@example.com',
+              hintText: 'example@healthcare.com',
               keyboardType: TextInputType.emailAddress,
             ),
             const SizedBox(height: 20),
@@ -145,27 +95,45 @@ class _LoginScreenState extends State<LoginScreen> {
               onPressed: authVM.isLoading
                   ? null
                   : () async {
-                      // Gọi hàm login kết nối API thật
+                      // 1. Gọi hàm login kết nối API thật
                       final result = await authVM.login(
                         _emailController.text.trim(),
                         _passController.text,
                       );
 
-                      // Kiểm tra kết quả xử lý trả về từ ViewModel
+                      // 2. Kiểm tra widget còn hiển thị không trước khi dùng context
+                      if (!context.mounted) return;
+
+                      // 3. Xử lý kết quả trả về
                       if (result['success'] == true) {
-                        // Hiện thông báo thành công lấy từ Backend
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(content: Text('Đăng nhập thành công!')),
                         );
                         
-                        // Điều hướng sang màn hình chính
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(builder: (context) => const MainScreen()),
-                        );
-                      
+                        final String role = result['role'] ?? '';
+
+                        // 🌟 LOGIC BẺ LÁI (ROUTING) DỰA VÀO QUYỀN
+                        if (role == 'Bac_si') {
+                          // Điều hướng sang màn hình của Bác sĩ
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(builder: (context) => const DoctorMainScreen()),
+                          );
+                          print("Chuyển hướng sang màn hình Bác Sĩ"); // Tạm in ra console chờ bạn code trang bác sĩ
+                        } else if (role == 'Benh_nhan') {
+                          // Điều hướng sang màn hình của Bệnh nhân
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(builder: (context) => const MainScreen()),
+                          );
+                        } else {
+                          // Đề phòng trường hợp Admin đăng nhập trên App
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Quyền truy cập không hợp lệ trên ứng dụng này.')),
+                          );
+                        }
                       } else {
-                        // Hiện thông báo lỗi chi tiết (Ví dụ: "Sai email...", "Thiếu trường...")
+                        // Hiện thông báo lỗi chi tiết
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text(result['message'])),
                         );
@@ -184,46 +152,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       'Đăng Nhập',
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
                     ),
-            ),
-            const SizedBox(height: 30),
-            const Center(
-              child: Text(
-                'hoặc đăng nhập bằng',
-                style: TextStyle(color: Colors.grey),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                GestureDetector(
-                  onTap: () => _handleGoogleSignIn(context),
-                  child: _buildSocialButton('G'),
-                ),
-                const SizedBox(width: 20),
-                GestureDetector(
-                  onTap: () {
-                    // TODO: Implement Facebook Sign In
-                  },
-                  child: _buildSocialButton('f'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 40),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text('Chưa có tài khoản? '),
-                GestureDetector(
-                  onTap: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => const SignupScreen()));
-                  },
-                  child: Text(
-                    'Đăng ký',
-                    style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ],
             ),
           ],
         ),
@@ -264,23 +192,6 @@ class _LoginScreenState extends State<LoginScreen> {
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           suffixIcon: suffixIcon,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSocialButton(String text) {
-    return Container(
-      width: 50,
-      height: 50,
-      decoration: BoxDecoration(
-        color: primaryColor,
-        shape: BoxShape.circle,
-      ),
-      child: Center(
-        child: Text(
-          text,
-          style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
         ),
       ),
     );

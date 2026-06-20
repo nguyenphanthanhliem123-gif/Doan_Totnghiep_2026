@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:ui';
 import 'package:ung_dung_dat_lich_kham/ViewModels/payment_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/search_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/health_record_viewmodel.dart';
@@ -12,6 +13,8 @@ import 'package:ung_dung_dat_lich_kham/viewmodels/clinic_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/review_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/booking_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/appointment_viewmodel.dart';
+import 'package:ung_dung_dat_lich_kham/viewmodels/doctor_appointment_viewmodel.dart';
+import 'package:ung_dung_dat_lich_kham/viewmodels/doctor_appointment_list_viewmodel.dart';
 
 void main() {
   runApp(const MyApp());
@@ -34,7 +37,10 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ReviewViewModel()),
         ChangeNotifierProvider(create: (_) => BookingViewModel()),
         ChangeNotifierProvider(create: (_) => AppointmentViewModel()),
-        ChangeNotifierProvider(create: (_) => PaymentViewmodel())
+        ChangeNotifierProvider(create: (_) => PaymentViewmodel()),
+        // --- ViewModel của bác sĩ ---
+        ChangeNotifierProvider(create: (_) => DoctorAppointmentViewModel()),
+        ChangeNotifierProvider(create: (_) => DoctorAppointmentListViewModel()),
       ],
       child: MaterialApp(
         title: 'Hệ thống đặt lịch khám bệnh',
@@ -42,6 +48,9 @@ class MyApp extends StatelessWidget {
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF00C3C9)),
         ),
+        scrollBehavior: const MaterialScrollBehavior().copyWith(
+        dragDevices: {PointerDeviceKind.mouse, PointerDeviceKind.touch},
+      ),
         home: const LoginScreen(),
       ),
     );

@@ -92,4 +92,79 @@ export default class AppointmentController {
             return res.status(500).json({ succeeded: false, message: "Lỗi hệ thống: " + error.message });
         }
     }
+
+    // =====================================================================
+    // CÁC HÀM DÀNH CHO BÁC SĨ (DOCTOR PORTAL)
+    // =====================================================================
+
+    // API đổ dữ liệu ra Trang chủ Bác sĩ
+    static async getDoctorDashboard(req, res) {
+        try {
+            const userID = req.Ma_nguoi_dung;
+            
+            // Check bảo mật: Đảm bảo người gọi API là bác sĩ
+            if (req.Phan_quyen !== 'Bac_si' && req.Phan_quyen !== 'Admin') {
+                return res.status(403).json({ succeeded: false, message: "Truy cập bị từ chối. Chỉ dành cho bác sĩ." });
+            }
+
+            const data = await AppointmentModel.getDoctorDashboard(userID);
+
+            return res.status(200).json({
+                succeeded: true,
+                message: "Lấy dữ liệu Dashboard thành công",
+                data: data
+            });
+        } catch (error) {
+            return res.status(500).json({ succeeded: false, message: error.message });
+        }
+    }
+
+    // API xử lý nút [Xác nhận] / [Từ chối]
+    static async updateStatus(req, res) {
+        try {
+            const userID = req.Ma_nguoi_dung;
+            const appointmentID = req.params.id;
+            const { action } = req.body; // action sẽ là 'confirm' hoặc 'reject'
+
+            // Check bảo mật: Đảm bảo người gọi API là bác sĩ
+            if (req.Phan_quyen !== 'Bac_si' && req.Phan_quyen !== 'Admin') {
+                return res.status(403).json({ succeeded: false, message: "Truy cập bị từ chối." });
+            }
+
+            if (!action || !['confirm', 'reject'].includes(action)) {
+                return res.status(400).json({ succeeded: false, message: "Hành động không hợp lệ." });
+            }
+
+            // Chuyển đổi action từ Frontend thành trạng thái Database
+            const status = action === 'confirm' ? 'confirmed' : 'cancelled';
+
+            const result = await AppointmentModel.updateAppointmentStatus(appointmentID, status, userID);
+
+            return res.status(200).json({ succeeded: true, message: result.message });
+        } catch (error) {
+            return res.status(500).json({ succeeded: false, message: error.message });
+        }
+    }
+
+    // API: Lấy toàn bộ danh sách lịch hẹn của Bác sĩ
+    static async getAllDoctorList(req, res) {
+        try {
+            const userID = req.Ma_nguoi_dung;
+
+            // Chặn quyền
+            if (req.Phan_quyen !== 'Bac_si' && req.Phan_quyen !== 'Admin') {
+                return res.status(403).json({ succeeded: false, message: "Truy cập bị từ chối. Chỉ dành cho bác sĩ." });
+            }
+
+            const data = await AppointmentModel.getAllDoctorAppointments(userID);
+
+            return res.status(200).json({
+                succeeded: true,
+                message: "Lấy danh sách lịch hẹn thành công",
+                data: data
+            });
+        } catch (error) {
+            return res.status(500).json({ succeeded: false, message: error.message });
+        }
+    }
 }
