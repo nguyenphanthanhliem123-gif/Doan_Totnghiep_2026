@@ -42,28 +42,36 @@ export default class bookingController {
             const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
             const randomNum = Math.floor(1000 + Math.random() * 9000);
             const Ma_booking = `BK${dateStr}_${randomNum}`;
-            const Phuong_thuc = req.body.Phuong_thuc || 'cash';
+            
+            // Ép phương thức thanh toán về chữ thường để khớp với ENUM trong Database
+            const rawPaymentMethod = req.body.Phuong_thuc || req.body.paymentMethod || 'cash';
+            const Phuong_thuc = rawPaymentMethod.toLowerCase();
 
-            // 4. Ghi vào bảng lich_hen
+            // 4. Xử lý Mã giao dịch theo phương thức thanh toán
+            let Ma_giao_dich = null;
+            if (Phuong_thuc === 'cash') {
+                Ma_giao_dich = `TXN_${Ma_booking}`;
+            }
+
+            // 5. Ghi vào bảng lich_hen
             const bookingData = {
                 Ma_booking, Ma_bac_si, Ma_benh_nhan: maBenhNhanThat, Ma_nguoi_than, Ma_dich_vu, Ma_khung_gio, Hinh_thuc, Trieu_chung, Tong_tien
             };
             const insertId = await bookingModel.createAppointment(bookingData);
 
-            // 5. Ghi vào bảng thanh_toan
+            // 6. Ghi vào bảng thanh_toan
             const paymentData = {
-                Ma_lich_hen: insertId, // Lấy ID của lịch hẹn vừa tạo
+                Ma_lich_hen: insertId,
                 Phuong_thuc: Phuong_thuc,
-                Trang_thai_thanh_toan: 'pending', // Mặc định là pending, nếu quét QR xong mới update thành 'paid'
-                Ma_giao_dich: `TXN_${Ma_booking}`, // Sinh mã giao dịch tự động
+                Trang_thai_thanh_toan: 'pending', 
+                Ma_giao_dich: Ma_giao_dich, 
                 Tong_tien: Tong_tien
             };
             await bookingModel.createPayment(paymentData);
 
-            // 6. Cập nhật trạng thái khung giờ thành 'booked' để người sau không đặt trùng được nữa
+            // 7. Cập nhật trạng thái khung giờ thành 'booked'
             await bookingModel.updateSlotStatus(Ma_khung_gio, 'booked');
 
-            // Trả kết quả thành công về cho Flutter
             return res.status(200).json({
                 succeeded: true,
                 message: "Đặt lịch khám thành công!",
@@ -80,12 +88,11 @@ export default class bookingController {
         }
     }
 
+    // API lấy lịch làm việc của bác sĩ theo ngày
     static async getDoctorSchedule(req,res){
         try{
             const date = req.query.q || '';
-
             const doctorSchedule = await bookingModel.getDoctorSchedule(date);
-
             return  res.status(200).json({
                 succeeded: true,
                 schedule: doctorSchedule

@@ -5,8 +5,8 @@ import 'package:ung_dung_dat_lich_kham/viewmodels/health_record_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/views/add_health_record.dart';
 import '../constants/ui_constants.dart';
 import '../viewmodels/booking_viewmodel.dart';
-import '../viewmodels/auth_viewmodel.dart'; // Import để lấy ID bệnh nhân
-import '../models/doctor_detail_model.dart'; // Import Model bác sĩ
+import '../viewmodels/auth_viewmodel.dart';
+import '../models/doctor_detail_model.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class BookingScreen extends StatefulWidget {
@@ -468,10 +468,8 @@ class _BookingScreenState extends State<BookingScreen> {
                     children: [
                       if (_isOffline) _buildPaymentButton("Tiền mặt", "cash", Icons.money, setModalState),
                       if (_isOffline) const SizedBox(width: 10),
-                      // 🌟 THAY ĐỔI: Đổi nút MoMo thành VNPay
+                      // Đổi nút MoMo thành VNPay
                       _buildPaymentButton("VNPay", "vnpay", Icons.payment_rounded, setModalState),
-                      const SizedBox(width: 10),
-                      _buildPaymentButton("Chuyển khoản", "transfer", Icons.account_balance, setModalState),
                     ],
                   ),
                   const SizedBox(height: 30),

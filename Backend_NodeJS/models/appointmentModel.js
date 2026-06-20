@@ -133,7 +133,7 @@ export default class appointmentModel {
             const updateSql = `UPDATE lich_hen SET Trang_thai_lich_hen = 'cancelled' WHERE Ma_lich_hen = ?`;
             await execute(updateSql, [appointmentID]);
 
-            // 🌟 3. Nhả khung giờ về lại trạng thái 'available'
+            // 3. Nhả khung giờ về lại trạng thái 'available'
             const releaseSlotSql = `UPDATE khung_gio_kham SET Trang_thai = 'available' WHERE Ma_khung_gio = ?`;
             await execute(releaseSlotSql, [maKhungGio]);
 
