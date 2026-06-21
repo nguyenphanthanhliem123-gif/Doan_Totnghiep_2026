@@ -174,7 +174,7 @@ export default class AppointmentController {
 
             const status = action === 'confirm' ? 'confirmed' : 'cancelled';
 
-            // 🌟 LOGIC XỬ LÝ DÒNG TIỀN KHI HỦY LỊCH (REJECT)
+            // LOGIC XỬ LÝ DÒNG TIỀN KHI HỦY LỊCH (REJECT)
             if (action === 'reject') {
                 const info = await AppointmentModel.getAppointmentForRefund(appointmentID);
                 
@@ -194,7 +194,7 @@ export default class AppointmentController {
                             ngayThanhToan: info.Thoi_diem_thanh_toan 
                         };
 
-                        // 🚀 CHẠY BẤT ĐỒNG BỘ (BACKGROUND TASK)
+                        // CHẠY BẤT ĐỒNG BỘ (BACKGROUND TASK)
                         // Giữ nguyên trạng thái 'paid' trong DB khi đang gọi sang VNPay
                         VNPayServices.xulyHoanTienVNPay(dataHoanTien)
                             .then(async (isSuccess) => {

@@ -87,6 +87,7 @@ export default class userModel {
         }
     }
 
+    // Hàm đổi mật khẩu (cần xác thực mật khẩu hiện tại)
     static async changePassword(userID, newHashedPassword, currentPassword){
         try{
             const [currentPasswordInDB] = await execute(`
@@ -127,6 +128,60 @@ export default class userModel {
             return result.affectedRows > 0;
         } catch (error) {
             throw new Error("Lỗi Database: " + error.message);
+        }
+    }
+
+    // Hàm lưu mã OTP mới vào database
+    static async saveOTP(email, otpHash, otpType) {
+        try {
+            // Trước khi lưu mã mới, vô hiệu hóa tất cả các mã cũ của email và loại này
+            await execute(
+                'UPDATE ma_otp SET Da_xac_thuc = 1 WHERE Email = ? AND Loai_otp = ?', 
+                [email, otpType]
+            );
+
+            // Lưu mã mới với hạn 5 phút
+            const [result] = await execute(
+                `INSERT INTO ma_otp (Email, Otp_hash, Loai_otp, Het_han_luc) 
+                 VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 5 MINUTE))`,
+                [email, otpHash, otpType]
+            );
+            return result.insertId;
+        } catch (error) {
+            throw new Error("Lỗi lưu OTP: " + error.message);
+        }
+    }
+
+    // Hàm lấy mã OTP mới nhất chưa xác thực và chưa hết hạn
+    static async getValidOTP(email, otpType) {
+        try {
+            const [rows] = await execute(
+                `SELECT * FROM ma_otp 
+                 WHERE Email = ? AND Loai_otp = ? AND Da_xac_thuc = 0 AND Het_han_luc > NOW() 
+                 ORDER BY Ngay_tao DESC LIMIT 1`,
+                [email, otpType]
+            );
+            return rows[0] ?? null;
+        } catch (error) {
+            throw new Error("Lỗi kiểm tra OTP: " + error.message);
+        }
+    }
+
+    // Hàm đánh dấu mã OTP đã được sử dụng
+    static async markOTPAsUsed(id) {
+        try {
+            await execute('UPDATE ma_otp SET Da_xac_thuc = 1 WHERE Ma_otp = ?', [id]);
+        } catch (error) {
+            throw new Error("Lỗi cập nhật OTP: " + error.message);
+        }
+    }
+
+    // Hàm tăng số lần thử sai
+    static async incrementOTPTries(id) {
+        try {
+            await execute('UPDATE ma_otp SET So_lan_thu = So_lan_thu + 1 WHERE Ma_otp = ?', [id]);
+        } catch (error) {
+            throw new Error("Lỗi cập nhật số lần thử: " + error.message);
         }
     }
 }

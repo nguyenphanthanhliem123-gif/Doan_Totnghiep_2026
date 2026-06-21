@@ -41,7 +41,7 @@ class BookingViewModel extends ChangeNotifier {
     required int doctorId,
     required int patientId,
     int? relativeId,
-    required int serviceId,
+    required List<int> serviceIds, // 🌟 ĐỔI THÀNH MẢNG (LIST)
     required int slotId,
     required String type,
     required String symptoms, 
@@ -56,7 +56,7 @@ class BookingViewModel extends ChangeNotifier {
           "Ma_bac_si": doctorId,
           "Ma_benh_nhan": patientId,
           "Ma_nguoi_than": relativeId,
-          "Ma_dich_vu": serviceId,
+          "Ma_dich_vu": serviceIds, // 🌟 GỬI MẢNG LÊN BACKEND
           "Ma_khung_gio": slotId,
           "Hinh_thuc": type,
           "Trieu_chung": symptoms,

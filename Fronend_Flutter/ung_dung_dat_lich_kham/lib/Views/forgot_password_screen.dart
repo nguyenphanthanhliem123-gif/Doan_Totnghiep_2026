@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../viewmodels/auth_viewmodel.dart';
+import 'otp_verification_screen.dart';
+
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
 
@@ -47,7 +49,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           children: [
             const SizedBox(height: 20),
             const Text(
-              'Nhập email của bạn để nhận liên kết đặt lại mật khẩu.', // ĐÃ SỬA CHỮ
+              'Nhập email của bạn để nhận liên kết đặt lại mật khẩu.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 16,
@@ -83,7 +85,16 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
                         // Nếu thành công, tự động quay về trang đăng nhập
                         if (result['success'] == true) {
-                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => OtpVerificationScreen(
+                                verificationTarget: email,
+                                isSms: false,
+                                isForgotPassword: true,
+                              ),
+                            ),
+                          );
                         }
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -105,7 +116,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
                     )
                   : const Text(
-                      'Gửi Liên Kết Khôi Phục', // ĐÃ SỬA CHỮ
+                      'Gửi Liên Kết Khôi Phục',
                       style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
                     ),
             ),
