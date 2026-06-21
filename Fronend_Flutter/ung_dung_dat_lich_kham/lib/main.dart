@@ -16,6 +16,7 @@ import 'package:ung_dung_dat_lich_kham/viewmodels/booking_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/appointment_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/doctor_appointment_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/doctor_appointment_list_viewmodel.dart';
+import 'package:ung_dung_dat_lich_kham/viewmodels/doctor_appointment_detail_viewmodel.dart';
 
 void main() {
   runApp(const MyApp());
@@ -43,7 +44,8 @@ class MyApp extends StatelessWidget {
         // --- ViewModel của bác sĩ ---
         ChangeNotifierProvider(create: (_) => DoctorAppointmentViewModel()),
         ChangeNotifierProvider(create: (_) => DoctorAppointmentListViewModel()),
-        ChangeNotifierProvider(create: (_) => AppointmentViewModel())
+        ChangeNotifierProvider(create: (_) => AppointmentViewModel()),
+        ChangeNotifierProvider(create: (_) => DoctorAppointmentDetailViewModel()),
       ],
       child: MaterialApp(
         title: 'Hệ thống đặt lịch khám bệnh',

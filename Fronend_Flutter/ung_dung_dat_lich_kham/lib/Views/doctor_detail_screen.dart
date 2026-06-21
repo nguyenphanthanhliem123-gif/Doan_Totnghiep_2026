@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../viewmodels/doctor_viewmodel.dart';
 import '../viewmodels/clinic_viewmodel.dart';
 import '../viewmodels/review_viewmodel.dart';
+import '../viewmodels/profile_viewmodel.dart';
 import '../constants/ui_constants.dart'; 
 import '../models/doctor_detail_model.dart';
 import 'doctor_review_screen.dart'; 
@@ -43,6 +44,7 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<DoctorViewModel>().fetchDoctorDetail(widget.doctorId); 
       context.read<ClinicViewModel>().fetchClinicDetail(widget.doctorId); 
+      context.read<ReviewViewModel>().clearReviews(); 
       context.read<ReviewViewModel>().fetchReviews(widget.doctorId);
     });
   }
@@ -363,6 +365,20 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
           child: SafeArea(
             child: ElevatedButton(
               onPressed: () async {
+                final profileVM = context.read<ProfileViewModel>();
+                
+                // Nếu sđt bị null hoặc rỗng -> Chặn lại và báo lỗi
+                if (profileVM.userProfile?.phone == null || profileVM.userProfile!.phone!.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Vui lòng cập nhật Số điện thoại trong tab Hồ Sơ cá nhân trước khi đặt lịch!'),
+                      backgroundColor: Colors.redAccent,
+                    ),
+                  );
+                  return; // Dừng luôn, không cho nhảy sang trang BookingScreen
+                }
+
+                // Nếu đã có SĐT thì cho đi tiếp bình thường
                 final isSuccess = await Navigator.push(
                   context,
                   MaterialPageRoute(

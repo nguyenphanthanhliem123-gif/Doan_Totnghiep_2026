@@ -330,4 +330,35 @@ export default class AppointmentController {
             return res.status(500).json({ succeeded: false, message: error.message });
         }
     }
+
+    // Lấy chi tiết ca khám hiển thị lên màn hình Chi tiết
+    static async getDoctorAppointmentDetail(req, res) {
+        try {
+            const { id } = req.params;
+
+            // Check bảo mật: Đảm bảo người gọi API là bác sĩ hoặc Admin
+            if (req.Phan_quyen !== 'Bac_si' && req.Phan_quyen !== 'Admin') {
+                return res.status(403).json({ succeeded: false, message: "Truy cập bị từ chối." });
+            }
+
+            if (!id) {
+                return res.status(400).json({ succeeded: false, message: "Thiếu mã lịch hẹn." });
+            }
+
+            const data = await AppointmentModel.getDoctorAppointmentDetail(id);
+
+            if (!data) {
+                return res.status(404).json({ succeeded: false, message: "Không tìm thấy thông tin ca khám." });
+            }
+
+            return res.status(200).json({
+                succeeded: true,
+                message: "Lấy chi tiết ca khám thành công",
+                data: data
+            });
+
+        } catch (error) {
+            return res.status(500).json({ succeeded: false, message: "Lỗi hệ thống: " + error.message });
+        }
+    }
 }

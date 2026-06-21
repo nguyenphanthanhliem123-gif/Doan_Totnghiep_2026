@@ -30,6 +30,16 @@ class ReviewViewModel extends ChangeNotifier {
 
   final String _baseUrl = "$BASE_URL/api/reviews/doctor";
 
+  // Hàm dọn dẹp sạch sẽ RAM trước khi tải bác sĩ mới
+  void clearReviews() {
+    _allReviews = [];
+    _filteredReviews = [];
+    _averageRating = 0.0;
+    _ratingDistribution = {5: 0.0, 4: 0.0, 3: 0.0, 2: 0.0, 1: 0.0};
+    _selectedFilter = 0;
+    notifyListeners();
+  }
+
   // Hàm gọi API để lấy danh sách đánh giá của bác sĩ theo Ma_bac_si
   Future<void> fetchReviews(int doctorId) async {
     _isLoading = true;
