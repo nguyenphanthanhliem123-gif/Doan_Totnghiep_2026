@@ -24,6 +24,9 @@ authAppointmentRoutes.put('/reschedule/:id', appointmentController.reschedule);
 // API Lấy dữ liệu trang chủ Bác sĩ
 authAppointmentRoutes.get('/doctor/dashboard', appointmentController.getDoctorDashboard);
 
+// API Lấy chi tiết 1 ca khám cho Bác sĩ
+authAppointmentRoutes.get('/doctor/detail/:id', appointmentController.getDoctorAppointmentDetail);
+
 // API Bác sĩ duyệt/từ chối lịch hẹn (Gửi action: 'confirm' hoặc 'reject' qua body)
 authAppointmentRoutes.put('/doctor/status/:id', appointmentController.updateStatus);
 

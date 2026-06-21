@@ -14,10 +14,6 @@ class _DoctorReviewScreenState extends State<DoctorReviewScreen> {
   @override
   void initState() {
     super.initState();
-    // Tạm thời truyền cứng ID bác sĩ = 1 để kiểm thử dữ liệu thực tế
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ReviewViewModel>().fetchReviews(1);
-    });
   }
 
   String formatDateStr(String timestamp) {

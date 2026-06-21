@@ -4,7 +4,7 @@ import 'package:google_sign_in/google_sign_in.dart'; // 🌟 Import Google Sign 
 import '../viewmodels/auth_viewmodel.dart';
 import 'main_screen.dart';
 import 'forgot_password_screen.dart';
-import 'doctor_main_screen.dart';
+import 'doctor/doctor_main_screen.dart';
 import 'signup_screen.dart'; 
 
 class LoginScreen extends StatefulWidget {

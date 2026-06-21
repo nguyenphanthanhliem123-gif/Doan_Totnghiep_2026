@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../constants/ui_constants.dart';
-import '../viewmodels/doctor_appointment_list_viewmodel.dart';
+import '../../constants/ui_constants.dart';
+import '../../viewmodels/doctor_appointment_list_viewmodel.dart';
+import 'doctor_appointment_detail_screen.dart'; 
 
 class DoctorAppointmentScreen extends StatefulWidget {
   const DoctorAppointmentScreen({super.key});
@@ -14,10 +15,17 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
   @override
   void initState() {
     super.initState();
-    // Tải dữ liệu ngay khi vào màn hình
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<DoctorAppointmentListViewModel>().loadAllAppointments();
     });
+  }
+
+  // Hàm tiện ích lọc ảnh rỗng an toàn
+  ImageProvider _safeAvatar(String? url) {
+    if (url == null || url.trim().isEmpty || !url.startsWith('http')) {
+      return const NetworkImage('https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png');
+    }
+    return NetworkImage(url);
   }
 
   @override
@@ -84,7 +92,6 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
   }
 
   Widget _buildAppointmentCard(BuildContext context, dynamic appointment, String status) {
-    // Ép kiểu thời gian UTC từ DB sang Local Việt Nam để hiển thị chuẩn xác
     final localStart = DateTime.parse(appointment['Thoi_gian_Bdau']).toLocal();
     final localEnd = DateTime.parse(appointment['Thoi_gian_Kthuc']).toLocal();
     
@@ -106,7 +113,12 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
         child: InkWell(
           borderRadius: BorderRadius.circular(15),
           onTap: () {
-            // Điều hướng sang xem chi tiết (sẽ phát triển sau)
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => DoctorAppointmentDetailScreen(appointmentId: appointment['Ma_lich_hen']),
+              ),
+            );
           },
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -114,18 +126,17 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     CircleAvatar(
                       radius: 25,
                       backgroundColor: kPrimaryColor.withOpacity(0.1),
-                      backgroundImage: appointment['Anh_benh_nhan'] != null
-                          ? NetworkImage(appointment['Anh_benh_nhan'])
-                          : const NetworkImage('https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'),
+                      backgroundImage: _safeAvatar(appointment['Anh_benh_nhan']),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(appointment['Ten_benh_nhan'] ?? 'Bệnh nhân', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
@@ -134,6 +145,7 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
                         ],
                       ),
                     ),
+                    const SizedBox(width: 5),
                     _buildStatusBadge(status), 
                   ],
                 ),
@@ -152,9 +164,21 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
                   'Hình thức: ${appointment['Hinh_thuc'] == "online" ? "Khám trực tuyến (Video Call)" : "Khám trực tiếp tại phòng khám"}',
                   style: const TextStyle(fontSize: 14, color: Colors.black87),
                 ),
+                const SizedBox(height: 8),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Dịch vụ: ', style: TextStyle(fontSize: 14, color: Colors.black87)),
+                    Expanded(
+                      child: Text(
+                        '${appointment['Ten_dich_vu'] ?? 'Đang cập nhật'}',
+                        style: const TextStyle(fontSize: 14, color: Colors.black87, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
 
                 const SizedBox(height: 16),
-
                 _buildFooterButtons(context, appointment['Ma_lich_hen'], status),
               ],
             ),
@@ -220,7 +244,20 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
     } else {
       return Row(
         children: [
-          Expanded(child: _buildActionBtn(icon: Icons.visibility, text: 'Xem chi tiết ca khám', color: kPrimaryColor, bgColor: Colors.cyan.shade50, onTap: () {})),
+          Expanded(
+            child: _buildActionBtn(
+              icon: Icons.visibility, text: 'Xem chi tiết ca khám', 
+              color: kPrimaryColor, bgColor: Colors.cyan.shade50, 
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => DoctorAppointmentDetailScreen(appointmentId: appointmentId),
+                  ),
+                );
+              }
+            ),
+          ),
         ],
       );
     }
@@ -234,6 +271,7 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
         decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(8)),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(icon, color: color, size: 18),

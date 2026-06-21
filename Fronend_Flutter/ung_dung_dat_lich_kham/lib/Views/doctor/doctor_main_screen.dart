@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../viewmodels/doctor_appointment_viewmodel.dart';
-import '../viewmodels/profile_viewmodel.dart';
-import '../viewmodels/auth_viewmodel.dart';
+import '../../viewmodels/doctor_appointment_viewmodel.dart';
+import '../../viewmodels/profile_viewmodel.dart';
+import '../../viewmodels/auth_viewmodel.dart';
 import 'doctor_appointment_screen.dart'; 
 
 class DoctorMainScreen extends StatefulWidget {
@@ -24,7 +24,6 @@ class _DoctorMainScreenState extends State<DoctorMainScreen> {
     });
   }
 
-  // Hàm tải đồng thời Profile và Lịch hẹn
   Future<void> _loadData() async {
     final idStr = await context.read<AuthViewModel>().getSavedUserId();
     if (idStr != null) {
@@ -44,11 +43,16 @@ class _DoctorMainScreenState extends State<DoctorMainScreen> {
     setState(() {
       _selectedIndex = index;
     });
+    // Tự động làm mới dữ liệu khi chuyển đổi qua lại giữa các Tab
+    if (index == 0) {
+      context.read<DoctorAppointmentViewModel>().loadDashboard();
+    } else if (index == 1) {
+      context.read<DoctorAppointmentViewModel>().loadDashboard();
+    }
   }
 
-  // Danh sách các màn hình tương ứng với các tab của bác sĩ
   List<Widget> get _pages => [
-    DoctorDashboardScreen(onNavigate: _onItemTapped), // Truyền hàm chuyển tab
+    DoctorDashboardScreen(onNavigate: _onItemTapped), 
     const DoctorAppointmentScreen(),
     const Center(child: Text('Dịch Vụ Screen')), 
     const Center(child: Text('Cá Nhân Screen')), 
@@ -80,10 +84,17 @@ class _DoctorMainScreenState extends State<DoctorMainScreen> {
 // =====================================================================
 class DoctorDashboardScreen extends StatelessWidget {
   final Function(int) onNavigate; 
-
   const DoctorDashboardScreen({Key? key, required this.onNavigate}) : super(key: key);
 
   final Color primaryCyan = const Color(0xFF4BCBEB);
+
+  // 🌟 HÀM TIỆN ÍCH: Ngăn chặn tuyệt đối lỗi rỗng URL gây sập UI
+  ImageProvider _safeAvatar(String? url) {
+    if (url == null || url.trim().isEmpty || !url.startsWith('http')) {
+      return const NetworkImage('https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png');
+    }
+    return NetworkImage(url);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -124,27 +135,29 @@ class DoctorDashboardScreen extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20.0),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 24,
-                backgroundColor: primaryCyan.withOpacity(0.2),
-                backgroundImage: NetworkImage(
-                  user?.avatar ?? 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'
-                ),
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Xin chào,', style: TextStyle(color: Colors.grey[600], fontSize: 14)),
-                  Text(user?.fullName ?? 'Bác sĩ', style: const TextStyle(color: Colors.black87, fontSize: 18, fontWeight: FontWeight.bold)),
-                ],
-              ),
-            ],
+          CircleAvatar(
+            radius: 24,
+            backgroundColor: primaryCyan.withOpacity(0.2),
+            backgroundImage: _safeAvatar(user?.avatar),
           ),
+          const SizedBox(width: 12),
+          // 🌟 FIX: Dùng Expanded bọc Column để ép kích thước cố định trong Row chính
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Xin chào,', style: TextStyle(color: Colors.grey[600], fontSize: 14)),
+                Text(
+                  user?.fullName ?? 'Bác sĩ', 
+                  style: const TextStyle(color: Colors.black87, fontSize: 18, fontWeight: FontWeight.bold),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
           Container(
             decoration: BoxDecoration(
               color: primaryCyan.withOpacity(0.1),
@@ -185,6 +198,7 @@ class DoctorDashboardScreen extends StatelessWidget {
           border: Border.all(color: color.withOpacity(0.3)),
         ),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Icon(icon, color: color, size: 24),
@@ -215,7 +229,7 @@ class DoctorDashboardScreen extends StatelessWidget {
         ),
         const SizedBox(height: 15),
         SizedBox(
-          height: 165,
+          height: 175,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             itemCount: vm.pendingAppointments.length,
@@ -239,17 +253,27 @@ class DoctorDashboardScreen extends StatelessWidget {
                   border: Border.all(color: Colors.grey.shade200),
                 ),
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(item['Ten_benh_nhan'] ?? 'Bệnh nhân', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                        Text(timeStr, style: TextStyle(color: primaryCyan, fontWeight: FontWeight.bold)),
+                        Expanded(
+                          child: Text(
+                            item['Ten_benh_nhan'] ?? 'Bệnh nhân', 
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Text(timeStr, style: TextStyle(color: primaryCyan, fontWeight: FontWeight.bold, fontSize: 13)),
                       ],
                     ),
-                    const SizedBox(height: 8),
-                    Text("Triệu chứng: ${item['Trieu_chung'] ?? 'Không có'}", style: const TextStyle(color: Colors.grey, fontSize: 13), maxLines: 2, overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 6),
+                    Text("Triệu chứng: ${item['Trieu_chung'] ?? 'Không có'}", style: const TextStyle(color: Colors.grey, fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 4),
+                    Text("Dịch vụ: ${item['Ten_dich_vu'] ?? 'Chưa rõ'}", style: TextStyle(color: Colors.blueGrey.shade600, fontSize: 13, fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis),
                     const Spacer(),
                     Row(
                       children: [
@@ -260,9 +284,10 @@ class DoctorDashboardScreen extends StatelessWidget {
                               backgroundColor: Colors.redAccent.withOpacity(0.1),
                               foregroundColor: Colors.redAccent,
                               elevation: 0,
+                              padding: const EdgeInsets.symmetric(vertical: 8),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                             ),
-                            child: const Text('Từ chối'),
+                            child: const Text('Từ chối', style: TextStyle(fontSize: 13)),
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -273,9 +298,10 @@ class DoctorDashboardScreen extends StatelessWidget {
                               backgroundColor: primaryCyan,
                               foregroundColor: Colors.white,
                               elevation: 0,
+                              padding: const EdgeInsets.symmetric(vertical: 8),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                             ),
-                            child: const Text('Xác nhận'),
+                            child: const Text('Xác nhận', style: TextStyle(fontSize: 13)),
                           ),
                         ),
                       ],
@@ -307,7 +333,6 @@ class DoctorDashboardScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text('Khám Hôm Nay', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              // Gắn sự kiện chuyển sang Tab Lịch làm việc (index 1)
               InkWell(
                 onTap: () => onNavigate(1),
                 child: Padding(
@@ -340,45 +365,55 @@ class DoctorDashboardScreen extends StatelessWidget {
                     BoxShadow(color: Colors.grey.withOpacity(0.05), blurRadius: 5, offset: const Offset(0, 2)),
                   ],
                 ),
-                child: InkWell(
-                  onTap: () {
-                    // TODO: Mở trang Chi tiết lịch hẹn dành cho Bác sĩ
-                  },
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: primaryCyan.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(timeStr, style: TextStyle(color: primaryCyan, fontWeight: FontWeight.bold, fontSize: 16)),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: primaryCyan.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      const SizedBox(width: 15),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(item['Ten_benh_nhan'] ?? 'Bệnh nhân', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Icon(isOnline ? Icons.videocam : Icons.local_hospital, size: 14, color: Colors.grey),
-                                const SizedBox(width: 4),
-                                Text(item['Hinh_thuc'].toString().toUpperCase(), style: const TextStyle(color: Colors.grey, fontSize: 13)),
-                              ],
-                            ),
-                          ],
-                        ),
+                      child: Text(timeStr, style: TextStyle(color: primaryCyan, fontWeight: FontWeight.bold, fontSize: 16)),
+                    ),
+                    const SizedBox(width: 15),
+                    Expanded(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(item['Ten_benh_nhan'] ?? 'Bệnh nhân', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Icon(isOnline ? Icons.videocam : Icons.local_hospital, size: 14, color: Colors.grey),
+                              const SizedBox(width: 4),
+                              Text(item['Hinh_thuc'].toString().toUpperCase(), style: const TextStyle(color: Colors.grey, fontSize: 13)),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Icon(Icons.medical_services_outlined, size: 14, color: Colors.blueGrey),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  item['Ten_dich_vu'] ?? 'Đang cập nhật', 
+                                  style: const TextStyle(color: Colors.blueGrey, fontSize: 13), 
+                                  maxLines: 1, 
+                                  overflow: TextOverflow.ellipsis
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
-                      IconButton(
-                        icon: Icon(Icons.arrow_forward_ios, size: 16, color: primaryCyan),
-                        onPressed: () {
-                          // TODO: Mở trang Chi tiết lịch hẹn dành cho Bác sĩ
-                        },
-                      )
-                    ],
-                  ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.arrow_forward_ios, size: 16, color: primaryCyan),
+                      onPressed: () {},
+                    )
+                  ],
                 ),
               );
             },
@@ -390,7 +425,6 @@ class DoctorDashboardScreen extends StatelessWidget {
 
   void _handleStatusAction(BuildContext context, int appointmentId, String action) async {
     final result = await context.read<DoctorAppointmentViewModel>().updateStatus(appointmentId, action);
-    
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

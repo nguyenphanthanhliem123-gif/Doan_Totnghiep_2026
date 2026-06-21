@@ -27,6 +27,17 @@ export default class bookingController {
             const maBenhNhanThat = await bookingModel.getPatientIdByUserId(Ma_benh_nhan);
             if (!maBenhNhanThat) return res.status(400).json({ succeeded: false, message: "Chưa có hồ sơ bệnh nhân!" });
 
+            // Bắt buộc kiểm tra có sđt trong bảng nguoi_dung trước khi đặt lịch
+            const { execute } = await import('../config/db.js'); 
+            const [userInfo] = await execute(`SELECT Dien_thoai FROM nguoi_dung WHERE Ma_nguoi_dung = ?`, [Ma_benh_nhan]);
+            
+            if (!userInfo[0].Dien_thoai || userInfo[0].Dien_thoai.trim() === '') {
+                return res.status(400).json({ 
+                    succeeded: false, 
+                    message: "Vui lòng cập nhật số điện thoại trong phần Hồ sơ trước khi đặt lịch!" 
+                });
+            }
+
             const rows = await bookingModel.getSlotReal(Ma_khung_gio);
             if (rows[0].count > 0) return res.status(400).json({ succeeded: false, message: "Khung giờ này vừa có người đặt!" });
 
