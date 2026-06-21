@@ -22,4 +22,45 @@ export default class reviewModel {
             throw new Error("Lỗi truy vấn danh sách đánh giá: " + error.message);
         }
     }
+
+    static async createReview(data){
+        try{
+            console.log(data);
+            const [checkDone] = await execute(
+                `SELECT Trang_thai_lich_hen
+                FROM lich_hen
+                WHERE Ma_lich_hen = ?`
+                ,[data.Ma_lich_hen]
+            );
+
+            if(checkDone[0].Trang_thai_lich_hen != 'done') throw new Error("Lịch hẹn này chưa hoàn thành.");
+
+            
+            const [checkReview] = await execute(`
+                    SELECT *
+                    FROM danh_gia
+                    WHERE Ma_lich_hen = ?
+                `,[data.Ma_lich_hen]);
+
+            if(checkReview.length > 0) throw new Error("Bạn đã đáng giá lần khám này rồi.");
+
+            const sql = `
+                INSERT INTO danh_gia(
+                    Ma_bac_si,
+                    Ma_lich_hen,
+                    Ma_benh_nhan,
+                    So_sao,
+                    Noi_dung,
+                    Ngay_tao
+                )
+                VALUES(?,?,?,?,?,?)
+            `;
+
+            const [result] = await execute(sql,[data.Ma_bac_si, data.Ma_lich_hen, data.Ma_benh_nhan, data.So_sao, data.Noi_dung, new Date()]);
+
+            return result.insertId ? result.insertId : null;
+        }catch(error){
+            throw new Error("Lỗi thêm đánh giá: " + error.message);
+        }
+    }
 }

@@ -77,7 +77,7 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
       );
       print("Đã gọi hàm Jitsi thành công");
     } catch (e) {
-      print("LỖI KHI GỌI JITSI: $e"); // 🌟 DÒNG NÀY RẤT QUAN TRỌNG
+      print("LỖI KHI GỌI JITSI: $e");
     }
   }
 

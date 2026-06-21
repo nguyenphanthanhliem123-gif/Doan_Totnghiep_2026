@@ -43,6 +43,7 @@ class MyApp extends StatelessWidget {
         // --- ViewModel của bác sĩ ---
         ChangeNotifierProvider(create: (_) => DoctorAppointmentViewModel()),
         ChangeNotifierProvider(create: (_) => DoctorAppointmentListViewModel()),
+        ChangeNotifierProvider(create: (_) => AppointmentViewModel())
       ],
       child: MaterialApp(
         title: 'Hệ thống đặt lịch khám bệnh',

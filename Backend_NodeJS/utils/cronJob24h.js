@@ -6,7 +6,7 @@ import sendNotification from './notificationHelper.js';
 const cron = nodeCron;
 
 // Thiết lập lịch chạy: Chạy vào phút thứ 0 của MỖI GIỜ (Ví dụ: 7:00, 8:00, 9:00...)
-cron.schedule('* * * * *', async () => {
+cron.schedule('0 * * * *', async () => {
     console.log("[Cron Job 24h] Bắt đầu quét lịch hẹn...");
     try {
         // 1. Quét tìm các lịch hẹn đã xác nhận (confirmed) sắp diễn ra trong vòng 24 giờ tới
@@ -72,10 +72,7 @@ cron.schedule('* * * * *', async () => {
                     await execute(insertNotificationQuery, [Ma_nguoi_dung, loai, noiDung]);*/
 
                     await sendNotification(Ma_nguoi_dung, loai, noiDung);
-
-                    console.log(`[Cron Job 24h] Đã gửi nhắc nhở thành công cho lịch hẹn: ${Ma_booking}`);
                 } 
-                // Nếu đã gửi rồi thì im lặng bỏ qua, qua vòng lặp check lịch khác
             }
         }
     } catch (error) {

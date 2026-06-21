@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:ung_dung_dat_lich_kham/viewmodels/appointment_viewmodel.dart';
 import '../constants/ui_constants.dart';
 import '../viewmodels/doctor_appointment_list_viewmodel.dart';
 
@@ -189,6 +190,8 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
   }
 
   Widget _buildFooterButtons(BuildContext context, int appointmentId, String status) {
+    final vm = context.watch<AppointmentViewModel>();
+    
     if (status == 'pending') {
       return Row(
         children: [
@@ -214,7 +217,28 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
         children: [
           Expanded(child: _buildActionBtn(icon: Icons.person_off_outlined, text: 'Báo vắng', color: Colors.orange, bgColor: Colors.orange.shade50, onTap: () {})),
           const SizedBox(width: 8),
-          Expanded(child: _buildActionBtn(icon: Icons.task_alt, text: 'Hoàn thành', color: Colors.white, bgColor: Colors.green, onTap: () {})),
+          
+          // ✅ ĐÃ CẬP NHẬT Ở ĐÂY: Xử lý trạng thái Loading cho nút Hoàn Thành
+          Expanded(
+            child: _buildActionBtn(
+              icon: Icons.task_alt, 
+              text: vm.isLoading ? 'Đang xử lý...' : 'Hoàn thành', // Đổi text khi load
+              color: Colors.white, 
+              bgColor: vm.isLoading ? Colors.grey : Colors.green, // Đổi màu xám khi load
+              isLoading: vm.isLoading, // Truyền biến loading xuống UI nút
+              onTap: vm.isLoading 
+                  ? null // 🛑 Ngăn không cho click tiếp nếu đang loading
+                  : () async {
+                      // Nên dùng await để chờ API chạy xong
+                      await vm.updateDoneStatus(appointmentId);
+                      
+                      // (Tùy chọn) Gọi loadAllAppointments() của Viewmodel kia để làm mới danh sách UI
+                      if (context.mounted) {
+                        context.read<DoctorAppointmentListViewModel>().loadAllAppointments();
+                      }
+                    },
+            ),
+          ),
         ],
       );
     } else {
@@ -226,9 +250,16 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
     }
   }
 
-  Widget _buildActionBtn({required IconData icon, required String text, required Color color, required Color bgColor, required VoidCallback onTap}) {
+  Widget _buildActionBtn({
+    required IconData icon, 
+    required String text, 
+    required Color color, 
+    required Color bgColor, 
+    required VoidCallback? onTap, // ✅ Đổi thành nullable (?) để cho phép truyền null
+    bool isLoading = false, // ✅ Thêm tham số này để điều khiển UI (mặc định là false)
+  }) {
     return InkWell(
-      onTap: onTap,
+      onTap: onTap, // 💡 Flutter tự động chặn click và bỏ hiệu ứng Ripple nếu onTap == null
       borderRadius: BorderRadius.circular(8),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
@@ -236,9 +267,20 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: color, size: 18),
+            // ✅ Nếu đang load thì hiện vòng xoay, ngược lại hiện Icon
+            isLoading
+                ? SizedBox(
+                    height: 18, 
+                    width: 18, 
+                    child: CircularProgressIndicator(color: color, strokeWidth: 2)
+                  )
+                : Icon(icon, color: color, size: 18),
             const SizedBox(height: 4),
-            Text(text, textAlign: TextAlign.center, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600)),
+            Text(
+              text, 
+              textAlign: TextAlign.center, 
+              style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600)
+            ),
           ],
         ),
       ),

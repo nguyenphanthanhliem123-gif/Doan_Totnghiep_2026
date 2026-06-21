@@ -272,6 +272,43 @@ export default class AppointmentController {
         }
     }
 
+    static async updateStatusDone(req,res){
+        try{
+            const appointmentID = req.params.id;
+            const userID = req.Ma_nguoi_dung;
+
+            if(!appointmentID) return res.status(400).json({
+                succeeded: false,
+                message: 'Thiếu ID lịch hẹn'
+            });
+
+            await AppointmentModel.updateAppointmentStatusDone(appointmentID, userID);
+
+            // ✅ Lỗi 1: Bắt buộc phải có 'await' và dùng đúng tên class 'AppointmentModel'
+            const appointmentDetail = await AppointmentModel.getAppointmentDetails(appointmentID);
+            console.log(appointmentDetail);
+            console.log(appointmentDetail.Ma_nguoi_dung);
+
+            await sendNotification(
+                appointmentDetail.Ma_nguoi_dung,
+                'Đánh giá', // Loại thông báo
+                '[Mã lịch hẹn ' + appointmentDetail.Ma_booking + '][ID ' + appointmentID + '] Vui lòng cho biết đánh giá của bạn về bác sĩ ' + appointmentDetail.Ten_bac_si
+            );
+
+            // ✅ Lỗi 2: Trả về true khi thành công
+            return res.status(200).json({
+                succeeded: true,
+                message: "Đã hoàn thành ca khám."
+            });
+        }
+        catch(error){
+            return res.status(500).json({
+                succeeded: false,
+                message: error.message
+            });
+        }
+    }
+
     // API: Lấy toàn bộ danh sách lịch hẹn của Bác sĩ
     static async getAllDoctorList(req, res) {
         try {

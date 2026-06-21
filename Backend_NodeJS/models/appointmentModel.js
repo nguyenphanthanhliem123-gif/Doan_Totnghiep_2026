@@ -56,6 +56,7 @@ export default class appointmentModel {
                     lh.Trieu_chung AS Ghi_chu,
                     lh.Link_video_call,
                     bn.Ma_nguoi_dung AS Ma_nguoi_dung,
+                    bn.Ma_benh_nhan,
                     kg.Thoi_gian_Bdau,
                     kg.Thoi_gian_Kthuc,
                     nd_bs.Ten_nguoi_dung AS Ten_bac_si,
@@ -320,6 +321,30 @@ export default class appointmentModel {
 
             return { success: true, message: status === 'cancelled' ? "Đã từ chối và giải phóng khung giờ." : "Đã xác nhận lịch hẹn." };
         } catch (error) {
+            throw new Error('Lỗi cập nhật trạng thái lịch hẹn: ' + error.message);
+        }
+    }
+
+    static async updateAppointmentStatusDone(appointmentID, userID){
+        try{
+            const [doctorInfo] = await execute(`SELECT Ma_bac_si FROM bac_si WHERE Ma_nguoi_dung = ?`, [userID]);
+            if (doctorInfo.length === 0) throw new Error('Không có quyền truy cập.');
+            const maBacSi = doctorInfo[0].Ma_bac_si;
+
+            // 2. Lấy Mã khung giờ của lịch hẹn hiện tại
+            const [apptInfo] = await execute(
+                `SELECT Ma_khung_gio FROM lich_hen WHERE Ma_lich_hen = ? AND Ma_bac_si = ?`, 
+                [appointmentID, maBacSi]
+            );
+            
+            if (apptInfo.length === 0) {
+                throw new Error('Lịch hẹn không tồn tại hoặc không thuộc thẩm quyền của bạn.');
+            }
+
+
+            const [result] = await execute(`UPDATE lich_hen SET Trang_thai_lich_hen = 'done' WHERE Ma_lich_hen = ?`, [appointmentID]);
+            return result.affectedRows;
+        }catch(error){
             throw new Error('Lỗi cập nhật trạng thái lịch hẹn: ' + error.message);
         }
     }

@@ -30,7 +30,6 @@ class APIDoctorService {
       if (userLng != null) queryParams['userLng'] = userLng.toString();
 
       final uri = Uri.parse('$BASE_URL/api/doctors').replace(queryParameters: queryParams);
-      print(uri);
       final res = await http.get(uri);
       final data = jsonDecode(res.body);
 

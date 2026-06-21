@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ung_dung_dat_lich_kham/Models/notification_model.dart';
 import 'package:ung_dung_dat_lich_kham/ViewModels/notification_viewmodel.dart';
+import 'package:ung_dung_dat_lich_kham/Views/review_screen.dart';
 
 class NotificationScreen extends StatefulWidget {
   const NotificationScreen({Key? key}) : super(key: key);
@@ -179,6 +180,25 @@ class _NotificationScreenState extends State<NotificationScreen> {
           if (!isRead) {
             await context.read<NotificationViewmodel>().maekOne(noti.notificationID);
             await context.read<NotificationViewmodel>().getAllNotification();
+          }
+
+          // Chuyển hướng nếu là thông báo Đánh giá
+          if (noti.type == 'Đánh giá') {
+            // Dùng Regex bóc tách ID lịch hẹn từ chuỗi "[ID 5]..."
+            final match = RegExp(r'\[ID (\d+)\]').firstMatch(noti.content);
+            if (match != null) {
+              final appointmentId = int.parse(match.group(1)!);
+              
+              // Chuyển sang màn hình Đánh giá
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ReviewScreen(
+                    appointmentId: appointmentId,
+                  ),
+                ),
+              );
+            }
           }
         },
         child: Padding(

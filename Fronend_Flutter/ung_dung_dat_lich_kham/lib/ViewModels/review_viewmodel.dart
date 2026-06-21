@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:ung_dung_dat_lich_kham/Config/BASE_URL.dart';
+import 'package:ung_dung_dat_lich_kham/Services/review_service.dart';
 import 'dart:convert';
 import '../models/review_model.dart';
 
@@ -11,6 +12,12 @@ class ReviewViewModel extends ChangeNotifier {
   List<ReviewModel> _allReviews = [];
   List<ReviewModel> _filteredReviews = [];
   List<ReviewModel> get reviews => _filteredReviews;
+
+  String? _errorMessage;
+  String? get errorMessage => _errorMessage;
+
+  bool? _createReview;
+  bool? get createReview => _createReview; 
 
   double _averageRating = 0.0;
   double get averageRating => _averageRating;
@@ -84,5 +91,20 @@ class ReviewViewModel extends ChangeNotifier {
       _filteredReviews = _allReviews.where((r) => r.rating == star).toList();
     }
     notifyListeners();
+  }
+
+  Future<void> createReviewFuture(int appointmentID, int star, String content) async{
+    _isLoading = true;
+    _errorMessage ='';
+    notifyListeners();
+
+    try{
+      _createReview = await APIReviewService().createReview(appointmentID, star, content);
+    }catch(e){
+      _errorMessage = e.toString();
+    }finally{
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 }

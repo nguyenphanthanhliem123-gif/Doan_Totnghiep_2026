@@ -27,6 +27,8 @@ authAppointmentRoutes.get('/doctor/dashboard', appointmentController.getDoctorDa
 // API Bác sĩ duyệt/từ chối lịch hẹn (Gửi action: 'confirm' hoặc 'reject' qua body)
 authAppointmentRoutes.put('/doctor/status/:id', appointmentController.updateStatus);
 
+authAppointmentRoutes.put('/doctor/status/done/:id', appointmentController.updateStatusDone);
+
 // API Lấy tất cả lịch hẹn của bác sĩ (cho màn hình 5 Tabs)
 authAppointmentRoutes.get('/doctor/all-list', appointmentController.getAllDoctorList);
 

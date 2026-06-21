@@ -3,10 +3,13 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ung_dung_dat_lich_kham/Config/BASE_URL.dart';
+import 'package:ung_dung_dat_lich_kham/Services/appointment_service.dart';
 import '../models/appointment_model.dart';
 import '../models/appointment_detail_model.dart';
 
 class AppointmentViewModel extends ChangeNotifier {
+  APIAppointmentService _apiAppointment = APIAppointmentService();
+
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
@@ -19,6 +22,9 @@ class AppointmentViewModel extends ChangeNotifier {
   // ✅ Thêm biến lưu dữ liệu Chi tiết lịch hẹn
   AppointmentDetailModel? _appointmentDetail;
   AppointmentDetailModel? get appointmentDetail => _appointmentDetail;
+
+  bool? _doneStatus;
+  bool? get doneStatus => _doneStatus;
 
   // Cấu hình URL đồng bộ
   final String _baseUrl = "$BASE_URL/api/appointments";
@@ -214,6 +220,22 @@ class AppointmentViewModel extends ChangeNotifier {
     } catch (e) {
       return {"succeeded": false, "message": "Lỗi kết nối Server: $e"};
     } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+
+  Future<void> updateDoneStatus(appointmentID) async {
+    _isLoading = true;
+    _errorMessage ='';
+    notifyListeners();
+
+    try {
+      _doneStatus = await _apiAppointment.updateDoneStatusAppointment(appointmentID);
+    } catch (e) {
+      _errorMessage = e.toString();
+    }finally{
       _isLoading = false;
       notifyListeners();
     }
