@@ -45,7 +45,8 @@ export default class appointmentModel {
     // Lấy chi tiết lịch hẹn dựa trên Ma_lich_hen
     static async getAppointmentDetails(appointmentID) {
         try {
-            const sql = `
+            // 1. Lấy thông tin chung của Lịch Hẹn (Vỏ lịch hẹn)
+            const sqlLichHen = `
                 SELECT 
                     lh.Ma_lich_hen,
                     lh.Ma_booking,
@@ -59,7 +60,6 @@ export default class appointmentModel {
                     kg.Thoi_gian_Kthuc,
                     nd_bs.Ten_nguoi_dung AS Ten_bac_si,
                     nd_bs.Anh_dai_dien AS Anh_bac_si,
-                    dv.Ten_dich_vu,
                     pk.Ten_phong_kham,
                     pk.Vi_tri AS Dia_chi_phong_kham,
                     tt.Tong_tien,
@@ -74,11 +74,9 @@ export default class appointmentModel {
                         WHEN lh.Ma_nguoi_than IS NOT NULL THEN nt.Quan_he
                         ELSE 'Bản thân'
                     END AS Moi_quan_he
-
                 FROM lich_hen lh
                 JOIN bac_si bs ON lh.Ma_bac_si = bs.Ma_bac_si
                 JOIN nguoi_dung nd_bs ON bs.Ma_nguoi_dung = nd_bs.Ma_nguoi_dung
-                JOIN dich_vu dv ON lh.Ma_dich_vu = dv.Ma_dich_vu
                 JOIN khung_gio_kham kg ON lh.Ma_khung_gio = kg.Ma_khung_gio
                 JOIN phong_kham pk ON kg.Ma_phong_kham = pk.Ma_phong_kham
                 JOIN benh_nhan bn ON lh.Ma_benh_nhan = bn.Ma_benh_nhan
@@ -88,8 +86,28 @@ export default class appointmentModel {
                 WHERE lh.Ma_lich_hen = ?
             `;
             
-            const [details] = await execute(sql, [appointmentID]);
-            return details[0]; // Trả về 1 object duy nhất vì ID là độc nhất
+            const [details] = await execute(sqlLichHen, [appointmentID]);
+            
+            if (details.length === 0) return null; // Nếu không tìm thấy lịch hẹn
+
+            const appointmentData = details[0];
+
+            // 2. Lấy danh sách dịch vụ từ bảng chi tiết
+            const sqlDichVu = `
+                SELECT dv.Ten_dich_vu, ct.Gia_tien
+                FROM chi_tiet_lich_hen ct
+                JOIN dich_vu dv ON ct.Ma_dich_vu = dv.Ma_dich_vu
+                WHERE ct.Ma_lich_hen = ?
+            `;
+            const [services] = await execute(sqlDichVu, [appointmentID]);
+
+            // Gộp danh sách tên dịch vụ thành một chuỗi cách nhau bởi dấu phẩy
+            appointmentData.Ten_dich_vu = services.map(s => s.Ten_dich_vu).join(', ');
+            
+            // Bạn có thể giữ lại mảng dịch vụ chi tiết nếu muốn hiển thị từng dòng giá ở Frontend
+            appointmentData.Danh_sach_dich_vu = services; 
+
+            return appointmentData;
         } catch (error) {
             throw new Error('Lỗi truy vấn chi tiết lịch hẹn: ' + error.message);
         }

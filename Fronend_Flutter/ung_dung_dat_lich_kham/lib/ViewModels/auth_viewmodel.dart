@@ -204,7 +204,7 @@ class AuthViewModel extends ChangeNotifier {
     }
   }
 
-  // Hàm kết nối API Quên Mật Khẩu
+  // API Yêu Cầu Gửi Mã OTP Quên Mật Khẩu
   Future<Map<String, dynamic>> forgotPassword(String email) async {
     _isLoading = true;
     notifyListeners();
@@ -223,7 +223,8 @@ class AuthViewModel extends ChangeNotifier {
       notifyListeners();
 
       if (response.statusCode == 200 && responseData['succeeded'] == true) {
-        return {"success": true, "message": responseData['message'] ?? "Đã gửi liên kết khôi phục!"};
+        // Backend sẽ trả về message báo đã gửi OTP thành công
+        return {"success": true, "message": responseData['message'] ?? "Đã gửi mã OTP khôi phục!"};
       } else {
         return {
           "success": false,
@@ -234,6 +235,77 @@ class AuthViewModel extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return {"success": false, "message": "Lỗi kết nối máy chủ. Vui lòng thử lại sau!"};
+    }
+  }
+
+  // Hàm kiểm tra OTP có hợp lệ không (Chốt chặn trước khi sang trang đổi pass)
+  Future<Map<String, dynamic>> verifyResetOTP(String email, String otp) async {
+    _isLoading = true;
+    notifyListeners();
+
+    final url = Uri.parse('$_baseUrl/verify-reset-otp');
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"email": email, "otp": otp}),
+      );
+
+      final responseData = jsonDecode(response.body);
+      _isLoading = false;
+      notifyListeners();
+
+      if (response.statusCode == 200 && responseData['succeeded'] == true) {
+        return {"success": true, "message": "Mã OTP hợp lệ!"};
+      } else {
+        return {"success": false, "message": responseData['message'] ?? "Mã OTP không chính xác!"};
+      }
+    } catch (error) {
+      _isLoading = false;
+      notifyListeners();
+      return {"success": false, "message": "Lỗi kết nối máy chủ!"};
+    }
+  }
+
+  // API Cập Nhật Mật Khẩu Mới (Gửi kèm OTP)
+  Future<Map<String, dynamic>> resetPasswordWithOTP({
+    required String email, 
+    required String otp, 
+    required String newPassword
+  }) async {
+    _isLoading = true;
+    notifyListeners();
+
+    final url = Uri.parse('$_baseUrl/update-password');
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "email": email,
+          "otp": otp,
+          "newPassword": newPassword
+        }),
+      );
+
+      final responseData = jsonDecode(response.body);
+      _isLoading = false;
+      notifyListeners();
+
+      if (response.statusCode == 200 && responseData['succeeded'] == true) {
+        return {"success": true, "message": "Đổi mật khẩu thành công! Bạn có thể đăng nhập."};
+      } else {
+        return {
+          "success": false,
+          "message": responseData['message'] ?? "Lỗi xác thực hoặc mật khẩu không hợp lệ."
+        };
+      }
+    } catch (error) {
+      _isLoading = false;
+      notifyListeners();
+      return {"success": false, "message": "Lỗi kết nối máy chủ!"};
     }
   }
 

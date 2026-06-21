@@ -27,19 +27,20 @@ class _BookingScreenState extends State<BookingScreen> {
   bool _isOffline = true; 
   String _paymentMethod = 'cash'; 
   
-  DoctorServiceModel? _selectedService; 
-  HealthRecordModel? _selectedRelative; // BIẾN LƯU NGƯỜI THÂN ĐANG CHỌN
+  // 🌟 THAY ĐỔI: Chuyển từ biến đơn sang List để lưu nhiều dịch vụ
+  List<DoctorServiceModel> _selectedServices = []; 
+  HealthRecordModel? _selectedRelative; 
 
   final TextEditingController _symptomController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
+    // Mặc định chọn dịch vụ đầu tiên
     if (widget.doctor.services.isNotEmpty) {
-      _selectedService = widget.doctor.services.first;
+      _selectedServices.add(widget.doctor.services.first);
     }
 
-    // TỰ ĐỘNG NẠP DANH SÁCH HỒ SƠ NGAY KHI MỞ TRANG
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<HealthRecordViewModel>().loadHealthRecord();
     });
@@ -55,6 +56,11 @@ class _BookingScreenState extends State<BookingScreen> {
     return "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
   }
 
+  // 🌟 HÀM TÍNH TỔNG TIỀN CHO NHIỀU DỊCH VỤ
+  double _calculateTotalPrice() {
+    return _selectedServices.fold(0, (sum, item) => sum + item.price);
+  }
+
   @override
   Widget build(BuildContext context) {
     List<String> availableDateStrings = widget.doctor.schedules.map((s) => s.date).toList();
@@ -68,6 +74,9 @@ class _BookingScreenState extends State<BookingScreen> {
       );
       activeSlots = scheduleForDay.slots;
     }
+
+    double totalPrice = _calculateTotalPrice();
+    String formattedTotalPrice = "${totalPrice.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')} VNĐ";
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -181,9 +190,7 @@ class _BookingScreenState extends State<BookingScreen> {
                     ),
                   const SizedBox(height: 25),
 
-                  // ==========================================
-                  // 3. TÙY CHỌN ĐẶT CHO BẢN THÂN HAY NGƯỜI THÂN + HÌNH THỨC KHÁM
-                  // ==========================================
+                  // 3. TÙY CHỌN KHÁM CHO AI VÀ HÌNH THỨC
                   _buildSectionTitle("Khám cho"),
                   Row(
                     children: [
@@ -192,7 +199,6 @@ class _BookingScreenState extends State<BookingScreen> {
                       _buildToggleButton("Người thân", !_isForSelf, () {
                         setState(() {
                           _isForSelf = false;
-                          // Tự động chọn người thân đầu tiên nếu danh sách có sẵn
                           final hrVM = context.read<HealthRecordViewModel>();
                           final relatives = hrVM.listRecord?.where((r) => r.relativeId != null).toList() ?? [];
                           if (relatives.isNotEmpty && _selectedRelative == null) {
@@ -203,17 +209,14 @@ class _BookingScreenState extends State<BookingScreen> {
                     ],
                   ),
                   
-                  // DROPDOWN HIỆN RA NẾU CHỌN NGƯỜI THÂN
                   if (!_isForSelf) ...[
                     const SizedBox(height: 15),
                     Consumer<HealthRecordViewModel>(
                       builder: (context, hrVM, child) {
                         if (hrVM.isLoading) return const Center(child: CircularProgressIndicator());
                         
-                        // Lọc bỏ hồ sơ bản thân, chỉ lấy người thân (có relativeId)
                         final relatives = hrVM.listRecord?.where((r) => r.relativeId != null).toList() ?? [];
                         
-                        // Giao diện khi chưa có người thân
                         if (relatives.isEmpty) {
                           return Container(
                             width: double.infinity,
@@ -225,13 +228,7 @@ class _BookingScreenState extends State<BookingScreen> {
                                 const SizedBox(height: 10),
                                 ElevatedButton.icon(
                                   onPressed: () {
-                                    // Chuyển sang trang Thêm hồ sơ người thân
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => const AddHealthRecordScreen(),
-                                      ),
-                                    );
+                                    Navigator.push(context, MaterialPageRoute(builder: (context) => const AddHealthRecordScreen()));
                                   },
                                   icon: const Icon(Icons.add_circle_outline, color: Colors.white),
                                   label: const Text("Thêm người thân", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
@@ -242,7 +239,6 @@ class _BookingScreenState extends State<BookingScreen> {
                           );
                         }
 
-                        // Giao diện Dropdown chọn người thân
                         return Container(
                           padding: const EdgeInsets.symmetric(horizontal: 15),
                           decoration: BoxDecoration(color: kInputBackgroundColor, borderRadius: BorderRadius.circular(15)),
@@ -276,20 +272,40 @@ class _BookingScreenState extends State<BookingScreen> {
                   ),
                   const SizedBox(height: 25),
 
-                  // 4. DỊCH VỤ KHÁM
-                  _buildSectionTitle("Dịch vụ khám"),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 15),
-                    decoration: BoxDecoration(color: kInputBackgroundColor, borderRadius: BorderRadius.circular(15)),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<DoctorServiceModel>(
-                        value: _selectedService,
-                        isExpanded: true,
-                        hint: const Text("Chọn dịch vụ"),
-                        items: widget.doctor.services.map((service) => DropdownMenuItem(value: service, child: Text(service.name))).toList(),
-                        onChanged: (val) => setState(() => _selectedService = val),
-                      ),
-                    ),
+                  // 🌟 4. DỊCH VỤ KHÁM (CHỌN NHIỀU)
+                  _buildSectionTitle("Dịch vụ khám (Có thể chọn nhiều)"),
+                  Wrap(
+                    spacing: 8.0,
+                    runSpacing: 8.0,
+                    children: widget.doctor.services.map((service) {
+                      bool isSelected = _selectedServices.contains(service);
+                      return FilterChip(
+                        label: Text(service.name),
+                        selected: isSelected,
+                        selectedColor: kPrimaryColor.withOpacity(0.2),
+                        checkmarkColor: kPrimaryColor,
+                        labelStyle: TextStyle(
+                          color: isSelected ? kPrimaryColor : kTextColor,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        ),
+                        backgroundColor: kInputBackgroundColor,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10), side: BorderSide(color: isSelected ? kPrimaryColor : Colors.transparent)),
+                        onSelected: (bool selected) {
+                          setState(() {
+                            if (selected) {
+                              _selectedServices.add(service);
+                            } else {
+                              // Bắt buộc phải chọn ít nhất 1 dịch vụ
+                              if (_selectedServices.length > 1) {
+                                _selectedServices.remove(service);
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Phải chọn ít nhất 1 dịch vụ!')));
+                              }
+                            }
+                          });
+                        },
+                      );
+                    }).toList(),
                   ),
                   const SizedBox(height: 25),
 
@@ -325,13 +341,13 @@ class _BookingScreenState extends State<BookingScreen> {
                   children: [
                     const Text("Tổng cộng:", style: TextStyle(color: kGreyTextColor, fontSize: 13)),
                     Text(
-                      _selectedService != null ? "${_selectedService!.price.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')} VNĐ" : "0 VNĐ",
+                      formattedTotalPrice,
                       style: const TextStyle(color: kPrimaryColor, fontWeight: FontWeight.bold, fontSize: 18),
                     ),
                   ],
                 ),
                 ElevatedButton(
-                  onPressed: (_selectedSlotId == null || _selectedService == null) ? null : () => _showSummaryBottomSheet(context, activeSlots),
+                  onPressed: (_selectedSlotId == null || _selectedServices.isEmpty) ? null : () => _showSummaryBottomSheet(context, activeSlots),
                   style: ElevatedButton.styleFrom(backgroundColor: kPrimaryColor, disabledBackgroundColor: Colors.grey.shade300, padding: const EdgeInsets.symmetric(horizontal: 35, vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))),
                   child: const Text("Xác nhận", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
                 )
@@ -402,16 +418,18 @@ class _BookingScreenState extends State<BookingScreen> {
   }
 
   void _showSummaryBottomSheet(BuildContext context, List<DoctorTimeSlotModel> activeSlots) {
-    // CHẶN NGƯỜI DÙNG: Cố tình bấm Xác nhận mà chưa chọn người thân
     if (!_isForSelf && _selectedRelative == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Vui lòng chọn hồ sơ người thân!')));
       return;
     }
 
     final selectedSlot = activeSlots.firstWhere((slot) => slot.id == _selectedSlotId);
-    final String formattedPrice = "${_selectedService!.price.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')} Đ";
     
-    // 🌟 THAY ĐỔI: Nếu chọn khám Online thì tự động ép phương thức sang vnpay thay vì momo
+    // Tên các dịch vụ gộp lại bằng dấu phẩy
+    String serviceNames = _selectedServices.map((s) => s.name).join(", ");
+    double totalPrice = _calculateTotalPrice();
+    final String formattedPrice = "${totalPrice.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')} Đ";
+    
     if (!_isOffline && _paymentMethod == 'cash') _paymentMethod = 'vnpay'; 
 
     String forWhom = _isForSelf ? "Bản thân" : "Người thân (${_selectedRelative!.recordName})";
@@ -457,7 +475,7 @@ class _BookingScreenState extends State<BookingScreen> {
                   const SizedBox(height: 20),
                   _buildSummaryRow("Đặt cho", forWhom), 
                   _buildSummaryRow("Hình thức", _isOffline ? "Tại phòng khám" : "Khám Online"),
-                  _buildSummaryRow("Dịch vụ", _selectedService!.name),
+                  _buildSummaryRow("Dịch vụ", serviceNames), // Hiển thị nhiều dịch vụ
                   const Divider(height: 30),
                   _buildSummaryRow("Phí khám", formattedPrice, isTotal: true),
                   const SizedBox(height: 15),
@@ -468,7 +486,6 @@ class _BookingScreenState extends State<BookingScreen> {
                     children: [
                       if (_isOffline) _buildPaymentButton("Tiền mặt", "cash", Icons.money, setModalState),
                       if (_isOffline) const SizedBox(width: 10),
-                      // Đổi nút MoMo thành VNPay
                       _buildPaymentButton("VNPay", "vnpay", Icons.payment_rounded, setModalState),
                     ],
                   ),
@@ -532,15 +549,22 @@ class _BookingScreenState extends State<BookingScreen> {
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(title, style: const TextStyle(color: kGreyTextColor)),
-          Text(value, style: TextStyle(color: isTotal ? kPrimaryColor : kTextColor, fontWeight: isTotal ? FontWeight.bold : FontWeight.w600, fontSize: isTotal ? 16 : 14)),
+          const SizedBox(width: 20),
+          Expanded(
+            child: Text(
+              value, 
+              textAlign: TextAlign.right,
+              style: TextStyle(color: isTotal ? kPrimaryColor : kTextColor, fontWeight: isTotal ? FontWeight.bold : FontWeight.w600, fontSize: isTotal ? 16 : 14)
+            ),
+          ),
         ],
       ),
     );
   }
 
-  // --- HÀM GỌI API ĐẶT LỊCH CHÍNH THỨC ---
   Future<void> _executeBooking(BuildContext bottomSheetContext) async {
     final authVM = context.read<AuthViewModel>();
     final bookingVM = context.read<BookingViewModel>();
@@ -548,20 +572,20 @@ class _BookingScreenState extends State<BookingScreen> {
     final patientIdStr = await authVM.getSavedUserId();
     if (patientIdStr == null || patientIdStr.isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Vui lòng đăng nhập để đặt lịch!'))
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Vui lòng đăng nhập để đặt lịch!')));
       }
       return;
     }
 
     if (mounted) {
-      // 1. Tạo đơn đặt lịch trên hệ thống thông qua ViewModel
+      // 🌟 TRUYỀN MẢNG ID DỊCH VỤ VÀO API
+      List<int> serviceIds = _selectedServices.map((e) => e.id).toList();
+
       final result = await bookingVM.submitBooking(
         doctorId: widget.doctor.id, 
         patientId: int.parse(patientIdStr), 
         relativeId: _isForSelf ? null : _selectedRelative?.relativeId, 
-        serviceId: _selectedService!.id,
+        serviceIds: serviceIds, 
         slotId: _selectedSlotId!,
         type: _isOffline ? "offline" : "online",
         symptoms: _symptomController.text,
@@ -575,41 +599,25 @@ class _BookingScreenState extends State<BookingScreen> {
           String bookingCode = result['data']['Ma_booking'];
           String amount = result['data']['Tong_tien'].toString();
 
-          // 🌟 THAY ĐỔI: Chuyển đổi logic xử lý từ MoMo sang cổng VNPay
           if (_paymentMethod == 'vnpay') {
-            // Gọi hàm tạo link VNPay từ ViewModel của bạn (Hãy đảm bảo trong ViewModel có hàm này)
-            final vnpayResult = await bookingVM.createVnpayPayment(
-              bookingCode: bookingCode,
-            );
-
+            final vnpayResult = await bookingVM.createVnpayPayment(bookingCode: bookingCode);
             if (mounted) {
               if (vnpayResult['succeeded'] == true) {
-                // Mở popup hướng dẫn dẫn liên kết web cổng VNPay
-                _showVNPayDialog(
-                  bookingCode, 
-                  amount, 
-                  vnpayResult['paymentUrl'], // Link thanh toán từ Backend cấp sinh ra từ VNPay Sandbox
-                );
+                _showVNPayDialog(bookingCode, amount, vnpayResult['paymentUrl']);
               } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(vnpayResult['message'] ?? "Lỗi cổng thanh toán VNPay"))
-                );
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(vnpayResult['message'] ?? "Lỗi cổng thanh toán VNPay")));
               }
             }
           } else {
-            // Nếu chọn tiền mặt hoặc chuyển khoản thủ công thì báo thành công luôn
             _showSuccessDialog(result['message'], bookingCode);
           }
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(result['message'] ?? "Đặt lịch thất bại"))
-          );
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['message'] ?? "Đặt lịch thất bại")));
         }
       }
     }
   }
 
-  // --- 🌟 THAY ĐỔI: HIỂN THỊ MÀN HÌNH ĐIỀU HƯỚNG WEB VNPAY ---
   void _showVNPayDialog(String bookingCode, String amount, String paymentUrl) {
     final String formattedAmount = "${amount.replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')} VNĐ";
 
@@ -623,21 +631,14 @@ class _BookingScreenState extends State<BookingScreen> {
             children: [
               const Icon(Icons.payment_rounded, color: Colors.blue, size: 24),
               const SizedBox(width: 8),
-              Text(
-                "Thanh toán VNPay", 
-                style: TextStyle(color: Colors.blue.shade800, fontWeight: FontWeight.bold, fontSize: 18),
-              ),
+              Text("Thanh toán VNPay", style: TextStyle(color: Colors.blue.shade800, fontWeight: FontWeight.bold, fontSize: 18)),
             ],
           )
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              "Nhấn nút dưới đây để mở website cổng thanh toán VNPay ảo để tiến hành thanh toán.", 
-              textAlign: TextAlign.center, 
-              style: TextStyle(color: kGreyTextColor, fontSize: 13),
-            ),
+            const Text("Nhấn nút dưới đây để mở website cổng thanh toán VNPay ảo để tiến hành thanh toán.", textAlign: TextAlign.center, style: TextStyle(color: kGreyTextColor, fontSize: 13)),
             const SizedBox(height: 20),
             Text("Số tiền: $formattedAmount", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.redAccent)),
             const SizedBox(height: 4),
@@ -647,59 +648,33 @@ class _BookingScreenState extends State<BookingScreen> {
         actions: [
           Column(
             children: [
-              // Nút mở link VNPay nhảy thẳng vào trình duyệt web điện thoại
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
                   icon: const Icon(Icons.open_in_new, color: Colors.white, size: 18),
                   label: const Text("Mở Cổng VNPay", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   onPressed: () async {
-                    // 1. Dọn dẹp link: Xóa sạch khoảng trắng thừa ở đầu/cuối link (nếu có)
                     final String cleanUrl = paymentUrl.trim();
                     final Uri url = Uri.parse(cleanUrl);
-
                     try {
-                      // 2. ÉP MỞ TRÌNH DUYỆT BÊN NGOÀI BỎ QUA canLaunchUrl
-                      bool launched = await launchUrl(
-                        url, 
-                        mode: LaunchMode.externalApplication,
-                      );
-                      
-                      // 3. Nếu điện thoại chặn mở app ngoài, ta mở web ẩn ngay bên trong app (Dự phòng)
-                      if (!launched) {
-                        await launchUrl(
-                          url, 
-                          mode: LaunchMode.inAppWebView, // Mở bằng trình duyệt tích hợp của app
-                        );
-                      }
+                      bool launched = await launchUrl(url, mode: LaunchMode.externalApplication);
+                      if (!launched) await launchUrl(url, mode: LaunchMode.inAppWebView);
                     } catch (e) {
-                      print("🚨 LỖI MỞ TRÌNH DUYỆT: $e");
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Không thể mở cổng thanh toán. Lỗi: $e')),
-                      );
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Không thể mở cổng thanh toán. Lỗi: $e')));
                     }
                   },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue.shade700, 
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blue.shade700, padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                 ),
               ),
               const SizedBox(height: 8),
-              // Nút quay về hoàn tất
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton(
                   onPressed: () {
-                    Navigator.pop(ctx); // Đóng hộp thoại VNPay
+                    Navigator.pop(ctx); 
                     _showSuccessDialog("Hệ thống đang ghi nhận thanh toán của bạn!", bookingCode);
                   },
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    side: BorderSide(color: Colors.blue.shade700),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
+                  style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12), side: BorderSide(color: Colors.blue.shade700), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                   child: Text("Tôi đã thanh toán xong", style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.bold)),
                 ),
               )

@@ -17,13 +17,13 @@ userRoutes.post('/verify-otp', userController.verifyOTPAndRegister);
 userRoutes.post('/login', userController.login);
 
 // API quên mật khẩu
-// 1. Nhận email và gửi link reset
+// 1. Nhận email và gửi mã OTP
 userRoutes.post('/forgot-password', userController.forgotPassword);
 
-// 2. Mở giao diện HTML khi người dùng click vào link trong email (phải dùng GET)
-userRoutes.get('/reset-password-page', userController.renderResetPasswordPage);
+// 2. Kiểm tra trước mã OTP
+userRoutes.post('/verify-reset-otp', userController.verifyResetOTP);
 
-// 3. Nhận mật khẩu mới từ form HTML gửi lên (dùng POST)
+// 3. Nhận Email, mã OTP và mật khẩu mới từ App gửi lên
 userRoutes.post('/update-password', userController.updatePassword);
 
 // API Đăng nhập bằng Google / Facebook

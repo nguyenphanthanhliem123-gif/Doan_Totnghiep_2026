@@ -48,14 +48,29 @@ export default class bookingModel {
     static async createAppointment(data) {
         const query = `
             INSERT INTO lich_hen 
-            (Ma_booking, Ma_bac_si, Ma_benh_nhan, Ma_nguoi_than, Ma_dich_vu, Ma_khung_gio, Hinh_thuc, Trieu_chung, Trang_thai_lich_hen, Tong_tien, Link_video_call) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
+            (Ma_booking, Ma_bac_si, Ma_benh_nhan, Ma_nguoi_than, Ma_khung_gio, Hinh_thuc, Trieu_chung, Trang_thai_lich_hen, Tong_tien, Link_video_call) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
         `;
+        // 🌟 ĐÃ FIX: Xóa data.Ma_dich_vu khỏi params
         const params = [
             data.Ma_booking, data.Ma_bac_si, data.Ma_benh_nhan, data.Ma_nguoi_than, 
-            data.Ma_dich_vu, data.Ma_khung_gio, data.Hinh_thuc, data.Trieu_chung, data.Tong_tien, "https://meet.ffmuc.net/" + data.Ma_booking
+            data.Ma_khung_gio, data.Hinh_thuc, data.Trieu_chung, data.Tong_tien, "https://meet.ffmuc.net/" + data.Ma_booking
         ];
         const [result] = await execute(query, params);
+        return result.insertId;
+    }
+
+    // Tạo chi tiết lịch hẹn vào Database
+    static async createAppointmentDetail(detailData) {
+        const query = `
+            INSERT INTO chi_tiet_lich_hen (Ma_lich_hen, Ma_dich_vu, Gia_tien) 
+            VALUES (?, ?, ?)
+        `;
+        const [result] = await execute(query, [
+            detailData.Ma_lich_hen,
+            detailData.Ma_dich_vu,
+            detailData.Gia_tien
+        ]);
         return result.insertId;
     }
 

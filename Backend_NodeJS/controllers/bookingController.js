@@ -14,82 +14,71 @@ export default class bookingController {
         }
     }
 
-    // Tạo lịch hẹn mới
+    // Tạo lịch hẹn mới (Hỗ trợ nhiều dịch vụ)
     static async createBooking(req, res) {
         try {
-            // Nhận data từ app Flutter gửi lên
             const { Ma_bac_si, Ma_benh_nhan, Ma_nguoi_than, Ma_dich_vu, Ma_khung_gio, Hinh_thuc, Trieu_chung } = req.body;
 
-            // Validate dữ liệu đầu vào
-            const maBenhNhanThat = await bookingModel.getPatientIdByUserId(Ma_benh_nhan);
-            if (!maBenhNhanThat) {
-                return res.status(400).json({ succeeded: false, message: "Tài khoản của bạn chưa có hồ sơ bệnh nhân!" });
+            // 1. Kiểm tra đầu vào (Bây giờ Ma_dich_vu phải là 1 mảng [Array])
+            if (!Array.isArray(Ma_dich_vu) || Ma_dich_vu.length === 0) {
+                return res.status(400).json({ succeeded: false, message: "Vui lòng chọn ít nhất 1 dịch vụ!" });
             }
+
+            const maBenhNhanThat = await bookingModel.getPatientIdByUserId(Ma_benh_nhan);
+            if (!maBenhNhanThat) return res.status(400).json({ succeeded: false, message: "Chưa có hồ sơ bệnh nhân!" });
 
             const rows = await bookingModel.getSlotReal(Ma_khung_gio);
-            if (rows[0].count > 0) {
-                return res.status(400).json({ 
-                    succeeded: false, 
-                    message: "Rất tiếc, khung giờ này vừa có người khác đặt mất rồi!" 
-                });
-            }
+            if (rows[0].count > 0) return res.status(400).json({ succeeded: false, message: "Khung giờ này vừa có người đặt!" });
 
-            // 1. Kiểm tra slot khám có còn trống không?
             const slot = await bookingModel.getSlot(Ma_khung_gio);
-            if (!slot) return res.status(404).json({ succeeded: false, message: "Không tìm thấy khung giờ này." });
-            if (slot.Trang_thai !== 'available') {
-                return res.status(400).json({ succeeded: false, message: "Rất tiếc, khung giờ này vừa có người đặt. Vui lòng chọn giờ khác!" });
+            if (!slot || slot.Trang_thai !== 'available') return res.status(400).json({ succeeded: false, message: "Khung giờ không khả dụng." });
+
+            // 2. Tính tổng tiền dựa trên các dịch vụ được chọn
+            let Tong_tien = 0;
+            const thongTinDichVu = [];
+            for (const idDichVu of Ma_dich_vu) {
+                const service = await bookingModel.getServicePrice(idDichVu);
+                if (service) {
+                    Tong_tien += parseFloat(service.Gia_tien);
+                    thongTinDichVu.push({ id: idDichVu, price: service.Gia_tien });
+                }
             }
 
-            // 2. Lấy giá tiền chuẩn từ bảng dich_vu
-            const service = await bookingModel.getServicePrice(Ma_dich_vu);
-            if (!service) return res.status(404).json({ succeeded: false, message: "Dịch vụ không tồn tại." });
-            const Tong_tien = service.Gia_tien;
+            if (thongTinDichVu.length === 0) return res.status(404).json({ succeeded: false, message: "Dịch vụ không hợp lệ." });
 
-            // 3. Tự động sinh mã Booking chuyên nghiệp (VD: BK20260614_8524)
+            // 3. Xử lý thanh toán & sinh mã Booking
             const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
             const randomNum = Math.floor(1000 + Math.random() * 9000);
             const Ma_booking = `BK${dateStr}_${randomNum}`;
             
-            // Ép phương thức thanh toán về chữ thường để khớp với ENUM trong Database
-            const rawPaymentMethod = req.body.Phuong_thuc || req.body.paymentMethod || 'cash';
-            const Phuong_thuc = rawPaymentMethod.toLowerCase();
+            let rawMethod = req.body.Phuong_thuc || req.body.paymentMethod || 'cash';
+            let Phuong_thuc = rawMethod.toString().trim().toLowerCase();
+            if (!['momo', 'cash', 'transfer', 'vnpay'].includes(Phuong_thuc)) Phuong_thuc = 'vnpay'; 
 
-            // 4. Xử lý Mã giao dịch theo phương thức thanh toán
-            let Ma_giao_dich = null;
-            if (Phuong_thuc === 'cash') {
-                Ma_giao_dich = `TXN_${Ma_booking}`;
-            }
+            let Ma_giao_dich = Phuong_thuc === 'cash' ? `TXN_${Ma_booking}` : null;
 
-            // 5. Ghi vào bảng lich_hen
-            const bookingData = {
-                Ma_booking, Ma_bac_si, Ma_benh_nhan: maBenhNhanThat, Ma_nguoi_than, Ma_dich_vu, Ma_khung_gio, Hinh_thuc, Trieu_chung, Tong_tien
-            };
+            // 4. Lưu vào bảng lich_hen (Vỏ)
+            const bookingData = { Ma_booking, Ma_bac_si, Ma_benh_nhan: maBenhNhanThat, Ma_nguoi_than, Ma_khung_gio, Hinh_thuc, Trieu_chung, Tong_tien };
             const insertId = await bookingModel.createAppointment(bookingData);
 
-            // 6. Ghi vào bảng thanh_toan
-            const paymentData = {
-                Ma_lich_hen: insertId,
-                Phuong_thuc: Phuong_thuc,
-                Trang_thai_thanh_toan: 'pending', 
-                Ma_giao_dich: Ma_giao_dich, 
-                Tong_tien: Tong_tien
-            };
-            await bookingModel.createPayment(paymentData);
+            // 5. Lưu chi tiết lịch hẹn vào bảng chi_tiet_lich_hen
+            for (const item of thongTinDichVu) {
+                await bookingModel.createAppointmentDetail({
+                    Ma_lich_hen: insertId,
+                    Ma_dich_vu: item.id,
+                    Gia_tien: item.price
+                });
+            }
 
-            // 7. Cập nhật trạng thái khung giờ thành 'booked'
+            // 6. Lưu thanh toán & Khóa khung giờ
+            const paymentData = { Ma_lich_hen: insertId, Phuong_thuc, Trang_thai_thanh_toan: 'pending', Ma_giao_dich, Tong_tien };
+            await bookingModel.createPayment(paymentData);
             await bookingModel.updateSlotStatus(Ma_khung_gio, 'booked');
 
 
             return res.status(200).json({
-                succeeded: true,
-                message: "Đặt lịch khám thành công!",
-                data: {
-                    Ma_lich_hen: insertId,
-                    Ma_booking: Ma_booking,
-                    Tong_tien: Tong_tien,
-                    Phuong_thuc: Phuong_thuc
-                }
+                succeeded: true, message: "Đặt lịch khám thành công!",
+                data: { Ma_lich_hen: insertId, Ma_booking: Ma_booking, Tong_tien: Tong_tien, Phuong_thuc: Phuong_thuc, Ma_khung_gio: Ma_khung_gio }
             });
 
         } catch (error) {

@@ -3,15 +3,18 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../viewmodels/auth_viewmodel.dart';
 import 'login_screen.dart';
+import 'create_new_password_screen.dart';
 
 class OtpVerificationScreen extends StatefulWidget {
   final String verificationTarget; // Email nhận mã (VD: 'khoi@gmail.com')
   final bool isSms; // false: Xác minh Email
+  final bool isForgotPassword; // true: Xác minh cho quên mật khẩu, false: Xác minh cho đăng ký tài khoản mới
 
   const OtpVerificationScreen({
     super.key,
     required this.verificationTarget,
     required this.isSms,
+    this.isForgotPassword = false,
   });
 
   @override
@@ -21,7 +24,6 @@ class OtpVerificationScreen extends StatefulWidget {
 class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   final Color primaryColor = const Color(0xFF4BCBEB);
   
-  // ĐÃ SỬA: Tăng lên 6 ô nhập liệu
   final List<TextEditingController> _otpControllers = List.generate(6, (_) => TextEditingController());
   final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
 
@@ -105,25 +107,44 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                       : () async {
                           String otpCode = getOtp();
                           if (otpCode.length == 6) {
-                            
-                            // GỌI API VERIFY OTP BÊN VIEWMODEL
-                            final result = await authVM.verifyOTP(widget.verificationTarget, otpCode);
-
-                            if (result['success'] == true) {
-                                // Nếu thành công -> Hiện thông báo -> Đá về trang Đăng nhập
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text(result['message'])),
-                                );
-                                Navigator.pushAndRemoveUntil(
-                                  context,
-                                  MaterialPageRoute(builder: (context) => const LoginScreen()),
-                                  (Route<dynamic> route) => false, // Xóa hết lịch sử các trang đăng ký trước đó
-                                );
-                            } else {
-                                // Nếu sai mã / hết hạn -> Báo lỗi
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text(result['message'])),
-                                );
+                            if (widget.isForgotPassword) {
+                                // 1. BẮT BUỘC KIỂM TRA OTP TRƯỚC
+                                final result = await authVM.verifyResetOTP(widget.verificationTarget, otpCode);
+                                if (!mounted) return;
+                                
+                                if (result['success'] == true) {
+                                  // 2. Nếu ĐÚNG -> Mới cho phép qua màn hình nhập Mật khẩu
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => CreateNewPasswordScreen(
+                                        email: widget.verificationTarget, 
+                                        otpCode: otpCode, 
+                                      ),
+                                    ),
+                                  );
+                                } else {
+                                  // 3. Nếu SAI -> Báo lỗi đỏ ngay tại đây, cấm đi tiếp
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(result['message']),
+                                      backgroundColor: Colors.redAccent,
+                                    )
+                                  );
+                                }
+                            }
+                            else {
+                                final result = await authVM.verifyOTP(widget.verificationTarget, otpCode);
+                                if (!mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['message'])));
+                                
+                                if (result['success'] == true) {
+                                    Navigator.pushAndRemoveUntil(
+                                      context,
+                                      MaterialPageRoute(builder: (context) => const LoginScreen()),
+                                      (Route<dynamic> route) => false,
+                                    );
+                                }
                             }
                           } else {
                             ScaffoldMessenger.of(context).showSnackBar(
