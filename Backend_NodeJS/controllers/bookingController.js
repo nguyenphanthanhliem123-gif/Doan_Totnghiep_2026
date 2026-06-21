@@ -80,6 +80,7 @@ export default class bookingController {
             // 7. Cập nhật trạng thái khung giờ thành 'booked'
             await bookingModel.updateSlotStatus(Ma_khung_gio, 'booked');
 
+
             return res.status(200).json({
                 succeeded: true,
                 message: "Đặt lịch khám thành công!",

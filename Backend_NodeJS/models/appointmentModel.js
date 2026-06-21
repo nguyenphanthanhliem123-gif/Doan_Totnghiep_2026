@@ -54,6 +54,7 @@ export default class appointmentModel {
                     lh.Trang_thai_lich_hen,
                     lh.Trieu_chung AS Ghi_chu,
                     lh.Link_video_call,
+                    bn.Ma_nguoi_dung AS Ma_nguoi_dung,
                     kg.Thoi_gian_Bdau,
                     kg.Thoi_gian_Kthuc,
                     nd_bs.Ten_nguoi_dung AS Ten_bac_si,

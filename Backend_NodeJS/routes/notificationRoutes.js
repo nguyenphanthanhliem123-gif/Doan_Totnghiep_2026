@@ -1,0 +1,13 @@
+import { Router } from "express";
+import NotificationController from "../controllers/notificationController.js";
+import auth from "../middleware/auth.js";
+
+const notificationRoute = Router();
+const authNotificationRoute = Router();
+authNotificationRoute.use(auth);
+
+authNotificationRoute.get('/', NotificationController.getAllNotification);
+authNotificationRoute.put('/read/:notificationID', NotificationController.updateStatus);
+
+notificationRoute.use('/', authNotificationRoute);
+export default notificationRoute;

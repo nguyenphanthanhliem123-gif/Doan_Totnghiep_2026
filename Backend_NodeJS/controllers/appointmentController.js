@@ -1,6 +1,8 @@
+import appointmentModel from "../models/AppointmentModel.js";
 import AppointmentModel from "../models/AppointmentModel.js";
 import paymentModel from "../models/paymentModel.js";
 import VNPayServices from "../services/vnpayService.js";
+import sendNotification from "../utils/notificationHelper.js";
 
 export default class AppointmentController {
 
@@ -214,6 +216,16 @@ export default class AppointmentController {
                         console.log(`[Chính sách] Booking ${info.Ma_booking} hủy sát giờ, không hoàn tiền.`);
                     }
                 }
+            }
+
+            const appointmentDetail = await appointmentModel.getAppointmentDetails(appointmentID);
+
+            if(status === 'confirmed'){
+                await sendNotification(
+                    appointmentDetail.Ma_nguoi_dung,
+                    'Từ chối lịch hẹn',
+                    'Lịch hẹn mã ' + appointmentDetail.Ma_booking + ' của bạn với ' + appointmentDetail.Ten_bac_si + ' đã bị từ chối.'
+                )
             }
 
             // Tiến hành cập nhật trạng thái "cancelled" hoặc "confirmed" vào bảng lich_hen
