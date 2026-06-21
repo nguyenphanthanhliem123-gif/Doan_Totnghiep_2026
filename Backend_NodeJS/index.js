@@ -3,7 +3,9 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
 import { Server } from "socket.io";
-import http from 'http'; // 1. THÊM ĐÒNG NÀY: Import module http của Node.js
+import http from 'http';
+import '../Backend_NodeJS/utils/cronJob.js';
+import '../Backend_NodeJS/utils/cronJob24h.js';
 
 //Import Routes
 import userRoutes from './routes/userRoutes.js';

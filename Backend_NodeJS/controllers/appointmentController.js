@@ -1,6 +1,8 @@
+import app from "../index.js";
 import appointmentModel from "../models/AppointmentModel.js";
 import AppointmentModel from "../models/AppointmentModel.js";
 import paymentModel from "../models/paymentModel.js";
+import EmailService from "../services/emailService.js";
 import VNPayServices from "../services/vnpayService.js";
 import sendNotification from "../utils/notificationHelper.js";
 
@@ -108,8 +110,17 @@ export default class AppointmentController {
             }
 
             if (!result.success) {
+
                 return res.status(400).json({ succeeded: false, message: result.message });
             }
+
+            const appointmentDetail = await AppointmentModel.getAppointmentDetails(appointmentID);
+
+            await sendNotification(
+                appointmentDetail.Ma_nguoi_dung_bac_si,
+                'Hủy lịch hẹn',
+                'Lịch hẹn mã ' + appointmentDetail.Ma_booking + ' của bạn với bệnh nhân ' + appointmentDetail.Ten_nguoi_kham + ' đã đã bị hủy.'
+            );
 
             return res.status(200).json({ succeeded: true, message: result.message });
         } catch (error) {
@@ -221,6 +232,27 @@ export default class AppointmentController {
             const appointmentDetail = await appointmentModel.getAppointmentDetails(appointmentID);
 
             if(status === 'confirmed'){
+                await sendNotification(
+                    appointmentDetail.Ma_nguoi_dung,
+                    'Xác nhận lịch hẹn',
+                    'Lịch hẹn mã ' + appointmentDetail.Ma_booking + ' của bạn với ' + appointmentDetail.Ten_bac_si + ' đã được xác nhận.'
+                )
+
+                const dateTime = new Date(appointmentDetail.Thoi_gian_Bdau);
+                const ngayKham = dateTime.toLocaleDateString('vi-VN');
+                const gioKham = dateTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+
+                const thongTinEmail = {
+                    maBooking: appointmentDetail.Ma_booking,
+                    tenBacSi: appointmentDetail.Ten_bac_si,
+                    ngayKham: ngayKham,
+                    gioKham: gioKham,
+                    diaChi: appointmentDetail.Dia_chi_phong_kham
+                };
+                
+                EmailService.sendBookingConfirmationEmail(appointmentDetail.Email, thongTinEmail).catch(err => console.log("Lỗi gửi mail ngầm"));
+
+            }else{
                 await sendNotification(
                     appointmentDetail.Ma_nguoi_dung,
                     'Từ chối lịch hẹn',

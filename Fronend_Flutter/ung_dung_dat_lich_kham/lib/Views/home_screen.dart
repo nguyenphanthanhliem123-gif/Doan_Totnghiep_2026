@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:ung_dung_dat_lich_kham/Constants/ui_constants.dart';
 import 'package:ung_dung_dat_lich_kham/Views/doctor_list_screen.dart';
 import 'package:ung_dung_dat_lich_kham/Views/global_search_screen.dart';
+import 'package:ung_dung_dat_lich_kham/Views/notification_screen.dart';
 import 'package:ung_dung_dat_lich_kham/Views/specialty_list_screen.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/auth_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/profile_viewmodel.dart';
@@ -203,7 +204,11 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           Row(
             children: [
-              _buildHeaderIcon(Icons.notifications_none_outlined,(){}),
+              _buildHeaderIcon(Icons.notifications_none_outlined,(){
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) => NotificationScreen())
+                );
+              }),
               const SizedBox(width: 10),
               _buildHeaderIcon(Icons.search, () {
                 Navigator.of(context).push(

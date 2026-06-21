@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:ung_dung_dat_lich_kham/ViewModels/notification_viewmodel.dart';
 import 'dart:ui';
 import 'package:ung_dung_dat_lich_kham/ViewModels/payment_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/search_viewmodel.dart';
@@ -38,6 +39,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => BookingViewModel()),
         ChangeNotifierProvider(create: (_) => AppointmentViewModel()),
         ChangeNotifierProvider(create: (_) => PaymentViewmodel()),
+        ChangeNotifierProvider(create: (_) => NotificationViewmodel()),
         // --- ViewModel của bác sĩ ---
         ChangeNotifierProvider(create: (_) => DoctorAppointmentViewModel()),
         ChangeNotifierProvider(create: (_) => DoctorAppointmentListViewModel()),

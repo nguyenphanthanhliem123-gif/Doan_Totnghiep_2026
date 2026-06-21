@@ -60,6 +60,8 @@ export default class appointmentModel {
                     kg.Thoi_gian_Kthuc,
                     nd_bs.Ten_nguoi_dung AS Ten_bac_si,
                     nd_bs.Anh_dai_dien AS Anh_bac_si,
+                    nd_bn.Email,
+                    nd_bs.Ma_nguoi_dung AS Ma_nguoi_dung_bac_si,
                     pk.Ten_phong_kham,
                     pk.Vi_tri AS Dia_chi_phong_kham,
                     tt.Tong_tien,

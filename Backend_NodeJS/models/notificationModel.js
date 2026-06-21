@@ -6,7 +6,8 @@ export default class NotificationModel{
             const [rows] = await execute(
                 `SELECT *
                 FROM thong_bao
-                where Ma_nguoi_dung = ?`,[userID]
+                WHERE Ma_nguoi_dung = ?
+                ORDER BY Ngay_gui DESC`,[userID]
             );
             return rows.length > 0? rows: [];
         }catch(error){
@@ -23,9 +24,9 @@ export default class NotificationModel{
                 WHERE Ma_nguoi_dung = ? AND Ma_thong_bao = ?
             `;
 
-            const [resultCheck] = await execute(queryCheck,[notificationID, userID]);
+            const [resultCheck] = await execute(queryCheck,[ userID, notificationID]);
 
-            if(!(resultCheck.length > 0)) throw new Error("Thông báo này không thuộc về bạn");
+            if(resultCheck.length < 1) throw new Error("Thông báo này không thuộc về bạn");
 
             const query = `
                 UPDATE thong_bao
