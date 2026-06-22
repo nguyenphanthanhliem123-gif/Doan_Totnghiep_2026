@@ -8,8 +8,11 @@ const profileRoutes = Router();
 const authProfileRoutes = Router();
 authProfileRoutes.use(auth);
 
+profileRoutes.post('/upload-avatar', auth, profileController.uploadAvatar);
+
 authProfileRoutes.get('/:Ma_nguoi_dung', profileController.getProfileByMaNguoiDung);
 authProfileRoutes.post('/update-profile', profileController.updateProfile);
+
 
 profileRoutes.use('/', authProfileRoutes);
 export default profileRoutes;

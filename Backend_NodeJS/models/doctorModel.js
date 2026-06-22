@@ -1,4 +1,4 @@
-import { execute } from "../config/db.js";
+import { beginTransaction, execute } from "../config/db.js";
 
 export default class doctorModel {
     // Hàm lấy chi tiết 1 bác sĩ theo ID
@@ -224,6 +224,57 @@ export default class doctorModel {
         } catch (error) {
             console.error("Lỗi chi tiết SQL:", error.message); // In lỗi ra terminal backend để dễ debug
             throw new Error('Lỗi DB getDoctorsFilter: ' + error.message);
+        }
+    }
+
+    static async updateProfileDoctor(ma_nguoi_dung, data) {
+        try {
+            // 1. Khởi tạo mảng chứa các câu lệnh SET và mảng chứa giá trị tương ứng
+            const setClauses = [];
+            const values = [];
+
+            // 2. Kiểm tra từng trường dữ liệu, nếu có tồn tại (khác undefined) thì mới đưa vào câu Query
+            if (data.Ma_chuyen_khoa !== undefined) {
+                setClauses.push("Ma_chuyen_khoa = ?");
+                values.push(data.Ma_chuyen_khoa);
+            }
+            
+            if (data.Mo_ta_ban_than !== undefined) {
+                setClauses.push("Mo_ta_ban_than = ?");
+                values.push(data.Mo_ta_ban_than);
+            }
+            
+            if (data.Hoc_vi !== undefined) {
+                setClauses.push("Hoc_vi = ?");
+                values.push(data.Hoc_vi);
+            }
+            
+            if (data.So_nam_kinh_nghiem !== undefined) {
+                setClauses.push("So_nam_kinh_nghiem = ?");
+                values.push(data.So_nam_kinh_nghiem);
+            }
+
+            // 3. Nếu không có trường nào được gửi lên để update, thoát hàm sớm
+            if (setClauses.length === 0) {
+                return { affectedRows: 0, message: "Không có dữ liệu nào cần thay đổi." };
+            }
+
+            // 4. Ghép mảng setClauses thành chuỗi (VD: "Ma_chuyen_khoa = ?, Mo_ta_ban_than = ?")
+            const sql = `
+                UPDATE bac_si
+                SET ${setClauses.join(', ')}
+                WHERE Ma_nguoi_dung = ?
+            `;
+
+            // 5. Đẩy điều kiện WHERE (Mã người dùng) vào cuối mảng values
+            values.push(ma_nguoi_dung);
+
+            // 6. Thực thi câu lệnh SQL động
+            const [result] = await execute(sql, values);
+            return result;
+
+        } catch (error) {
+            throw new Error("Lỗi khi cập nhật hồ sơ bác sĩ: " + error.message);
         }
     }
 }

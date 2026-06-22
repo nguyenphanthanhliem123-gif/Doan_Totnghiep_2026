@@ -6,6 +6,9 @@ import { Server } from "socket.io";
 import http from 'http';
 import '../Backend_NodeJS/utils/cronJob.js';
 import '../Backend_NodeJS/utils/cronJob24h.js';
+import fileUpload from 'express-fileupload';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 //Import Routes
 import userRoutes from './routes/userRoutes.js';
@@ -23,6 +26,8 @@ import paymentRoute from "./routes/paymentRoutes.js";
 import notificationRoute from "./routes/notificationRoutes.js";
 
 const app = express();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // 2. THÊM DÒNG NÀY: Tạo HTTP Server bọc quanh Express App
 const server = http.createServer(app); 
@@ -69,6 +74,12 @@ app.use(bodyParser.json());
 app.use(express.urlencoded({ extended: true })); 
 app.use(cors({ origin: '*' }));
 
+app.use(fileUpload({
+    limits: { fileSize: 5 * 1024 * 1024 }, // Giới hạn ảnh tối đa 5MB
+    createParentPath: true, // Tự động tạo thư mục 'uploads' nếu nó chưa tồn tại
+    abortOnLimit: true // Báo lỗi ngay nếu file quá lớn
+}));
+
 //Routes
 app.get('/',(req,res) => {
     res.json({message: "Server API running"});
@@ -86,6 +97,7 @@ app.use('/api/bookings', bookingRoutes);
 app.use('/api/payment', paymentRoute);
 app.use('/api/appointments', appointmentRoutes);
 app.use('/api/notification', notificationRoute);
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.use((req,res,next)=>{
     res.status(404).json({message: 'Endpoint not found'});

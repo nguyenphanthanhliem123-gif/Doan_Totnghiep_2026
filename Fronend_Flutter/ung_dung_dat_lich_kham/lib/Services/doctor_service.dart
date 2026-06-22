@@ -48,4 +48,44 @@ class APIDoctorService {
       throw Exception('Hệ thống gặp sự cố: $e');
     }
   }
+
+  // Hàm gọi API /api/doctors/update
+  Future<bool> updateDoctorProfile({
+    String? hocVi,
+    String? soNamKinhNghiem,
+    int? maChuyenKhoa,
+    String? moTaBanThan,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    if (token == null) throw Exception('Phiên đăng nhập đã hết hạn.');
+
+    try {
+      final res = await http.post(
+        Uri.parse('$BASE_URL/api/doctors/update'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        // Chú ý: Các key này phải khớp chính xác với req.body bên doctorController.js
+        body: jsonEncode({
+          "hoc_vi": hocVi,
+          "so_nam_kinh_nghiem": soNamKinhNghiem,
+          "ma_chuyen_khoa": maChuyenKhoa,
+          "mo_ta": moTaBanThan,
+        }),
+      );
+
+      if (res.statusCode == 200) {
+        return true;
+      } else {
+        final data = jsonDecode(res.body);
+        print("Lỗi Backend Update Doctor: ${data['message']}");
+        throw Exception(data['message'] ?? "Cập nhật hồ sơ thất bại");
+      }
+    } catch (e) {
+      print("Lỗi APIDoctorService: $e");
+      throw Exception(e.toString().replaceAll('Exception: ', ''));
+    }
+  }
 }

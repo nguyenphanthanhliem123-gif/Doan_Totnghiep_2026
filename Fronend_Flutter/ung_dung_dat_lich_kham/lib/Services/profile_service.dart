@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import '../Models/user_model.dart';
 import '../Config/BASE_URL.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -103,6 +105,47 @@ class APIProfileService{
     catch(e){
       print("Lỗi cập nhật hồ sơ người dùng: $e");
       throw Exception(e.toString().replaceAll('Exception: ', ''));
+    }
+  }
+
+  Future<bool> uploadAvatar(File imageFile) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token'); // Lấy token đã lưu khi login
+      if (token == null) return false;
+
+      // Gọi tới đúng API upload ảnh đại diện ở Backend
+      var request = http.MultipartRequest(
+        'POST', 
+        Uri.parse('$BASE_URL/api/profile/upload-avatar')
+      );
+      
+      // Gắn Token xác thực vào Header
+      request.headers['Authorization'] = 'Bearer $token';
+
+      // Đính kèm file ảnh với key tên là 'avatar' (Trùng khớp với req.files.avatar ở backend)
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'avatar', 
+          imageFile.path,
+          contentType: MediaType('image', 'jpeg'), // Đảm bảo luôn gửi định dạng là image
+        )
+      );
+
+      // Gửi request lên server
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
+
+      print('=== STATUS CODE UPLOAD: ${response.statusCode}');
+      print('=== BODY UPLOAD từ Backend: ${response.body}');
+      
+      if (response.statusCode == 200) {
+        return true;
+      }
+      return false;
+    } catch (e) {
+      print("Lỗi uploadAvatar trên ViewModel: $e");
+      return false;
     }
   }
 }

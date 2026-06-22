@@ -80,4 +80,27 @@ export default class doctorController {
             });
         }
     }
+
+    static async updateProfile(req, res) {
+        try {
+            const userId = req.Ma_nguoi_dung; // Lấy từ token
+            
+            // Cứ ném toàn bộ req.body vào Model, Model sẽ tự chọn lọc
+            const updateData = {
+                Ma_chuyen_khoa: req.body.ma_chuyen_khoa,
+                Mo_ta_ban_than: req.body.mo_ta,
+                Hoc_vi: req.body.hoc_vi,
+                So_nam_kinh_nghiem: req.body.so_nam_kinh_nghiem
+            };
+
+            // Lọc bỏ những object key có giá trị là undefined (phòng hờ) trước khi truyền
+            Object.keys(updateData).forEach(key => updateData[key] === undefined && delete updateData[key]);
+
+            await DoctorModel.updateProfileDoctor(userId, updateData);
+
+            return res.status(200).json({ succeeded: true, message: "Cập nhật thành công!" });
+        } catch (error) {
+            return res.status(500).json({ succeeded: false, message: error.message });
+        }
+    }
 }

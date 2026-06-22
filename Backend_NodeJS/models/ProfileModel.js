@@ -1,5 +1,6 @@
 import { beginTransaction, commitTransaction, execute, rollbackTransaction } from "../config/db.js";
 
+
 export default class profileModel{
     static async getAll(){
         try{

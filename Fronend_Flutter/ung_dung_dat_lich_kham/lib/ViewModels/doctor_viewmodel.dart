@@ -100,5 +100,32 @@ class DoctorViewModel extends ChangeNotifier {
     }
   }
 
+  Future<bool> updateDoctorProfile({
+    String? hocVi,
+    String? soNamKinhNghiem,
+    int? maChuyenKhoa,
+    String? moTaBanThan,
+  }) async {
+    _isLoading = true;
+    _errorMessage = '';
+    notifyListeners();
+
+    try {
+      bool isSuccess = await _apiService.updateDoctorProfile(
+        hocVi: hocVi,
+        soNamKinhNghiem: soNamKinhNghiem,
+        maChuyenKhoa: maChuyenKhoa,
+        moTaBanThan: moTaBanThan,
+      );
+      return isSuccess;
+    } catch (e) {
+      _errorMessage = e.toString();
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
 }
 

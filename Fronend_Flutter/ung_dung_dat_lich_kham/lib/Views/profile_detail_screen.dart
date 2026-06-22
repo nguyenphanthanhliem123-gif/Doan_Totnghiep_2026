@@ -1,7 +1,9 @@
+import 'dart:io'; // 🚀 ĐÃ THÊM: Để làm việc với File ảnh
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart'; // 🚀 ĐÃ THÊM: Thư viện chọn ảnh
 import 'package:provider/provider.dart';
 import 'package:ung_dung_dat_lich_kham/Models/user_model.dart';
-import 'package:ung_dung_dat_lich_kham/ViewModels/auth_viewmodel.dart';
+import 'package:ung_dung_dat_lich_kham/viewmodels/auth_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/views/update_profile_screen.dart';
 import '../constants/ui_constants.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/profile_viewmodel.dart';
@@ -40,10 +42,56 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
     }
   }
 
+  // 🚀 ĐÃ THÊM: Hàm kích hoạt chọn ảnh và đẩy lên Backend
+  Future<void> _pickAndUploadImage() async {
+    final ImagePicker picker = ImagePicker();
+    
+    // Hiển thị hộp thoại cho người dùng chọn nguồn ảnh (Bộ sưu tập hoặc Máy ảnh)
+    final XFile? pickedFile = await picker.pickImage(
+      source: ImageSource.gallery, // Bạn có thể đổi thành ImageSource.camera tùy ý
+      imageQuality: 80,            // Nén chất lượng ảnh xuống 80% cho nhẹ server
+    );
+
+    if (pickedFile != null) {
+      setState(() { _isLoading = true; }); // Hiện vòng xoay chờ đợi
+
+      final profileVM = context.read<ProfileViewModel>();
+      File file = File(pickedFile.path);
+
+      // Gọi hàm upload lên Backend
+      await profileVM.uploadingAvatar(file);
+      bool? isSuccess = profileVM.uploadAvatar;
+
+      if (isSuccess! && _maNguoiDung != null) {
+        final maNguoiDungInt = int.tryParse(_maNguoiDung!);
+        if (maNguoiDungInt != null) {
+          // Tải lại dữ liệu mới từ Database để cập nhật link ảnh đại diện vừa thay đổi
+          await profileVM.getUserProfile(maNguoiDungInt);
+        }
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Cập nhật ảnh đại diện thành công!'), backgroundColor: Colors.green),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Tải ảnh lên thất bại. Vui lòng thử lại!'), backgroundColor: Colors.red),
+          );
+        }
+      }
+
+      if (mounted) {
+        setState(() { _isLoading = false; });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final profileViewModel = context.watch<ProfileViewModel>();
     final user = profileViewModel.userProfile;
+    print('=== isLoading: $_isLoading, profileVM: ${profileViewModel.isLoading}, user: $user');
 
     return Scaffold(
       appBar: PreferredSize(
@@ -61,20 +109,45 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
           ),
         ),
       ),
-      body: profileViewModel.isLoading || user == null
+      body: _isLoading || profileViewModel.isLoading || user == null
           ? const Center(child: CircularProgressIndicator(color: kPrimaryColor))
           : SingleChildScrollView(
               child: Column(
                 children: [
                   const SizedBox(height: 30),
-                  // ---------------- Phần Ảnh đại diện ----------------
+                  // ---------------- Phần Ảnh đại diện (ĐÃ CẬP NHẬT) ----------------
                   Center(
-                    child: Container(
-                      width: 120, height: 120,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle, border: Border.all(color: kPrimaryColor, width: 3),
-                        image: const DecorationImage(fit: BoxFit.cover, image: NetworkImage('https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png')),
-                      ),
+                    child: Stack(
+                      children: [
+                        Container(
+                          width: 120, height: 120,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle, 
+                            border: Border.all(color: kPrimaryColor, width: 3),
+                            image: DecorationImage(
+                              fit: BoxFit.cover, 
+                              // 💡 Kiểm tra nếu trong model user có link ảnh từ DB thì hiển thị, nếu không thì lấy ảnh mặc định
+                              // Chú ý: Hãy kiểm tra lại chính xác tên thuộc tính chứa ảnh trong UserModel của bạn (Vd: user.avatar hoặc user.anhDaiDien)
+                              image: (user.avatar != null && user.avatar!.isNotEmpty)
+                                  ? NetworkImage(user.avatar!)
+                                  : const NetworkImage('https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'),
+                            ),
+                          ),
+                        ),
+                        // Nút tròn nhỏ có hình Camera đè góc dưới bên phải ảnh đại diện
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: InkWell(
+                            onTap: _pickAndUploadImage, // Bấm vào để kích hoạt chọn ảnh
+                            child: const CircleAvatar(
+                              radius: 18,
+                              backgroundColor: kPrimaryColor,
+                              child: Icon(Icons.camera_alt, color: Colors.white, size: 18),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   const SizedBox(height: 30),
@@ -88,7 +161,6 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
                         _buildReadOnlyField(label: 'Họ và Tên', value: user.fullName, icon: Icons.person_outline),
                         _buildReadOnlyField(label: 'Email', value: user.email, icon: Icons.email_outlined),
                         
-                        // ✅ ĐÃ THÊM: Ô hiển thị Số điện thoại
                         _buildReadOnlyField(
                           label: 'Số điện thoại', 
                           value: (user.phone != null && user.phone!.isNotEmpty) ? user.phone! : 'Chưa cập nhật', 

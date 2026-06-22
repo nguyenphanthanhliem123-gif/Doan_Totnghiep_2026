@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import '../Models/user_model.dart';
 import '../Services/profile_service.dart';
@@ -10,6 +12,7 @@ class ProfileViewModel extends ChangeNotifier {
   String _errorMessage = '';
   bool? _changePassResult;
   bool? _updateProfileResult;
+  bool? _uploadAvatar;
 
 
   UserModel? get userProfile => _userModel;
@@ -17,6 +20,7 @@ class ProfileViewModel extends ChangeNotifier {
   String get errorMessage => _errorMessage;
   bool? get changePassResult => _changePassResult;
   bool? get updateProfileResult => _updateProfileResult;
+  bool? get uploadAvatar => _uploadAvatar;
 
   Future<void> getUserProfile(int ma_nguoi_dung) async {
     _isLoading = true;
@@ -84,6 +88,24 @@ class ProfileViewModel extends ChangeNotifier {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
       _changePassResult = false;
     } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> uploadingAvatar(File imageFile) async{
+    _isLoading = true;
+    _errorMessage = '';
+    _uploadAvatar = false;
+    notifyListeners();
+
+    try{
+      _uploadAvatar = await _apiProfileService.uploadAvatar(imageFile);
+      print('=== UPLOAD AVATAR RESULT: $_uploadAvatar');
+    }catch(e){
+      _errorMessage = e.toString();
+      print('❌ LỖI TRONG VIEWMODEL KHI UPLOAD: $e');
+    }finally{
       _isLoading = false;
       notifyListeners();
     }
