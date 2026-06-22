@@ -180,7 +180,7 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
                 ),
 
                 const SizedBox(height: 16),
-                _buildFooterButtons(context, appointment['Ma_lich_hen'], status),
+                _buildFooterButtons(context, appointment, status),
               ],
             ),
           ),
@@ -213,8 +213,9 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
     );
   }
 
-  Widget _buildFooterButtons(BuildContext context, int appointmentId, String status) {
+  Widget _buildFooterButtons(BuildContext context, dynamic appointment, String status) {
     final vm = context.watch<AppointmentViewModel>();
+    final int appointmentId = appointment['Ma_lich_hen'];
     
     if (status == 'pending') {
       return Row(
@@ -239,24 +240,44 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
     } else if (status == 'confirmed') {
       return Row(
         children: [
-          Expanded(child: _buildActionBtn(icon: Icons.person_off_outlined, text: 'Báo vắng', color: Colors.orange, bgColor: Colors.orange.shade50, onTap: () {})),
+          // 🌟 NÚT BÁO VẮNG KÈM LOGIC THỜI GIAN
+          Expanded(
+            child: _buildActionBtn(
+              icon: Icons.person_off_outlined, 
+              text: 'Báo vắng', 
+              color: Colors.orange, 
+              bgColor: Colors.orange.shade50, 
+              onTap: () {
+                final startTime = DateTime.parse(appointment['Thoi_gian_Bdau']).toLocal();
+                final now = DateTime.now();
+                
+                if (now.isAfter(startTime.add(const Duration(minutes: 15)))) {
+                  _handleAbsent(context, appointmentId);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Chỉ được báo vắng sau khi giờ khám đã trôi qua tối thiểu 15 phút!'),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                }
+              }
+            )
+          ),
           const SizedBox(width: 8),
           
-          // ✅ ĐÃ CẬP NHẬT Ở ĐÂY: Xử lý trạng thái Loading cho nút Hoàn Thành
+          // ✅ Xử lý trạng thái Loading cho nút Hoàn Thành
           Expanded(
             child: _buildActionBtn(
               icon: Icons.task_alt, 
-              text: vm.isLoading ? 'Đang xử lý...' : 'Hoàn thành', // Đổi text khi load
+              text: vm.isLoading ? 'Đang xử lý...' : 'Hoàn thành', 
               color: Colors.white, 
-              bgColor: vm.isLoading ? Colors.grey : Colors.green, // Đổi màu xám khi load
-              isLoading: vm.isLoading, // Truyền biến loading xuống UI nút
+              bgColor: vm.isLoading ? Colors.grey : Colors.green, 
+              isLoading: vm.isLoading, 
               onTap: vm.isLoading 
-                  ? null // 🛑 Ngăn không cho click tiếp nếu đang loading
+                  ? null 
                   : () async {
-                      // Nên dùng await để chờ API chạy xong
                       await vm.updateDoneStatus(appointmentId);
-                      
-                      // (Tùy chọn) Gọi loadAllAppointments() của Viewmodel kia để làm mới danh sách UI
                       if (context.mounted) {
                         context.read<DoctorAppointmentListViewModel>().loadAllAppointments();
                       }
@@ -292,11 +313,11 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
     required String text, 
     required Color color, 
     required Color bgColor, 
-    required VoidCallback? onTap, // ✅ Đổi thành nullable (?) để cho phép truyền null
-    bool isLoading = false, // ✅ Thêm tham số này để điều khiển UI (mặc định là false)
+    required VoidCallback? onTap, 
+    bool isLoading = false, 
   }) {
     return InkWell(
-      onTap: onTap, // 💡 Flutter tự động chặn click và bỏ hiệu ứng Ripple nếu onTap == null
+      onTap: onTap, 
       borderRadius: BorderRadius.circular(8),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
@@ -305,7 +326,6 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // ✅ Nếu đang load thì hiện vòng xoay, ngược lại hiện Icon
             isLoading
                 ? SizedBox(
                     height: 18, 
@@ -327,6 +347,19 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
 
   void _handleAction(BuildContext context, int appointmentId, String action) async {
     final result = await context.read<DoctorAppointmentListViewModel>().updateStatus(appointmentId, action);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message']),
+          backgroundColor: result['success'] ? Colors.green : Colors.red,
+        ),
+      );
+    }
+  }
+
+  // 🌟 HÀM XỬ LÝ GỌI API BÁO VẮNG
+  void _handleAbsent(BuildContext context, int appointmentId) async {
+    final result = await context.read<DoctorAppointmentListViewModel>().updateStatusAbsent(appointmentId);
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

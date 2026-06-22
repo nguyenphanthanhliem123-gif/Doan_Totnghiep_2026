@@ -1,5 +1,4 @@
 import app from "../index.js";
-import appointmentModel from "../models/AppointmentModel.js";
 import AppointmentModel from "../models/AppointmentModel.js";
 import paymentModel from "../models/paymentModel.js";
 import EmailService from "../services/emailService.js";
@@ -11,14 +10,10 @@ export default class AppointmentController {
     // Lấy danh sách lịch hẹn của bệnh nhân dựa trên userID
     static async getMyList(req, res) {
         try {
-            // Lấy ID người dùng từ token
             const userID = req.Ma_nguoi_dung; 
 
             if (!userID) {
-                return res.status(400).json({
-                    succeeded: false,
-                    message: "Không tìm thấy thông tin người dùng."
-                });
+                return res.status(400).json({ succeeded: false, message: "Không tìm thấy thông tin người dùng." });
             }
 
             const appointments = await AppointmentModel.getPatientAppointments(userID);
@@ -30,10 +25,7 @@ export default class AppointmentController {
             });
 
         } catch (error) {
-            return res.status(500).json({
-                succeeded: false,
-                message: "Lỗi server: " + error.message
-            });
+            return res.status(500).json({ succeeded: false, message: "Lỗi server: " + error.message });
         }
     }
 
@@ -42,15 +34,11 @@ export default class AppointmentController {
         try {
             const appointmentID = req.params.id;
 
-            if (!appointmentID) {
-                return res.status(400).json({ succeeded: false, message: "Thiếu mã lịch hẹn." });
-            }
+            if (!appointmentID) return res.status(400).json({ succeeded: false, message: "Thiếu mã lịch hẹn." });
 
             const detail = await AppointmentModel.getAppointmentDetails(appointmentID);
 
-            if (!detail) {
-                return res.status(404).json({ succeeded: false, message: "Không tìm thấy lịch hẹn này." });
-            }
+            if (!detail) return res.status(404).json({ succeeded: false, message: "Không tìm thấy lịch hẹn này." });
 
             return res.status(200).json({
                 succeeded: true,
@@ -70,11 +58,14 @@ export default class AppointmentController {
 
             const result = await AppointmentModel.cancelAppointment(appointmentID);
 
+            if (!result.success) {
+                return res.status(400).json({ succeeded: false, message: result.message });
+            }
+
             const info = await AppointmentModel.getAppointmentForRefund(appointmentID);
                 
             // Chuẩn hóa: Chỉ xử lý hoàn tiền nếu trạng thái hiện tại là 'paid'
             if (info && info.Trang_thai_thanh_toan === 'paid' && info.Ma_giao_dich) {
-                
                 // Kiểm tra chính sách hủy trước 24 giờ
                 const gioKham = new Date(info.Thoi_gian_Bdau);
                 const hienTai = new Date();
@@ -89,38 +80,32 @@ export default class AppointmentController {
                     };
 
                     // 🚀 CHẠY BẤT ĐỒNG BỘ (BACKGROUND TASK)
-                    // Giữ nguyên trạng thái 'paid' trong DB khi đang gọi sang VNPay
                     VNPayServices.xulyHoanTienVNPay(dataHoanTien)
                         .then(async (isSuccess) => {
                             if (isSuccess) {
-                                // Hoàn tiền thành công -> Chuyển sang 'refunded'
                                 await paymentModel.updateStatus(info.Ma_booking, 'refunded');
                                 console.log(`[Job Hoàn Tiền] Thành công -> Chuyển thành 'refunded' cho Booking: ${info.Ma_booking}`);
                             } else {
-                                // Hoàn tiền lỗi hệ thống -> Chuyển sang 'failed' để Admin đối soát
                                 await paymentModel.updateStatus(info.Ma_booking, 'failed');
                                 console.log(`[Job Hoàn Tiền] Thất bại từ VNPay -> Chuyển thành 'failed' cho Booking: ${info.Ma_booking}`);
                             }
                         })
                         .catch(err => console.error("[Job Hoàn Tiền] Lỗi Exception nghiêm trọng:", err));
                 } else {
-                    // Hủy sát giờ (< 24h) -> Không hoàn tiền -> Giữ nguyên trạng thái 'paid'
                     console.log(`[Chính sách] Booking ${info.Ma_booking} hủy sát giờ, không hoàn tiền.`);
                 }
             }
 
-            if (!result.success) {
-
-                return res.status(400).json({ succeeded: false, message: result.message });
-            }
-
             const appointmentDetail = await AppointmentModel.getAppointmentDetails(appointmentID);
 
-            await sendNotification(
-                appointmentDetail.Ma_nguoi_dung_bac_si,
-                'Hủy lịch hẹn',
-                'Lịch hẹn mã ' + appointmentDetail.Ma_booking + ' của bạn với bệnh nhân ' + appointmentDetail.Ten_nguoi_kham + ' đã đã bị hủy.'
-            );
+            // Gửi thông báo báo cho BÁC SĨ (Kiểm tra xem biến Ma_nguoi_dung_bac_si có lấy từ SQL ra chưa)
+            if (appointmentDetail && appointmentDetail.Ma_nguoi_dung_bac_si) {
+                await sendNotification(
+                    appointmentDetail.Ma_nguoi_dung_bac_si,
+                    'Hủy lịch hẹn',
+                    'Lịch hẹn mã ' + appointmentDetail.Ma_booking + ' của bạn với bệnh nhân ' + appointmentDetail.Ten_nguoi_kham + ' đã bị hủy.'
+                );
+            }
 
             return res.status(200).json({ succeeded: true, message: result.message });
         } catch (error) {
@@ -132,7 +117,7 @@ export default class AppointmentController {
     static async reschedule(req, res) {
         try {
             const appointmentID = req.params.id;
-            const { newSlotId } = req.body; // Lấy slot mới từ body
+            const { newSlotId } = req.body; 
 
             if (!newSlotId) return res.status(400).json({ succeeded: false, message: "Thiếu mã khung giờ mới." });
 
@@ -157,7 +142,6 @@ export default class AppointmentController {
         try {
             const userID = req.Ma_nguoi_dung;
             
-            // Check bảo mật: Đảm bảo người gọi API là bác sĩ
             if (req.Phan_quyen !== 'Bac_si' && req.Phan_quyen !== 'Admin') {
                 return res.status(403).json({ succeeded: false, message: "Truy cập bị từ chối. Chỉ dành cho bác sĩ." });
             }
@@ -187,81 +171,63 @@ export default class AppointmentController {
 
             const status = action === 'confirm' ? 'confirmed' : 'cancelled';
 
-            // LOGIC XỬ LÝ DÒNG TIỀN KHI HỦY LỊCH (REJECT)
+            // 1. Tiến hành cập nhật trạng thái vào bảng lich_hen TRƯỚC
+            const result = await AppointmentModel.updateAppointmentStatus(appointmentID, status, userID);
+
+            if (!result.success) {
+                return res.status(400).json({ succeeded: false, message: result.message });
+            }
+
+            // 2. LOGIC XỬ LÝ DÒNG TIỀN KHI HỦY LỊCH (REJECT)
             if (action === 'reject') {
                 const info = await AppointmentModel.getAppointmentForRefund(appointmentID);
-                
-                // Chuẩn hóa: Chỉ xử lý hoàn tiền nếu trạng thái hiện tại là 'paid'
                 if (info && info.Trang_thai_thanh_toan === 'paid' && info.Ma_giao_dich) {
-                    
-                    // Kiểm tra chính sách hủy trước 24 giờ
                     const gioKham = new Date(info.Thoi_gian_Bdau);
                     const hienTai = new Date();
-                    const khoangCachGio = (gioKham - hienTai) / (1000 * 60 * 60);
-
-                    if (khoangCachGio >= 24) {
+                    if ((gioKham - hienTai) / (1000 * 60 * 60) >= 24) {
                         const dataHoanTien = {
-                            maBooking: info.Ma_booking,
-                            maGiaoDich: info.Ma_giao_dich,
-                            soTien: info.Tong_tien,
-                            ngayThanhToan: info.Thoi_diem_thanh_toan 
+                            maBooking: info.Ma_booking, maGiaoDich: info.Ma_giao_dich,
+                            soTien: info.Tong_tien, ngayThanhToan: info.Thoi_diem_thanh_toan 
                         };
-
-                        // CHẠY BẤT ĐỒNG BỘ (BACKGROUND TASK)
-                        // Giữ nguyên trạng thái 'paid' trong DB khi đang gọi sang VNPay
-                        VNPayServices.xulyHoanTienVNPay(dataHoanTien)
-                            .then(async (isSuccess) => {
-                                if (isSuccess) {
-                                    // Hoàn tiền thành công -> Chuyển sang 'refunded'
-                                    await paymentModel.updateStatus(info.Ma_booking, 'refunded');
-                                    console.log(`[Job Hoàn Tiền] Thành công -> Chuyển thành 'refunded' cho Booking: ${info.Ma_booking}`);
-                                } else {
-                                    // Hoàn tiền lỗi hệ thống -> Chuyển sang 'failed' để Admin đối soát
-                                    await paymentModel.updateStatus(info.Ma_booking, 'refund_fail');
-                                    console.log(`[Job Hoàn Tiền] Thất bại từ VNPay -> Chuyển thành 'failed' cho Booking: ${info.Ma_booking}`);
-                                }
-                            })
-                            .catch(err => console.error("[Job Hoàn Tiền] Lỗi Exception nghiêm trọng:", err));
-                    } else {
-                        // Hủy sát giờ (< 24h) -> Không hoàn tiền -> Giữ nguyên trạng thái 'paid'
-                        console.log(`[Chính sách] Booking ${info.Ma_booking} hủy sát giờ, không hoàn tiền.`);
+                        VNPayServices.xulyHoanTienVNPay(dataHoanTien).then(async (isSuccess) => {
+                            if (isSuccess) await paymentModel.updateStatus(info.Ma_booking, 'refunded');
+                            else await paymentModel.updateStatus(info.Ma_booking, 'refund_fail');
+                        }).catch(err => console.error("[Job Hoàn Tiền] Lỗi Exception:", err));
                     }
                 }
             }
 
-            const appointmentDetail = await appointmentModel.getAppointmentDetails(appointmentID);
+            // 3. Xử lý Gửi Thông báo & Email cho bệnh nhân
+            const appointmentDetail = await AppointmentModel.getAppointmentDetails(appointmentID);
 
-            if(status === 'confirmed'){
-                await sendNotification(
-                    appointmentDetail.Ma_nguoi_dung,
-                    'Xác nhận lịch hẹn',
-                    'Lịch hẹn mã ' + appointmentDetail.Ma_booking + ' của bạn với ' + appointmentDetail.Ten_bac_si + ' đã được xác nhận.'
-                )
+            if (appointmentDetail && appointmentDetail.Ma_nguoi_dung) {
+                if (status === 'confirmed') {
+                    await sendNotification(
+                        appointmentDetail.Ma_nguoi_dung,
+                        'Xác nhận lịch hẹn',
+                        'Lịch hẹn mã ' + appointmentDetail.Ma_booking + ' của bạn với ' + appointmentDetail.Ten_bac_si + ' đã được xác nhận.'
+                    );
 
-                const dateTime = new Date(appointmentDetail.Thoi_gian_Bdau);
-                const ngayKham = dateTime.toLocaleDateString('vi-VN');
-                const gioKham = dateTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
-
-                const thongTinEmail = {
-                    maBooking: appointmentDetail.Ma_booking,
-                    tenBacSi: appointmentDetail.Ten_bac_si,
-                    ngayKham: ngayKham,
-                    gioKham: gioKham,
-                    diaChi: appointmentDetail.Dia_chi_phong_kham
-                };
-                
-                EmailService.sendBookingConfirmationEmail(appointmentDetail.Email, thongTinEmail).catch(err => console.log("Lỗi gửi mail ngầm"));
-
-            }else{
-                await sendNotification(
-                    appointmentDetail.Ma_nguoi_dung,
-                    'Từ chối lịch hẹn',
-                    'Lịch hẹn mã ' + appointmentDetail.Ma_booking + ' của bạn với ' + appointmentDetail.Ten_bac_si + ' đã bị từ chối.'
-                )
+                    // Chỉ gửi mail nếu bệnh nhân có cấu hình Email
+                    if (appointmentDetail.Email) {
+                        const dateTime = new Date(appointmentDetail.Thoi_gian_Bdau);
+                        const thongTinEmail = {
+                            maBooking: appointmentDetail.Ma_booking,
+                            tenBacSi: appointmentDetail.Ten_bac_si,
+                            ngayKham: dateTime.toLocaleDateString('vi-VN'),
+                            gioKham: dateTime.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+                            diaChi: appointmentDetail.Dia_chi_phong_kham
+                        };
+                        EmailService.sendBookingConfirmationEmail(appointmentDetail.Email, thongTinEmail).catch(err => console.log("Lỗi gửi mail ngầm"));
+                    }
+                } else {
+                    await sendNotification(
+                        appointmentDetail.Ma_nguoi_dung,
+                        'Từ chối lịch hẹn',
+                        'Lịch hẹn mã ' + appointmentDetail.Ma_booking + ' của bạn với ' + appointmentDetail.Ten_bac_si + ' đã bị từ chối.'
+                    );
+                }
             }
-
-            // Tiến hành cập nhật trạng thái "cancelled" hoặc "confirmed" vào bảng lich_hen
-            const result = await AppointmentModel.updateAppointmentStatus(appointmentID, status, userID);
 
             return res.status(200).json({ 
                 succeeded: true, 
@@ -272,36 +238,53 @@ export default class AppointmentController {
         }
     }
 
+    // Api Bác sĩ báo hoàn thành ca khám
     static async updateStatusDone(req,res){
         try{
             const appointmentID = req.params.id;
             const userID = req.Ma_nguoi_dung;
 
-            if(!appointmentID) return res.status(400).json({
-                succeeded: false,
-                message: 'Thiếu ID lịch hẹn'
-            });
+            if(!appointmentID) return res.status(400).json({ succeeded: false, message: 'Thiếu ID lịch hẹn' });
 
             await AppointmentModel.updateAppointmentStatusDone(appointmentID, userID);
 
-            // ✅ Lỗi 1: Bắt buộc phải có 'await' và dùng đúng tên class 'AppointmentModel'
             const appointmentDetail = await AppointmentModel.getAppointmentDetails(appointmentID);
-            console.log(appointmentDetail);
-            console.log(appointmentDetail.Ma_nguoi_dung);
+            
+            if (appointmentDetail && appointmentDetail.Ma_nguoi_dung) {
+                await sendNotification(
+                    appointmentDetail.Ma_nguoi_dung,
+                    'Đánh giá', 
+                    '[Mã lịch hẹn ' + appointmentDetail.Ma_booking + '][ID ' + appointmentID + '] Vui lòng cho biết đánh giá của bạn về bác sĩ ' + appointmentDetail.Ten_bac_si
+                );
+            }
 
-            await sendNotification(
-                appointmentDetail.Ma_nguoi_dung,
-                'Đánh giá', // Loại thông báo
-                '[Mã lịch hẹn ' + appointmentDetail.Ma_booking + '][ID ' + appointmentID + '] Vui lòng cho biết đánh giá của bạn về bác sĩ ' + appointmentDetail.Ten_bac_si
-            );
+            return res.status(200).json({ succeeded: true, message: "Đã hoàn thành ca khám." });
+        } catch(error){
+            return res.status(500).json({ succeeded: false, message: error.message });
+        }
+    }
 
-            // ✅ Lỗi 2: Trả về true khi thành công
+    // API Bác sĩ báo bệnh nhân vắng mặt
+    static async updateStatusAbsent(req, res) {
+        try {
+            const appointmentID = req.params.id;
+            const userID = req.Ma_nguoi_dung;
+
+            if (req.Phan_quyen !== 'Bac_si' && req.Phan_quyen !== 'Admin') {
+                return res.status(403).json({ succeeded: false, message: "Truy cập bị từ chối. Chỉ dành cho bác sĩ." });
+            }
+
+            if (!appointmentID) {
+                return res.status(400).json({ succeeded: false, message: 'Thiếu ID lịch hẹn.' });
+            }
+
+            await AppointmentModel.updateAppointmentStatusAbsent(appointmentID, userID);
+
             return res.status(200).json({
                 succeeded: true,
-                message: "Đã hoàn thành ca khám."
+                message: "Đã ghi nhận bệnh nhân vắng mặt và giải phóng khung giờ thành công."
             });
-        }
-        catch(error){
+        } catch (error) {
             return res.status(500).json({
                 succeeded: false,
                 message: error.message
@@ -309,54 +292,39 @@ export default class AppointmentController {
         }
     }
 
-    // API: Lấy toàn bộ danh sách lịch hẹn của Bác sĩ
+    // API Lấy toàn bộ danh sách lịch hẹn của Bác sĩ
     static async getAllDoctorList(req, res) {
         try {
             const userID = req.Ma_nguoi_dung;
 
-            // Chặn quyền
             if (req.Phan_quyen !== 'Bac_si' && req.Phan_quyen !== 'Admin') {
                 return res.status(403).json({ succeeded: false, message: "Truy cập bị từ chối. Chỉ dành cho bác sĩ." });
             }
 
             const data = await AppointmentModel.getAllDoctorAppointments(userID);
 
-            return res.status(200).json({
-                succeeded: true,
-                message: "Lấy danh sách lịch hẹn thành công",
-                data: data
-            });
+            return res.status(200).json({ succeeded: true, message: "Lấy danh sách lịch hẹn thành công", data: data });
         } catch (error) {
             return res.status(500).json({ succeeded: false, message: error.message });
         }
     }
 
-    // Lấy chi tiết ca khám hiển thị lên màn hình Chi tiết
+    // Lấy chi tiết ca khám hiển thị lên màn hình Chi tiết Bác sĩ
     static async getDoctorAppointmentDetail(req, res) {
         try {
             const { id } = req.params;
 
-            // Check bảo mật: Đảm bảo người gọi API là bác sĩ hoặc Admin
             if (req.Phan_quyen !== 'Bac_si' && req.Phan_quyen !== 'Admin') {
                 return res.status(403).json({ succeeded: false, message: "Truy cập bị từ chối." });
             }
 
-            if (!id) {
-                return res.status(400).json({ succeeded: false, message: "Thiếu mã lịch hẹn." });
-            }
+            if (!id) return res.status(400).json({ succeeded: false, message: "Thiếu mã lịch hẹn." });
 
             const data = await AppointmentModel.getDoctorAppointmentDetail(id);
 
-            if (!data) {
-                return res.status(404).json({ succeeded: false, message: "Không tìm thấy thông tin ca khám." });
-            }
+            if (!data) return res.status(404).json({ succeeded: false, message: "Không tìm thấy thông tin ca khám." });
 
-            return res.status(200).json({
-                succeeded: true,
-                message: "Lấy chi tiết ca khám thành công",
-                data: data
-            });
-
+            return res.status(200).json({ succeeded: true, message: "Lấy chi tiết ca khám thành công", data: data });
         } catch (error) {
             return res.status(500).json({ succeeded: false, message: "Lỗi hệ thống: " + error.message });
         }
