@@ -113,9 +113,15 @@ class DoctorDashboardScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 15),
-                  _buildHeader(context),
+                  _buildHeader(context, doctorVM),
                   const SizedBox(height: 20),
                   _buildQuickStats(doctorVM),
+                  const SizedBox(height: 20),
+                  // 🌟 GỌI WIDGET CARD DOANH THU XỔ XUỐNG Ở ĐÂY
+                  _ExpandableRevenueCard(
+                    totalRevenue: doctorVM.todayRevenue, 
+                    details: doctorVM.revenueDetails
+                  ),
                   const SizedBox(height: 25),
                   _buildPendingAppointments(context, doctorVM),
                   const SizedBox(height: 25),
@@ -128,7 +134,8 @@ class DoctorDashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  // Cập nhật Header: Thêm Công tắc Bật/Bận
+  Widget _buildHeader(BuildContext context, DoctorAppointmentViewModel doctorVM) {
     final profileVM = context.watch<ProfileViewModel>();
     final user = profileVM.userProfile;
 
@@ -142,7 +149,6 @@ class DoctorDashboardScreen extends StatelessWidget {
             backgroundImage: _safeAvatar(user?.avatar),
           ),
           const SizedBox(width: 12),
-          // 🌟 FIX: Dùng Expanded bọc Column để ép kích thước cố định trong Row chính
           Expanded(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -157,16 +163,39 @@ class DoctorDashboardScreen extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 10),
-          Container(
-            decoration: BoxDecoration(
-              color: primaryCyan.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: IconButton(
-              icon: Icon(Icons.notifications_none, color: primaryCyan),
-              onPressed: () {},
-            ),
+          
+          // Giao diện Công tắc Bật/Tắt trạng thái Bác sĩ
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Switch(
+                value: doctorVM.isDoctorActive,
+                activeColor: primaryCyan,
+                onChanged: (val) async {
+                  final result = await context.read<DoctorAppointmentViewModel>().toggleActiveStatus(val);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text(result['message']),
+                      backgroundColor: result['success'] 
+                          ? (val ? Colors.green : Colors.orange) 
+                          : Colors.red,
+                      duration: const Duration(seconds: 2),
+                    ));
+                  }
+                },
+              ),
+              Transform.translate(
+                offset: const Offset(0, -5), // Kéo Text lên sát lại cho đẹp
+                child: Text(
+                  doctorVM.isDoctorActive ? 'Sẵn sàng' : 'Đang bận', 
+                  style: TextStyle(
+                    fontSize: 12, 
+                    fontWeight: FontWeight.bold,
+                    color: doctorVM.isDoctorActive ? primaryCyan : Colors.redAccent
+                  )
+                ),
+              ),
+            ],
           )
         ],
       ),
@@ -433,5 +462,160 @@ class DoctorDashboardScreen extends StatelessWidget {
         )
       );
     }
+  }
+}
+
+
+// Widget Card doanh thu xổ xuống
+class _ExpandableRevenueCard extends StatefulWidget {
+  final double totalRevenue;
+  final List<dynamic> details;
+
+  const _ExpandableRevenueCard({required this.totalRevenue, required this.details});
+
+  @override
+  State<_ExpandableRevenueCard> createState() => _ExpandableRevenueCardState();
+}
+
+class _ExpandableRevenueCardState extends State<_ExpandableRevenueCard> {
+  bool _isExpanded = false; // Biến kiểm soát đóng/mở
+
+  String _formatCurrency(dynamic amount) {
+    if (amount == null) return "0";
+    return double.tryParse(amount.toString())?.toStringAsFixed(0).replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), 
+      (Match m) => '${m[1]}.'
+    ) ?? "0";
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20.0),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(15),
+          boxShadow: [
+            BoxShadow(color: const Color(0xFF4BCBEB).withOpacity(0.2), blurRadius: 10, offset: const Offset(0, 5)),
+          ],
+        ),
+        child: Column(
+          children: [
+            // 1. Phần Header (Luôn hiển thị)
+            InkWell(
+              onTap: () {
+                if (widget.details.isNotEmpty) {
+                  setState(() => _isExpanded = !_isExpanded);
+                }
+              },
+              borderRadius: BorderRadius.circular(15),
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF4BCBEB), Color(0xFF2E9BB8)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: _isExpanded 
+                      ? const BorderRadius.vertical(top: Radius.circular(15)) // Mở ra thì chỉ bo góc trên
+                      : BorderRadius.circular(15), // Đóng lại thì bo tròn hết
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), shape: BoxShape.circle),
+                      child: const Icon(Icons.account_balance_wallet, color: Colors.white, size: 28),
+                    ),
+                    const SizedBox(width: 15),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Doanh thu hôm nay', style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500)),
+                          const SizedBox(height: 5),
+                          Text(
+                            '${_formatCurrency(widget.totalRevenue)} VNĐ', 
+                            style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (widget.details.isNotEmpty)
+                      Icon(
+                        _isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down, 
+                        color: Colors.white, 
+                        size: 30
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            
+            // 2. Phần danh sách chi tiết tiền khám (Animation xổ xuống)
+            AnimatedCrossFade(
+              firstChild: const SizedBox(width: double.infinity), // Khung rỗng khi Đóng
+              secondChild: Container( // Nội dung khi Mở
+                padding: const EdgeInsets.only(top: 10, bottom: 15),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: const BorderRadius.vertical(bottom: Radius.circular(15)),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: Column(
+                  children: widget.details.map((item) {
+                    final localTime = DateTime.parse(item['Thoi_gian_Bdau']).toLocal();
+                    final timeStr = "${localTime.day}/${localTime.month} - ${localTime.hour.toString().padLeft(2, '0')}:${localTime.minute.toString().padLeft(2, '0')}";
+
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          // Cột 1: Tên & Giờ
+                          Expanded(
+                            flex: 3,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(item['Ten_benh_nhan'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                Text(timeStr, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                              ],
+                            ),
+                          ),
+                          // Cột 2: Tên Dịch Vụ
+                          Expanded(
+                            flex: 3,
+                            child: Text(
+                              item['Ten_dich_vu'] ?? 'Khám dịch vụ',
+                              style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
+                              maxLines: 1, // 🌟 Ép chỉ hiển thị 1 dòng
+                              overflow: TextOverflow.ellipsis, // 🌟 Cắt bớt và hiện ...
+                            ),
+                          ),
+                          // Cột 3: Số tiền
+                          Expanded(
+                            flex: 2,
+                            child: Text(
+                              '${_formatCurrency(item['Tong_tien'])} đ',
+                              textAlign: TextAlign.right,
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+              crossFadeState: _isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+              duration: const Duration(milliseconds: 300), // Tốc độ animation xổ xuống
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

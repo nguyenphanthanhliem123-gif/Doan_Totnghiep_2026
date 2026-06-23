@@ -1,16 +1,18 @@
 import { execute } from "../config/db.js";
 
 export default class bookingModel {
-    // Lấy danh sách các ngày CÒN SLOT TRỐNG của 1 bác sĩ
+    // Lấy danh sách các ngày CÒN Slot trống của 1 bác sĩ
     static async getAvailableDates(ma_bac_si) {
         const query = `
-            SELECT DISTINCT DATE(Thoi_gian_Bdau) AS Ngay_trong 
-            FROM khung_gio_kham 
-            WHERE Ma_bac_si = ? AND Trang_thai = 'available'
+            SELECT DISTINCT DATE(kg.Thoi_gian_Bdau) AS Ngay_trong 
+            FROM khung_gio_kham kg
+            JOIN bac_si bs ON kg.Ma_bac_si = bs.Ma_bac_si
+            WHERE kg.Ma_bac_si = ? 
+              AND kg.Trang_thai = 'available'
+              AND bs.Trang_thai_hoat_dong = 'active' -- 🌟 CHỈ HIỂN THỊ KHI BÁC SĨ RẢNH
             ORDER BY Ngay_trong ASC
         `;
         const [rows] = await execute(query, [ma_bac_si]);
-        // Trả về mảng các chuỗi ngày dạng YYYY-MM-DD (Ví dụ: ['2026-07-07', '2026-07-08'])
         return rows.map(row => row.Ngay_trong.toISOString().split('T')[0]);
     }
 
@@ -96,25 +98,27 @@ export default class bookingModel {
         return rows.length ? rows[0].Ma_benh_nhan : null;
     }
 
+    // Lấy lịch làm việc chi tiết trong 1 ngày
     static async getDoctorSchedule(date){
         try{
             const query = `
-                SELECT * 
-                FROM khung_gio_kham kgk 
-                    JOIN bac_si bs ON bs.Ma_bac_si = kgk.Ma_bac_si
-                    JOIN nguoi_dung nd ON nd.Ma_nguoi_dung = bs.Ma_nguoi_dung
-                    JOIN phong_kham pk ON  pk.Ma_phong_kham = kgk.Ma_phong_kham
-                WHERE  DATE(kgk.Thoi_gian_Bdau)  = ? AND kgk.Trang_thai = 'available'
+                SELECT * FROM khung_gio_kham kgk 
+                JOIN bac_si bs ON bs.Ma_bac_si = kgk.Ma_bac_si
+                JOIN nguoi_dung nd ON nd.Ma_nguoi_dung = bs.Ma_nguoi_dung
+                JOIN phong_kham pk ON pk.Ma_phong_kham = kgk.Ma_phong_kham
+                WHERE DATE(kgk.Thoi_gian_Bdau) = ? 
+                  AND kgk.Trang_thai = 'available'
+                  AND bs.Trang_thai_hoat_dong = 'active' -- 🌟 CHỈ LẤY SLOT KHI BÁC SĨ RẢNH
             `;
 
-            const [rows] = await execute(query,[date]);
-
-            return rows.length ?  rows : null;
+            const [rows] = await execute(query, [date]);
+            return rows.length ? rows : null;
         }
         catch(error){
             throw new Error('Lỗi bookingModel.getDoctorSchedule: ' + error.message);
         }
     }
+    
     // Hàm lưu thông tin thanh toán
     static async createPayment(paymentData) {
         const query = `INSERT INTO thanh_toan (Ma_lich_hen, Phuong_thuc, Trang_thai_thanh_toan, Ma_giao_dich, Tong_tien) 
