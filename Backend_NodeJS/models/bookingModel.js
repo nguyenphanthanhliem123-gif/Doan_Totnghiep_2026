@@ -30,14 +30,16 @@ export default class bookingModel {
 
     static async getSlotReal(Ma_khung_gio){
         try{
-               const checkSql = `
-                    SELECT COUNT(*) as count 
-                    FROM lich_hen 
-                    WHERE Ma_khung_gio = ? AND Trang_thai_lich_hen != 'cancelled'
-                `;
-                const [rows] = await execute(checkSql, [Ma_khung_gio]);
+            // Bỏ qua các ca cũ đã hoàn thành (done), đã hủy (cancelled) hoặc vắng mặt (absent)
+            const checkSql = `
+                SELECT COUNT(*) as count 
+                FROM lich_hen 
+                WHERE Ma_khung_gio = ? 
+                  AND Trang_thai_lich_hen IN ('pending', 'confirmed')
+            `;
+            const [rows] = await execute(checkSql, [Ma_khung_gio]);
 
-                return rows;
+            return rows;
         }catch(error){
             throw new Error("Lỗi bookingModel.getSlotReal: " + error.message);
         }

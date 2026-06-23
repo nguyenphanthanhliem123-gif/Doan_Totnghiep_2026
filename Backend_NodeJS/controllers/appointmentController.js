@@ -329,4 +329,76 @@ export default class AppointmentController {
             return res.status(500).json({ succeeded: false, message: "Lỗi hệ thống: " + error.message });
         }
     }
+
+    // API lấy lịch sử bệnh án của bệnh nhân trong ca khám hiện tại
+    static async getMedicalHistory(req, res) {
+        try {
+            const { id } = req.params; // ID của ca khám hiện tại bác sĩ đang xem
+
+            // 1. Lấy thông tin ca khám hiện tại để biết đang khám cho ai (Bản thân hay Người thân)
+            const currentAppt = await AppointmentModel.getDoctorAppointmentDetail(id);
+            if (!currentAppt) {
+                return res.status(404).json({ succeeded: false, message: "Không tìm thấy ca khám." });
+            }
+
+            // 2. Lấy danh sách lịch sử dựa trên ID bệnh nhân và ID người thân
+            // Cần lấy Ma_benh_nhan từ DB.
+            const history = await AppointmentModel.getMedicalHistory(
+                currentAppt.Ma_benh_nhan, 
+                currentAppt.Ma_nguoi_than
+            );
+
+            return res.status(200).json({
+                succeeded: true,
+                data: history
+            });
+        } catch (error) {
+            return res.status(500).json({ succeeded: false, message: error.message });
+        }
+    }
+
+    // Api Bác sĩ báo khám xong và kê đơn
+    static async completeWithPrescription(req, res) {
+        try {
+            const appointmentID = req.params.id;
+            const userID = req.Ma_nguoi_dung;
+            const { chuanDoan, ngayTaiKham, danhSachThuoc } = req.body;
+
+            if (!appointmentID) return res.status(400).json({ succeeded: false, message: 'Thiếu ID lịch hẹn' });
+            if (!chuanDoan) return res.status(400).json({ succeeded: false, message: 'Vui lòng nhập chẩn đoán bệnh lý.' });
+
+            // Gọi hàm Model xử lý tất cả
+            await AppointmentModel.completeAndPrescribe(appointmentID, userID, { chuanDoan, ngayTaiKham, danhSachThuoc });
+
+            // Gửi thông báo xin đánh giá cho bệnh nhân
+            const appointmentDetail = await AppointmentModel.getAppointmentDetails(appointmentID);
+            if (appointmentDetail && appointmentDetail.Ma_nguoi_dung) {
+                await sendNotification(
+                    appointmentDetail.Ma_nguoi_dung,
+                    'Đánh giá ca khám', 
+                    '[Mã lịch hẹn ' + appointmentDetail.Ma_booking + '] Vui lòng cho biết đánh giá của bạn về bác sĩ ' + appointmentDetail.Ten_bac_si
+                );
+            }
+
+            return res.status(200).json({ succeeded: true, message: "Hoàn thành ca khám và kê đơn thành công." });
+        } catch (error) {
+            return res.status(500).json({ succeeded: false, message: error.message });
+        }
+    }
+
+    // API Lấy chi tiết đơn thuốc để xem lại
+    static async getPrescription(req, res) {
+        try {
+            const { id } = req.params; // Ma_lich_hen
+            if (!id) return res.status(400).json({ succeeded: false, message: "Thiếu mã lịch hẹn." });
+
+            const data = await AppointmentModel.getPrescriptionByAppointmentId(id);
+            
+            if (!data) return res.status(404).json({ succeeded: false, message: "Chưa có đơn thuốc cho ca khám này." });
+
+            return res.status(200).json({ succeeded: true, data: data });
+        } catch (error) {
+            return res.status(500).json({ succeeded: false, message: error.message });
+        }
+    }
 }

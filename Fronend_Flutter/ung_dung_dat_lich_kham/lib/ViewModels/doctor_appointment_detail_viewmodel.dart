@@ -13,6 +13,52 @@ class DoctorAppointmentDetailViewModel extends ChangeNotifier {
 
   final String _baseUrl = "$BASE_URL/api/appointments";
 
+  bool _isHistoryLoading = false;
+  bool get isHistoryLoading => _isHistoryLoading;
+
+  List<dynamic> _medicalHistory = [];
+  List<dynamic> get medicalHistory => _medicalHistory;
+
+  bool _isPrescriptionLoading = false;
+  bool get isPrescriptionLoading => _isPrescriptionLoading;
+
+  Map<String, dynamic>? _prescriptionData;
+  Map<String, dynamic>? get prescriptionData => _prescriptionData;
+
+  // Gọi API lấy lịch sử bệnh án (các ca khám cũ)
+  Future<void> fetchMedicalHistory(int appointmentId) async {
+    _isHistoryLoading = true;
+    notifyListeners();
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+
+      if (token == null) return;
+
+      final url = Uri.parse('$_baseUrl/doctor/medical-history/$appointmentId');
+      final response = await http.get(
+        url,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token",
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['succeeded'] == true) {
+          _medicalHistory = data['data'];
+        }
+      }
+    } catch (e) {
+      print("Lỗi tải lịch sử bệnh án: $e");
+    } finally {
+      _isHistoryLoading = false;
+      notifyListeners();
+    }
+  }
+
   // Gọi API lấy chi tiết 1 ca khám cụ thể
   Future<void> fetchAppointmentDetail(int appointmentId) async {
     _isLoading = true;
@@ -44,6 +90,70 @@ class DoctorAppointmentDetailViewModel extends ChangeNotifier {
       print("Lỗi tải chi tiết ca khám bác sĩ: $e");
     } finally {
       _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Hàm gửi đơn thuốc và hoàn thành ca khám
+  Future<Map<String, dynamic>> completeAndPrescribe(int appointmentId, String chuanDoan, String? ngayTaiKham, List<Map<String, dynamic>> danhSachThuoc) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+
+      final url = Uri.parse('$_baseUrl/doctor/prescribe/$appointmentId');
+      final response = await http.post(
+        url,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token",
+        },
+        body: jsonEncode({
+          "chuanDoan": chuanDoan,
+          "ngayTaiKham": ngayTaiKham, // Có thể null
+          "danhSachThuoc": danhSachThuoc
+        })
+      );
+
+      final data = jsonDecode(response.body);
+      return {"success": data['succeeded'] == true, "message": data['message'] ?? "Lỗi không xác định"};
+    } catch (e) {
+      return {"success": false, "message": "Lỗi kết nối Server"};
+    } finally {
+      // Dù thành công hay thất bại cũng gọi lại hàm lấy chi tiết để cập nhật giao diện
+      await fetchAppointmentDetail(appointmentId); 
+    }
+  }
+
+  // Hàm xem đơn thuốc
+  Future<void> fetchPrescription(int appointmentId) async {
+    _isPrescriptionLoading = true;
+    _prescriptionData = null; // Reset data cũ
+    notifyListeners();
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      if (token == null) return;
+
+      final url = Uri.parse('$_baseUrl/doctor/prescription/$appointmentId');
+      final response = await http.get(url, headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $token",
+      });
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['succeeded'] == true) {
+          _prescriptionData = data['data'];
+        }
+      }
+    } catch (e) {
+      print("Lỗi tải đơn thuốc: $e");
+    } finally {
+      _isPrescriptionLoading = false;
       notifyListeners();
     }
   }
