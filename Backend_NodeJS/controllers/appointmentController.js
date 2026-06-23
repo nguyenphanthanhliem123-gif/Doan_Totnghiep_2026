@@ -301,18 +301,20 @@ export default class AppointmentController {
         }
     }
 
-    // API Lấy toàn bộ danh sách lịch hẹn của Bác sĩ
+    // API Lấy toàn bộ danh sách lịch hẹn của Bác sĩ (Có nhận query lọc)
     static async getAllDoctorList(req, res) {
         try {
             const userID = req.Ma_nguoi_dung;
+            const { status, date } = req.query; // 🌟 Lấy điều kiện lọc từ URL
 
             if (req.Phan_quyen !== 'Bac_si' && req.Phan_quyen !== 'Admin') {
-                return res.status(403).json({ succeeded: false, message: "Truy cập bị từ chối. Chỉ dành cho bác sĩ." });
+                return res.status(403).json({ succeeded: false, message: "Truy cập bị từ chối." });
             }
 
-            const data = await AppointmentModel.getAllDoctorAppointments(userID);
+            // Truyền status và date xuống Model
+            const data = await AppointmentModel.getAllDoctorAppointments(userID, status, date);
 
-            return res.status(200).json({ succeeded: true, message: "Lấy danh sách lịch hẹn thành công", data: data });
+            return res.status(200).json({ succeeded: true, message: "Lấy danh sách thành công", data: data });
         } catch (error) {
             return res.status(500).json({ succeeded: false, message: error.message });
         }
@@ -406,6 +408,43 @@ export default class AppointmentController {
             if (!data) return res.status(404).json({ succeeded: false, message: "Chưa có đơn thuốc cho ca khám này." });
 
             return res.status(200).json({ succeeded: true, data: data });
+        } catch (error) {
+            return res.status(500).json({ succeeded: false, message: error.message });
+        }
+    }
+
+    // API Lấy trạng thái hoạt động hiện tại của bác sĩ
+    static async getDoctorStatus(req, res) {
+        try {
+            const userID = req.Ma_nguoi_dung;
+            if (req.Phan_quyen !== 'Bac_si' && req.Phan_quyen !== 'Admin') {
+                return res.status(403).json({ succeeded: false, message: "Truy cập bị từ chối." });
+            }
+            const status = await AppointmentModel.getDoctorStatus(userID);
+            return res.status(200).json({ succeeded: true, data: { status } });
+        } catch (error) {
+            return res.status(500).json({ succeeded: false, message: error.message });
+        }
+    }
+
+    // API Cập nhật trạng thái rảnh/bận của bác sĩ
+    static async toggleDoctorStatus(req, res) {
+        try {
+            const userID = req.Ma_nguoi_dung;
+            const { status } = req.body; // Cần gửi 'active' hoặc 'suspended'
+
+            if (req.Phan_quyen !== 'Bac_si' && req.Phan_quyen !== 'Admin') {
+                return res.status(403).json({ succeeded: false, message: "Truy cập bị từ chối." });
+            }
+            if (!['active', 'suspended'].includes(status)) {
+                return res.status(400).json({ succeeded: false, message: "Trạng thái không hợp lệ." });
+            }
+
+            await AppointmentModel.updateDoctorStatus(userID, status);
+            return res.status(200).json({ 
+                succeeded: true, 
+                message: status === 'active' ? "Đã chuyển sang chế độ Sẵn sàng khám." : "Đã chuyển sang chế độ Bận." 
+            });
         } catch (error) {
             return res.status(500).json({ succeeded: false, message: error.message });
         }
