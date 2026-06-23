@@ -2,6 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:ung_dung_dat_lich_kham/Models/specialtyModel.dart';
+import 'package:ung_dung_dat_lich_kham/viewmodels/specialty_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/profile_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/doctor_viewmodel.dart';
 // import các hằng số màu sắc của bạn (kPrimaryColor, v.v...)
@@ -23,14 +25,47 @@ class _UpdateDoctorProfileScreenState extends State<UpdateDoctorProfileScreen> {
   final TextEditingController _hocViController = TextEditingController();
   final TextEditingController _kinhNghiemController = TextEditingController();
   final TextEditingController _moTaController = TextEditingController();
+
+  @override
+void initState() {
+  super.initState();
+  
+  WidgetsBinding.instance.addPostFrameCallback((_) async {
+    // 1. Chờ gọi cả 2 API tải xong dữ liệu
+    await context.read<SpecialtyViewModel>().loadAllSpecialties();
+    await context.read<DoctorViewModel>().fetchDoctorDetailForDoctor();
+    
+    // 2. Lấy dữ liệu đã tải từ các ViewModel ra
+    final specialties = context.read<SpecialtyViewModel>().listSpecialty;
+    final doctor = context.read<DoctorViewModel>().doctorDetailForDoctor;
+
+    if (doctor != null && mounted) {
+      setState(() {
+        // --- ĐIỀN DỮ LIỆU CŨ VÀO CÁC Ô NHẬP LIỆU ---
+        _hocViController.text = doctor.degree ?? ''; // Thừa kế học vị cũ
+        _kinhNghiemController.text = doctor.experienceYears?.toString() ?? ''; // Thừa kế số năm kinh nghiệm
+        _moTaController.text = doctor.description ?? ''; // Thừa kế mô tả cũ
+
+        // --- BẪY LỖI DROPDOWN (RẤT QUAN TRỌNG) ---
+        // Dropdown trong Flutter sẽ crash nếu giá trị khởi tạo không nằm trong danh sách items.
+        // Đoạn này giúp kiểm tra xem ID chuyên khoa của bác sĩ có tồn tại trong danh sách chuyên khoa của hệ thống không.
+        if (specialties != null && specialties.isNotEmpty) {
+          // Thay 'maChuyenKhoa' bằng thuộc tính tương ứng trong DoctorModel của bạn
+          final currentSpecialtyId = doctor.specialtyId; 
+          
+          bool isExist = specialties.any((element) => element.id == currentSpecialtyId);
+          if (isExist && currentSpecialtyId != null) {
+            _selectedChuyenKhoa = currentSpecialtyId;
+          } else {
+            _selectedChuyenKhoa = specialties.first.id; // Nếu không tìm thấy, lấy phần tử đầu tiên làm mặc định
+          }
+        }
+      });
+    }
+  });
+}
   
   int _selectedChuyenKhoa = 1; // Giả lập id chuyên khoa mặc định
-  final List<Map<String, dynamic>> _chuyenKhoaList = [
-    {"id": 1, "name": "Khoa Nội"},
-    {"id": 2, "name": "Khoa Ngoại"},
-    {"id": 3, "name": "Nha Khoa"},
-    {"id": 4, "name": "Tim Mạch"},
-  ];
 
   // 1. Hàm chọn ảnh (Giống hệt ProfileDetailScreen)
   Future<void> _pickImage() async {
@@ -103,13 +138,17 @@ class _UpdateDoctorProfileScreenState extends State<UpdateDoctorProfileScreen> {
   Widget build(BuildContext context) {
     // Đọc user hiện tại để hiển thị ảnh cũ nếu chưa chọn ảnh mới
     final user = context.watch<ProfileViewModel>().userProfile;
+    final specialtyVM = context.watch<SpecialtyViewModel>();
+    final specialtyList = specialtyVM.listSpecialty;
+    final doctorVM = context.watch<DoctorViewModel>();
+    final doctor = doctorVM.doctorDetailForDoctor;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Cập nhật hồ sơ Bác sĩ'),
         backgroundColor: Colors.blueAccent, // Thay bằng kPrimaryColor của bạn
       ),
-      body: _isSubmitting 
+      body: _isSubmitting || specialtyVM.isLoading || specialtyList == null || doctorVM.isLoading || doctor == null
         ? const Center(child: CircularProgressIndicator()) 
         : SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -181,10 +220,10 @@ class _UpdateDoctorProfileScreenState extends State<UpdateDoctorProfileScreen> {
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.local_hospital),
                 ),
-                items: _chuyenKhoaList.map((khoa) {
+                items: specialtyList.map((khoa) {
                   return DropdownMenuItem<int>(
-                    value: khoa['id'],
-                    child: Text(khoa['name']),
+                    value: khoa.id,
+                    child: Text(khoa.name),
                   );
                 }).toList(),
                 onChanged: (val) {

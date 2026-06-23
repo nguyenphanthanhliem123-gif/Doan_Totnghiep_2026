@@ -25,10 +25,8 @@ class _ProfileScreen extends State<ProfileScreen> {
   }
 
   Future<void> _loadUserIdThenFetch() async {
-    print("=== BẮT ĐẦU LOAD ===");
     final id = await Provider.of<AuthViewModel>(context, listen: false)
         .getSavedUserId();
-    print("=== ID: $id");
     if (!mounted) return;
 
     setState(() {

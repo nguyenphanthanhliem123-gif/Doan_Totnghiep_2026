@@ -23,4 +23,20 @@ export default class clinicModel {
             throw new Error("Lỗi lấy dữ liệu phòng khám: " + error.message);
         }
     }
+
+    static async getAllClinics(){
+        try{
+            const query = `
+                SELECT *
+                FROM phong_kham
+            `;
+
+            const [rows] = await execute(query);
+
+            return rows.length > 0 ? rows : [];
+        }
+        catch(error){
+            throw new Error("Lỗi clinicModel.getAllClinics: " + error.message);
+        }
+    }
 }

@@ -96,9 +96,71 @@ export default class doctorController {
             // Lọc bỏ những object key có giá trị là undefined (phòng hờ) trước khi truyền
             Object.keys(updateData).forEach(key => updateData[key] === undefined && delete updateData[key]);
 
-            await DoctorModel.updateProfileDoctor(userId, updateData);
+            await doctorModel.updateProfileDoctor(userId, updateData);
 
             return res.status(200).json({ succeeded: true, message: "Cập nhật thành công!" });
+        } catch (error) {
+            return res.status(500).json({ succeeded: false, message: error.message });
+        }
+    }
+
+    static async getDoctorByUserId(req, res) {
+        try {
+            const id  = req.Ma_nguoi_dung;
+
+            console.log('=== userId: ' + id);
+
+            if (!id) {
+                return res.status(400).json({ succeeded: false, message: "Thiếu mã người dùng" });
+            }
+
+            const doctor = await doctorModel.getDoctorDetailByUserID(id);
+
+            if (!doctor) {
+                return res.status(404).json({ succeeded: false, message: "Không tìm thấy thông tin bác sĩ" });
+            }
+
+            return res.status(200).json({ 
+                succeeded: true, 
+                data: doctor 
+            });
+
+        } catch (error) {
+            return res.status(500).json({ succeeded: false, message: error.message });
+        }
+    }
+
+    // API Lấy nơi làm việc chính và hiện tại của bác sĩ
+    static async getSelectedClinics(req, res) {
+        try {
+            const userId = req.Ma_nguoi_dung; // Lấy từ token qua Middleware
+            
+            const clinics = await doctorModel.getDoctorClinicsByUserId(userId);
+
+            let currentClinicId = null;
+            let primaryClinicId = null;
+
+            // Phân loại: 1 là nơi chính, 0 là nơi hiện tại
+            clinics.forEach(c => {
+                if (c.Noi_chinh === 1) {
+                    primaryClinicId = c.Ma_phong_kham;
+                } else if (c.Noi_chinh === 0) {
+                    currentClinicId = c.Ma_phong_kham;
+                }
+            });
+
+            // Nếu bác sĩ chỉ lưu 1 nơi (vừa làm chính vừa làm hiện tại)
+            if (primaryClinicId !== null && currentClinicId === null) {
+                currentClinicId = primaryClinicId;
+            }
+
+            return res.status(200).json({
+                succeeded: true,
+                data: {
+                    currentClinicId: currentClinicId,
+                    primaryClinicId: primaryClinicId
+                }
+            });
         } catch (error) {
             return res.status(500).json({ succeeded: false, message: error.message });
         }

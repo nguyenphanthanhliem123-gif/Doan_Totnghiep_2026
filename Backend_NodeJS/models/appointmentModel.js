@@ -1,4 +1,5 @@
 import { beginTransaction, commitTransaction, execute, rollbackTransaction } from "../config/db.js";
+import { decrypt } from '../utils/cryptoUtil.js';
 
 export default class appointmentModel {
 
@@ -389,15 +390,16 @@ export default class appointmentModel {
         }
     }
 
+    // Bác sĩ hoàn thành ca khám
     static async updateAppointmentStatusDone(appointmentID, userID){
         try{
             const [doctorInfo] = await execute(`SELECT Ma_bac_si FROM bac_si WHERE Ma_nguoi_dung = ?`, [userID]);
             if (doctorInfo.length === 0) throw new Error('Không có quyền truy cập.');
             const maBacSi = doctorInfo[0].Ma_bac_si;
 
-            // 2. Lấy Mã khung giờ của lịch hẹn hiện tại
+            // 1. Lấy trạng thái cũ VÀ Mã khung giờ của lịch hẹn hiện tại
             const [apptInfo] = await execute(
-                `SELECT Ma_khung_gio FROM lich_hen WHERE Ma_lich_hen = ? AND Ma_bac_si = ?`, 
+                `SELECT Trang_thai_lich_hen, Ma_khung_gio FROM lich_hen WHERE Ma_lich_hen = ? AND Ma_bac_si = ?`, 
                 [appointmentID, maBacSi]
             );
             
@@ -405,11 +407,83 @@ export default class appointmentModel {
                 throw new Error('Lịch hẹn không tồn tại hoặc không thuộc thẩm quyền của bạn.');
             }
 
+            const trangThaiCu = apptInfo[0].Trang_thai_lich_hen;
+            const maKhungGio = apptInfo[0].Ma_khung_gio; // Lấy mã khung giờ để nhả slot
 
+            // 2. Cập nhật trạng thái thành 'done'
             const [result] = await execute(`UPDATE lich_hen SET Trang_thai_lich_hen = 'done' WHERE Ma_lich_hen = ?`, [appointmentID]);
+
+            // 🌟 3. Nhả khung giờ về 'available'
+            await execute(`UPDATE khung_gio_kham SET Trang_thai = 'available' WHERE Ma_khung_gio = ?`, [maKhungGio]);
+
+            // 4. LƯU LỊCH SỬ THAY ĐỔI
+            if (trangThaiCu !== 'done') {
+                await execute(
+                    `INSERT INTO lich_su_trang_thai_lich_hen 
+                    (Ma_lich_hen, Trang_thai_cu, Trang_thai_moi, Nguoi_thay_doi) 
+                    VALUES (?, ?, 'done', 'doctor')`, 
+                    [appointmentID, trangThaiCu]
+                );
+            }
+
             return result.affectedRows;
         }catch(error){
             throw new Error('Lỗi cập nhật trạng thái lịch hẹn: ' + error.message);
+        }
+    }
+
+    // Bác sĩ báo bệnh nhân vắng mặt
+    static async updateAppointmentStatusAbsent(appointmentID, userID) {
+        try {
+            const [doctorInfo] = await execute(`SELECT Ma_bac_si FROM bac_si WHERE Ma_nguoi_dung = ?`, [userID]);
+            if (doctorInfo.length === 0) throw new Error('Không có quyền truy cập.');
+            const maBacSi = doctorInfo[0].Ma_bac_si;
+
+            // 1. Lấy trạng thái cũ, Mã khung giờ VÀ Thời gian bắt đầu của lịch hẹn
+            const [apptInfo] = await execute(
+                `SELECT lh.Trang_thai_lich_hen, lh.Ma_khung_gio, kg.Thoi_gian_Bdau 
+                 FROM lich_hen lh
+                 JOIN khung_gio_kham kg ON lh.Ma_khung_gio = kg.Ma_khung_gio
+                 WHERE lh.Ma_lich_hen = ? AND lh.Ma_bac_si = ?`, 
+                [appointmentID, maBacSi]
+            );
+            
+            if (apptInfo.length === 0) {
+                throw new Error('Lịch hẹn không tồn tại hoặc không thuộc thẩm quyền của bạn.');
+            }
+
+            const trangThaiCu = apptInfo[0].Trang_thai_lich_hen;
+            const maKhungGio = apptInfo[0].Ma_khung_gio;
+            const startTime = new Date(apptInfo[0].Thoi_gian_Bdau);
+            
+            // 🌟 CHỐT CHẶN: Phải trễ hơn giờ bắt đầu tối thiểu 15 phút mới được xử lý
+            const now = new Date();
+            const diffInMinutes = (now - startTime) / (1000 * 60);
+            if (diffInMinutes < 15) {
+                throw new Error('Chỉ được báo vắng sau khi giờ bắt đầu ca khám đã trôi qua tối thiểu 15 phút.');
+            }
+
+            if (trangThaiCu !== 'confirmed') {
+                throw new Error('Chỉ có thể báo vắng cho những ca khám đã được xác nhận (confirmed).');
+            }
+
+            // 2. Cập nhật trạng thái lịch hẹn thành 'absent'
+            const [result] = await execute(`UPDATE lich_hen SET Trang_thai_lich_hen = 'absent' WHERE Ma_lich_hen = ?`, [appointmentID]);
+
+            // 3. Nhả khung giờ về lại trạng thái 'available' cho người khác
+            await execute(`UPDATE khung_gio_kham SET Trang_thai = 'available' WHERE Ma_khung_gio = ?`, [maKhungGio]);
+
+            // 4. Ghi nhận nhật ký thay đổi hệ thống
+            await execute(
+                `INSERT INTO lich_su_trang_thai_lich_hen 
+                (Ma_lich_hen, Trang_thai_cu, Trang_thai_moi, Nguoi_thay_doi) 
+                VALUES (?, 'confirmed', 'absent', 'doctor')`, 
+                [appointmentID]
+            );
+
+            return result.affectedRows;
+        } catch (error) {
+            throw new Error(error.message);
         }
     }
 
@@ -509,6 +583,8 @@ export default class appointmentModel {
             const sqlLichHen = `
                 SELECT 
                     lh.Ma_lich_hen,
+                    lh.Ma_benh_nhan,
+                    lh.Ma_nguoi_than,
                     lh.Ma_booking AS bookingCode,
                     lh.Hinh_thuc AS type,
                     lh.Trang_thai_lich_hen AS status,
@@ -532,7 +608,7 @@ export default class appointmentModel {
                         ELSE nd_bn.Anh_dai_dien
                     END AS patientAvatar,
                     
-                    -- Tiền sử bệnh
+                    -- Tiền sử bệnh (Sẽ lấy chuỗi mã hóa gốc từ DB)
                     bn.Nhom_mau AS bloodType,
                     bn.Di_ung AS allergies,
                     bn.Benh_nen AS backgroundDiseases,
@@ -562,6 +638,10 @@ export default class appointmentModel {
 
             const appointmentData = rows[0];
 
+            appointmentData.bloodType = appointmentData.bloodType ? decrypt(appointmentData.bloodType) : null;
+            appointmentData.allergies = appointmentData.allergies ? decrypt(appointmentData.allergies) : null;
+            appointmentData.backgroundDiseases = appointmentData.backgroundDiseases ? decrypt(appointmentData.backgroundDiseases) : null;
+
             // Lấy danh sách dịch vụ đi kèm
             const sqlDichVu = `
                 SELECT dv.Ten_dich_vu
@@ -576,6 +656,121 @@ export default class appointmentModel {
             return appointmentData;
         } catch (error) {
             throw new Error('Lỗi truy vấn chi tiết ca khám bác sĩ: ' + error.message);
+        }
+    }
+
+    // Lấy lịch sử khám bệnh của bệnh nhân
+    static async getMedicalHistory(maBenhNhan, maNguoiThan) {
+        try {
+            const sql = `
+                SELECT 
+                    lh.Ma_lich_hen,
+                    lh.Ma_booking,
+                    lh.Trieu_chung,
+                    kg.Thoi_gian_Bdau AS Ngay_kham,
+                    dt.Chuan_doan_benh,
+                    nd_bs.Ten_nguoi_dung AS Ten_bac_si,
+                    GROUP_CONCAT(CONCAT(ctdt.Ten_thuoc, ' (', ctdt.So_luong, ')') SEPARATOR '; ') AS Danh_sach_thuoc
+                FROM lich_hen lh
+                INNER JOIN khung_gio_kham kg ON lh.Ma_khung_gio = kg.Ma_khung_gio 
+                INNER JOIN bac_si bs ON lh.Ma_bac_si = bs.Ma_bac_si
+                INNER JOIN nguoi_dung nd_bs ON bs.Ma_nguoi_dung = nd_bs.Ma_nguoi_dung
+                LEFT JOIN don_thuoc dt ON lh.Ma_lich_hen = dt.Ma_lich_hen
+                LEFT JOIN chi_tiet_dthuoc ctdt ON dt.Ma_don_thuoc = ctdt.Ma_don_thuoc
+                WHERE 
+                    lh.Ma_benh_nhan = ? 
+                    AND lh.Ma_nguoi_than <=> ?  
+                    AND lh.Trang_thai_lich_hen = 'done'
+                GROUP BY 
+                    lh.Ma_lich_hen,
+                    lh.Ma_booking,
+                    lh.Trieu_chung,
+                    kg.Thoi_gian_Bdau,
+                    dt.Chuan_doan_benh,
+                    nd_bs.Ten_nguoi_dung
+                    -- 🌟 Đã xóa dt.Loi_dan ra khỏi câu lệnh
+                ORDER BY kg.Thoi_gian_Bdau DESC
+            `;
+
+            const [rows] = await execute(sql, [maBenhNhan, maNguoiThan || null]);
+            return rows;
+        } catch (error) {
+            console.error("Lỗi getMedicalHistory:", error); 
+            throw new Error('Lỗi truy vấn lịch sử bệnh án: ' + error.message);
+        }
+    }
+
+    // Hoàn thành ca khám và Kê đơn thuốc (cho chi tiết lịch hẹn)
+    static async completeAndPrescribe(appointmentID, userID, prescriptionData) {
+        try {
+            const { chuanDoan, ngayTaiKham, danhSachThuoc } = prescriptionData;
+
+            // 1. Kiểm tra quyền bác sĩ và lấy thông tin ca khám cũ
+            const [doctorInfo] = await execute(`SELECT Ma_bac_si FROM bac_si WHERE Ma_nguoi_dung = ?`, [userID]);
+            if (doctorInfo.length === 0) throw new Error('Không có quyền truy cập.');
+            const maBacSi = doctorInfo[0].Ma_bac_si;
+
+            const [apptInfo] = await execute(
+                `SELECT Trang_thai_lich_hen, Ma_khung_gio FROM lich_hen WHERE Ma_lich_hen = ? AND Ma_bac_si = ?`, 
+                [appointmentID, maBacSi]
+            );
+            
+            if (apptInfo.length === 0) throw new Error('Lịch hẹn không tồn tại hoặc không thuộc quyền.');
+            const trangThaiCu = apptInfo[0].Trang_thai_lich_hen;
+            const maKhungGio = apptInfo[0].Ma_khung_gio;
+
+            if (trangThaiCu !== 'confirmed') throw new Error('Chỉ có thể khám và kê đơn cho lịch hẹn đã được duyệt.');
+
+            // 2. Chuyển trạng thái lịch hẹn thành 'done' và nhả slot
+            await execute(`UPDATE lich_hen SET Trang_thai_lich_hen = 'done' WHERE Ma_lich_hen = ?`, [appointmentID]);
+            await execute(`UPDATE khung_gio_kham SET Trang_thai = 'available' WHERE Ma_khung_gio = ?`, [maKhungGio]);
+            await execute(
+                `INSERT INTO lich_su_trang_thai_lich_hen (Ma_lich_hen, Trang_thai_cu, Trang_thai_moi, Nguoi_thay_doi) VALUES (?, ?, 'done', 'doctor')`, 
+                [appointmentID, trangThaiCu]
+            );
+
+            // 3. LƯU ĐƠN THUỐC
+            const sqlDonThuoc = `INSERT INTO don_thuoc (Ma_lich_hen, Chuan_doan_benh, Ngay_tai_kham) VALUES (?, ?, ?)`;
+            const [resDonThuoc] = await execute(sqlDonThuoc, [appointmentID, chuanDoan, ngayTaiKham || null]);
+            const maDonThuoc = resDonThuoc.insertId;
+
+            // 4. LƯU DANH SÁCH CHI TIẾT THUỐC
+            if (danhSachThuoc && Array.isArray(danhSachThuoc) && danhSachThuoc.length > 0) {
+                for (const thuoc of danhSachThuoc) {
+                    await execute(
+                        `INSERT INTO chi_tiet_dthuoc (Ma_don_thuoc, Ten_thuoc, So_luong, Lieu_dung) VALUES (?, ?, ?, ?)`,
+                        [maDonThuoc, thuoc.tenThuoc, thuoc.soLuong, thuoc.lieuDung]
+                    );
+                }
+            }
+
+            return true;
+        } catch (error) {
+            throw new Error('Lỗi hoàn thành và kê đơn: ' + error.message);
+        }
+    }
+
+    // Lấy chi tiết đơn thuốc của một ca khám đã hoàn thành
+    static async getPrescriptionByAppointmentId(appointmentID) {
+        try {
+            // 1. Lấy thông tin chung của đơn thuốc
+            const sqlDonThuoc = `SELECT Ma_don_thuoc, Chuan_doan_benh, Ngay_tai_kham, Ngay_tao FROM don_thuoc WHERE Ma_lich_hen = ?`;
+            const [donThuocArr] = await execute(sqlDonThuoc, [appointmentID]);
+
+            if (donThuocArr.length === 0) return null; // Không có đơn thuốc
+
+            const donThuoc = donThuocArr[0];
+
+            // 2. Lấy danh sách các loại thuốc thuộc đơn thuốc này
+            const sqlChiTiet = `SELECT Ten_thuoc, So_luong, Lieu_dung FROM chi_tiet_dthuoc WHERE Ma_don_thuoc = ?`;
+            const [chiTietArr] = await execute(sqlChiTiet, [donThuoc.Ma_don_thuoc]);
+
+            return {
+                ...donThuoc,
+                Danh_sach_thuoc: chiTietArr // Gắn mảng thuốc vào object kết quả
+            };
+        } catch (error) {
+            throw new Error('Lỗi truy vấn chi tiết đơn thuốc: ' + error.message);
         }
     }
 }

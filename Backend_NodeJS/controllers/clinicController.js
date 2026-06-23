@@ -16,4 +16,20 @@ export default class clinicController {
             return res.status(500).json({ succeeded: false, message: error.message });
         }
     }
+
+    static async getAllClinics(req,res){
+        try{
+            const rows = await clinicModel.getAllClinics();
+
+            return res.status(200).json({
+                succeeded: true,
+                clinics: rows
+            });
+        }catch(error){
+            return res.status(500).json({
+                succeeded: false,
+                message: error.message
+            });
+        }
+    }
 }

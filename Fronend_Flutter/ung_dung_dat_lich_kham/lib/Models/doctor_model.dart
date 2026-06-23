@@ -6,6 +6,8 @@ class DoctorModel {
   final String? degree; // Học vị (Thạc sĩ, Tiến sĩ...)
   final int experienceYears;
   final String? ratingSummary; // Tóm tắt đánh giá (Ví dụ: "Thân thiện, chuyên môn cao")
+  final int? specialtyId;
+  final String? description;
 
   DoctorModel({
     required this.id,
@@ -15,6 +17,8 @@ class DoctorModel {
     this.degree,
     required this.experienceYears,
     this.ratingSummary,
+    required this.specialtyId,
+    this.description,
   });
 
   factory DoctorModel.fromJson(Map<String, dynamic> json) {
@@ -26,6 +30,8 @@ class DoctorModel {
       degree: json['Hoc_vi'],
       experienceYears: json['Nam_kinh_nghiem'] ?? 0,
       ratingSummary: json['Tom_tat_danh_gia'],
+      specialtyId: json['Ma_chuyen_khoa'] ?? 0,
+      description: json['Mo_ta_ban_than'] ?? '',
     );
   }
 }

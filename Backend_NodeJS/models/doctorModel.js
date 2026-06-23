@@ -92,7 +92,6 @@ export default class doctorModel {
     }
 
     static async getDoctors(maChuyenKhoa = null) {
-        console.log('=== MAchuyenkhoa: ' + maChuyenKhoa);
         try {
             let query = `
                 SELECT 
@@ -250,7 +249,7 @@ export default class doctorModel {
             }
             
             if (data.So_nam_kinh_nghiem !== undefined) {
-                setClauses.push("So_nam_kinh_nghiem = ?");
+                setClauses.push("Nam_kinh_nghiem = ?");
                 values.push(data.So_nam_kinh_nghiem);
             }
 
@@ -275,6 +274,54 @@ export default class doctorModel {
 
         } catch (error) {
             throw new Error("Lỗi khi cập nhật hồ sơ bác sĩ: " + error.message);
+        }
+    }
+
+    static async getDoctorDetailByUserID(userID) {
+        console.log('=== userID: ' + userID);
+        try {
+            const query = `
+                SELECT 
+                    bs.Ma_bac_si,
+                    nd.Ten_nguoi_dung AS Ho_ten,
+                    nd.Anh_dai_dien,
+                    bs.Hoc_vi,
+                    bs.Nam_kinh_nghiem,
+                    bs.Mo_ta_ban_than,
+                    ck.Ten_chuyen_khoa,
+                    ck.Ma_chuyen_khoa,
+                    pk.Ten_phong_kham,
+                    pk.Vi_tri AS Dia_chi
+                FROM bac_si bs
+                JOIN nguoi_dung nd ON bs.Ma_nguoi_dung = nd.Ma_nguoi_dung
+                LEFT JOIN chuyen_khoa ck ON bs.Ma_chuyen_khoa = ck.Ma_chuyen_khoa
+                -- Nối bảng trung gian, ưu tiên lấy phòng khám được đánh dấu là Noi_chinh = 1
+                LEFT JOIN bac_si_phong_kham bspk ON bs.Ma_bac_si = bspk.Ma_bac_si AND bspk.Noi_chinh = 1
+                LEFT JOIN phong_kham pk ON bspk.Ma_phong_kham = pk.Ma_phong_kham
+                WHERE bs.Ma_nguoi_dung = ?
+                LIMIT 1
+            `;
+            
+            const [rows] = await execute(query, [userID]);
+            return rows[0] ?? null;
+        } catch (error) {
+            throw new Error("Lỗi lấy dữ liệu bác sĩ: " + error.message);
+        }
+    }
+
+
+    static async getDoctorClinicsByUserId(userId) {
+        try {
+            const query = `
+                SELECT bspk.Ma_phong_kham, bspk.Noi_chinh
+                FROM bac_si_phong_kham bspk
+                JOIN bac_si bs ON bspk.Ma_bac_si = bs.Ma_bac_si
+                WHERE bs.Ma_nguoi_dung = ?
+            `;
+            const [rows] = await execute(query, [userId]);
+            return rows;
+        } catch (error) {
+            throw new Error("Lỗi khi lấy danh sách phòng khám đã chọn: " + error.message);
         }
     }
 }

@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../Config/BASE_URL.dart';
-import '../Models/doctor_model.dart';
+import 'package:ung_dung_dat_lich_kham/Models/doctor_model.dart';
 
 class APIDoctorService {
   // Lấy danh sách bác sĩ (có hỗ trợ lọc theo chuyên khoa)
@@ -86,6 +86,59 @@ class APIDoctorService {
     } catch (e) {
       print("Lỗi APIDoctorService: $e");
       throw Exception(e.toString().replaceAll('Exception: ', ''));
+    }
+  }
+
+  Future<DoctorModel?> fetchDoctorDetail() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    if (token == null) throw Exception('Phiên đăng nhập đã hết hạn.');
+
+    try{
+      final res = await http.get(
+        Uri.parse('$BASE_URL/api/doctors/detail'),
+        headers: {'Authorization': 'Bearer $token',}
+      );
+
+      final data = jsonDecode(res.body);
+
+      if(res.statusCode == 200){
+        return DoctorModel.fromJson(data['data']);
+      }
+      else{
+        print('Lỗi: ${data['message']}');
+        return null;
+      }
+    }catch(e){
+      throw Exception("Lỗi server: ${e.toString()}");
+    }
+  }
+
+  // Hàm lấy thông tin phòng khám đã chọn
+  Future<Map<String, int?>?> getMySelectedClinics() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    if (token == null) return null;
+
+    try {
+      final res = await http.get(
+        Uri.parse('$BASE_URL/api/doctors/my-clinics'),
+        headers: {'Authorization': 'Bearer $token'}
+      );
+
+      if (res.statusCode == 200) {
+        final body = jsonDecode(res.body);
+        if (body['succeeded'] == true) {
+          return {
+            'currentClinicId': body['data']['currentClinicId'],
+            'primaryClinicId': body['data']['primaryClinicId'],
+          };
+        }
+      }
+      return null;
+    } catch (e) {
+      print("Lỗi getMySelectedClinics: $e");
+      return null;
     }
   }
 }

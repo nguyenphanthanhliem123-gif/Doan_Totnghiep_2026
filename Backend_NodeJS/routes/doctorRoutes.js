@@ -7,10 +7,13 @@ const authDoctorRoutes = Router();
 authDoctorRoutes.use(auth);
 
 // API: Lấy thông tin chi tiết của bác sĩ dựa vào mã bác sĩ (ID)
-doctorRoutes.get('/:id', doctorController.getDoctorById);
-doctorRoutes.get('/', doctorController.getDoctors);
 authDoctorRoutes.post('/update', doctorController.updateProfile);
-
-
+authDoctorRoutes.get('/detail', doctorController.getDoctorByUserId);
+authDoctorRoutes.get('/my-clinics', doctorController.getSelectedClinics);
 doctorRoutes.use('/', authDoctorRoutes);
+
+
+doctorRoutes.get('/', doctorController.getDoctors);
+doctorRoutes.get('/:id', doctorController.getDoctorById);
+
 export default doctorRoutes;

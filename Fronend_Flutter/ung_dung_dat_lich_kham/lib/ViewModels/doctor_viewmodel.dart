@@ -16,6 +16,9 @@ class DoctorViewModel extends ChangeNotifier {
   DoctorDetailModel? _doctorDetail;
   DoctorDetailModel? get doctorDetail => _doctorDetail;
 
+  DoctorModel? _doctorDetailForDoctor;
+  DoctorModel? get doctorDetailForDoctor => _doctorDetailForDoctor;
+
   String _errorMessage = '';
   String get errorMessage => _errorMessage;
 
@@ -27,6 +30,12 @@ class DoctorViewModel extends ChangeNotifier {
 
   DoctorTimeSlotModel? _selectedSlot;
   DoctorTimeSlotModel? get selectedSlot => _selectedSlot;
+
+  int? _currentClinicId;
+  int? _primaryClinicId;
+
+  int? get currentClinicId => _currentClinicId;
+  int? get primaryClinicId => _primaryClinicId;
 
   // Cấu hình URL gọi tới API lấy chi tiết bác sĩ
   final String _baseUrl = "$BASE_URL/api/doctors";
@@ -127,5 +136,30 @@ class DoctorViewModel extends ChangeNotifier {
     }
   }
 
+  Future<void> fetchDoctorDetailForDoctor() async {
+    _isLoading = true;
+    _errorMessage = '';
+    _doctorDetailForDoctor = null;
+    notifyListeners();
+
+    try{
+      _doctorDetailForDoctor = await _apiService.fetchDoctorDetail();
+    }catch(e){
+      _errorMessage = e.toString();
+    }
+    finally{
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> fetchSelectedClinics() async {
+    final result = await _apiService.getMySelectedClinics();
+    if (result != null) {
+      _currentClinicId = result['currentClinicId'];
+      _primaryClinicId = result['primaryClinicId'];
+      notifyListeners();
+    }
+  }
 }
 

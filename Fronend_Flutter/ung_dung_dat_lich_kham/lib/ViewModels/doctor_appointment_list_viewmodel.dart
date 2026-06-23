@@ -88,4 +88,30 @@ class DoctorAppointmentListViewModel extends ChangeNotifier {
       return {"success": false, "message": "Lỗi kết nối Server"};
     }
   }
+
+  // Hàm xử lý Báo bệnh nhân vắng mặt công nghệ cao
+  Future<Map<String, dynamic>> updateStatusAbsent(int appointmentId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+
+      final url = Uri.parse('$_baseUrl/doctor/status/absent/$appointmentId');
+      final response = await http.put(
+        url,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token",
+        },
+      );
+
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data['succeeded'] == true) {
+        await loadAllAppointments(); // Làm mới toàn bộ 5 Tabs ngay lập tức
+        return {"success": true, "message": data['message']};
+      }
+      return {"success": false, "message": data['message'] ?? "Thao tác thất bại"};
+    } catch (e) {
+      return {"success": false, "message": "Lỗi kết nối Server"};
+    }
+  }
 }

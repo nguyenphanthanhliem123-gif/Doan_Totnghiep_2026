@@ -30,10 +30,23 @@ authAppointmentRoutes.get('/doctor/detail/:id', appointmentController.getDoctorA
 // API Bác sĩ duyệt/từ chối lịch hẹn (Gửi action: 'confirm' hoặc 'reject' qua body)
 authAppointmentRoutes.put('/doctor/status/:id', appointmentController.updateStatus);
 
+// API Bác sĩ báo hoàn thành ca khám
 authAppointmentRoutes.put('/doctor/status/done/:id', appointmentController.updateStatusDone);
+
+// API Bác sĩ báo bệnh nhân vắng mặt
+authAppointmentRoutes.put('/doctor/status/absent/:id', appointmentController.updateStatusAbsent);
 
 // API Lấy tất cả lịch hẹn của bác sĩ (cho màn hình 5 Tabs)
 authAppointmentRoutes.get('/doctor/all-list', appointmentController.getAllDoctorList);
+
+// API Lấy lịch sử bệnh án (Dùng ID ca khám hiện tại để truy vết người bệnh)
+authAppointmentRoutes.get('/doctor/medical-history/:id', appointmentController.getMedicalHistory);
+
+// API kê đơn thuốc
+authAppointmentRoutes.post('/doctor/prescribe/:id', appointmentController.completeWithPrescription);
+
+// API xem đơn thuốc
+authAppointmentRoutes.get('/doctor/prescription/:id', appointmentController.getPrescription);
 
 // Gộp cụm bảo mật vào route chính
 appointmentRoutes.use('/', authAppointmentRoutes);

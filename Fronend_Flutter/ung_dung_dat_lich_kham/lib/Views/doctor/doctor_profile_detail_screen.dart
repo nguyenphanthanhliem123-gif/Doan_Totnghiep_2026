@@ -1,12 +1,15 @@
-import 'package:flutter/material.dart';
+import 'dart:ui';
+
+import 'package:flutter/material.dart' hide Size;
 import 'package:provider/provider.dart';
+import 'package:ung_dung_dat_lich_kham/viewmodels/doctor_viewmodel.dart';
+import 'package:ung_dung_dat_lich_kham/viewmodels/auth_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/profile_viewmodel.dart';
 // import 'package:ung_dung_dat_lich_kham/viewmodels/doctor_viewmodel.dart'; // Import ViewModel quản lý API bác sĩ của bạn
 import 'update_doctor_profile_screen.dart'; // Import màn hình Update vừa tạo ở trên
 
 class DoctorProfileDetailScreen extends StatefulWidget {
-  final int userId; 
-  const DoctorProfileDetailScreen({super.key, required this.userId});
+  const DoctorProfileDetailScreen({super.key});
 
   @override
   State<DoctorProfileDetailScreen> createState() => _DoctorProfileDetailScreenState();
@@ -14,23 +17,33 @@ class DoctorProfileDetailScreen extends StatefulWidget {
 
 class _DoctorProfileDetailScreenState extends State<DoctorProfileDetailScreen> {
   bool _isLoading = true;
+  String? _maNguoiDung;
 
   @override
   void initState() {
     super.initState();
-    _fetchDoctorData();
+    _loadUserIdThenFetch();
   }
 
-  // Hàm tải dữ liệu
-  Future<void> _fetchDoctorData() async {
+  Future<void> _loadUserIdThenFetch() async {
     setState(() { _isLoading = true; });
+    final id = await Provider.of<AuthViewModel>(context, listen: false)
+        .getSavedUserId();
+    if (!mounted) return;
 
-    // 1. Lấy thông tin cơ bản (Avatar, Tên, Email...) từ ProfileViewModel
-    await context.read<ProfileViewModel>().getUserProfile(widget.userId);
+    setState(() {
+      _maNguoiDung = id;
+    });
 
-    // 2. Lấy thông tin chuyên môn (Học vị, Chuyên khoa, Kinh nghiệm) từ DoctorViewModel
-    // (Bạn cần viết thêm hàm getDoctorDetail trong DoctorViewModel gọi API /api/doctors/:id)
-    // await context.read<DoctorViewModel>().getDoctorDetail(widget.userId);
+    if (id != null) {
+      final maNguoiDung = int.tryParse(id);
+      
+      if (maNguoiDung != null) {
+        if(!mounted) return;
+        await context.read<ProfileViewModel>().getUserProfile(maNguoiDung);
+        await context.read<DoctorViewModel>().fetchDoctorDetailForDoctor();
+      }
+    }
 
     if (mounted) {
       setState(() { _isLoading = false; });
@@ -41,10 +54,11 @@ class _DoctorProfileDetailScreenState extends State<DoctorProfileDetailScreen> {
   Widget build(BuildContext context) {
     // Đọc dữ liệu từ ViewModels
     final profileViewModel = context.watch<ProfileViewModel>();
+    final doctorViewModel = context.watch<DoctorViewModel>();
+    final doctor = doctorViewModel.doctorDetailForDoctor;
     final user = profileViewModel.userProfile;
 
-    // Giả sử bạn đã có model DoctorInfo trong DoctorViewModel
-    // final doctorInfo = context.watch<DoctorViewModel>().doctorInfo; 
+    print("=== _isLoading: $_isLoading | profileViewModel.isLoading: ${profileViewModel.isLoading} | doctorViewModel.isLoading: ${doctorViewModel.isLoading} | user: $user | doctor: $doctor");
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -63,7 +77,7 @@ class _DoctorProfileDetailScreenState extends State<DoctorProfileDetailScreen> {
           ),
         ),
       ),
-      body: _isLoading || profileViewModel.isLoading || user == null
+      body: _isLoading || profileViewModel.isLoading || doctorViewModel.isLoading || user == null || doctor == null
           ? const Center(child: CircularProgressIndicator(color: Colors.blueAccent))
           : SingleChildScrollView(
               child: Column(
@@ -111,10 +125,10 @@ class _DoctorProfileDetailScreenState extends State<DoctorProfileDetailScreen> {
                         const SizedBox(height: 15),
 
                         // 💡 THAY THẾ CHUỖI CỐ ĐỊNH BẰNG doctorInfo CỦA BẠN NHÉ
-                        _buildReadOnlyField(label: 'Học vị / Chức danh', value: 'ThS. BS (Dữ liệu mẫu)', icon: Icons.school_outlined), // vd: doctorInfo.hocVi
-                        _buildReadOnlyField(label: 'Chuyên khoa', value: 'Khoa Nội (Dữ liệu mẫu)', icon: Icons.local_hospital_outlined),
-                        _buildReadOnlyField(label: 'Số năm kinh nghiệm', value: '10 năm (Dữ liệu mẫu)', icon: Icons.work_history_outlined),
-                        _buildReadOnlyField(label: 'Mô tả bản thân', value: 'Bác sĩ tận tâm, yêu nghề... (Dữ liệu mẫu)', icon: Icons.description_outlined),
+                        _buildReadOnlyField(label: 'Học vị / Chức danh', value: doctor.degree ?? '', icon: Icons.school_outlined), // vd: doctorInfo.hocVi
+                        _buildReadOnlyField(label: 'Chuyên khoa', value: doctor.specialtyName, icon: Icons.local_hospital_outlined),
+                        _buildReadOnlyField(label: 'Số năm kinh nghiệm', value: doctor.experienceYears.toString(), icon: Icons.work_history_outlined),
+                        //_buildReadOnlyField(label: 'Mô tả bản thân', value: doctor., icon: Icons.description_outlined),
                       ],
                     ),
                   ),
@@ -128,12 +142,10 @@ class _DoctorProfileDetailScreenState extends State<DoctorProfileDetailScreen> {
                         // 🚀 Dùng Route Push kết hợp .then để lắng nghe sự kiện khi trang cập nhật bị tắt đi
                         Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (context) => UpdateDoctorProfileScreen(userId: widget.userId),
+                            builder: (context) => UpdateDoctorProfileScreen(userId: int.parse(_maNguoiDung ?? '0')),
                           )
                         ).then((_) {
-                          // Hàm này sẽ chạy khi bác sĩ từ trang Update bấm mũi tên <- quay lại trang này
-                          // Gọi hàm tải lại để cập nhật ảnh và thông tin mới nhất lên màn hình
-                          _fetchDoctorData();
+                          _loadUserIdThenFetch();
                         });
                       },
                       icon: const Icon(Icons.edit, color: Colors.white),

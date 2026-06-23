@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:ung_dung_dat_lich_kham/Views/doctor/doctor_menu_screen.dart';
 import 'package:ung_dung_dat_lich_kham/Views/doctor/doctor_profile_detail_screen.dart';
 import '../../viewmodels/doctor_appointment_viewmodel.dart';
 import '../../viewmodels/profile_viewmodel.dart';
@@ -56,7 +57,7 @@ class _DoctorMainScreenState extends State<DoctorMainScreen> {
     DoctorDashboardScreen(onNavigate: _onItemTapped), 
     const DoctorAppointmentScreen(),
     const Center(child: Text('Dịch Vụ Screen')),
-    const Center(child: Text('Cá Nhân Screen')), 
+    const DoctorMenuScreen(),
   ];
 
   @override
