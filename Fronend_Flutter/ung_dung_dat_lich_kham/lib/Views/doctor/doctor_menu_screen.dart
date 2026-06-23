@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ung_dung_dat_lich_kham/Constants/ui_constants.dart';
 import 'package:ung_dung_dat_lich_kham/Views/doctor/doctor_profile_detail_screen.dart';
+import 'package:ung_dung_dat_lich_kham/Views/doctor/review_doctor_screen.dart';
 import 'package:ung_dung_dat_lich_kham/Views/doctor/update_clinic_screen.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/auth_viewmodel.dart';
+import 'package:ung_dung_dat_lich_kham/viewmodels/doctor_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/profile_viewmodel.dart';
+import 'package:ung_dung_dat_lich_kham/views/change_password_screen.dart';
 import 'package:ung_dung_dat_lich_kham/views/login_screen.dart';
 
 class DoctorMenuScreen extends StatefulWidget {
@@ -42,6 +45,8 @@ class DoctorMenuScreenState extends State<DoctorMenuScreen> {
       if (parsedId != null) {
         // Gọi API lấy thông tin profile
         await context.read<ProfileViewModel>().getUserProfile(parsedId);
+        if(!mounted) return;
+        await context.read<DoctorViewModel>().fetchDoctorDetailForDoctor();
       }
     }
 
@@ -54,13 +59,16 @@ class DoctorMenuScreenState extends State<DoctorMenuScreen> {
   Widget build(BuildContext context) {
     final profileViewModel = context.watch<ProfileViewModel>();
     final user = profileViewModel.userProfile;
+
+    final doctorVM = context.watch<DoctorViewModel>();
+    final doctor = doctorVM.doctorDetailForDoctor;
     
     // Kết hợp cả trạng thái loading cục bộ và loading của ViewModel
     final isPageLoading = _isLoading || profileViewModel.isLoading;
 
     return Scaffold(
       backgroundColor: Colors.grey.shade50, 
-      body: isPageLoading || user == null // ✅ ĐÃ SỬA: Thay 'user = null' thành 'user == null'
+      body: isPageLoading || user == null || profileViewModel.isLoading || doctor == null || doctorVM.isLoading
           ? const Center(child: CircularProgressIndicator(color: Colors.blueAccent))
           : Column(
               children: [
@@ -187,7 +195,7 @@ class DoctorMenuScreenState extends State<DoctorMenuScreen> {
                         icon: Icons.star_border_rounded,
                         iconColor: Colors.orange,
                         onTap: () {
-                          // Navigator.push(context, MaterialPageRoute(builder: (context) => const ReviewManagementScreen()));
+                          Navigator.push(context, MaterialPageRoute(builder: (context) => ReviewsDoctorScreen(doctorID: doctor.id)));
                         },
                       ),
 
@@ -215,12 +223,12 @@ class DoctorMenuScreenState extends State<DoctorMenuScreen> {
                       // 6. Nút Cài đặt tài khoản
                       _buildMenuCard(
                         context: context,
-                        title: 'Cài đặt tài khoản',
-                        subtitle: 'Đổi mật khẩu, bảo mật',
+                        title: 'Đổi mật khẩu',
+                        subtitle: 'Đổi mật khẩu tài khoản',
                         icon: Icons.settings_outlined,
                         iconColor: Colors.blueGrey,
                         onTap: () {
-                          // Navigator.push(context, MaterialPageRoute(builder: (context) => const AccountSettingsScreen()));
+                          Navigator.push(context, MaterialPageRoute(builder: (context) => const ChangePasswordScreen()));
                         },
                       ),
                       

@@ -46,6 +46,7 @@ class AuthViewModel extends ChangeNotifier {
                 
         // Lấy mã người dùng từ JSON trả về của Backend. 
         String maNguoiDung = responseData['id']?.toString() ?? responseData['userId']?.toString() ?? '';
+        int? doctorId = responseData['doctorId'];
         
         if (maNguoiDung.isNotEmpty) {
           await prefs.setString('ma_nguoi_dung', maNguoiDung);
@@ -65,13 +66,19 @@ class AuthViewModel extends ChangeNotifier {
           await prefs.setString('role', role);
           print("Lưu role thành công: $role");
         }
+
+        if(doctorId != null){
+          await prefs.setInt('doctorId', doctorId);
+          print("Lưu doctorId thành công: $doctorId");
+        }
         
         // Trả về kết quả thành công và kèm theo token nếu cần lưu trữ sau này
         return {
           "success": true,
           "message": "Đăng nhập thành công",
           "token": responseData['token'],
-          "role": responseData['role']
+          "role": responseData['role'],
+          "doctorId": responseData['doctorId']
         };
       } else {
         // Trả về thông báo lỗi từ Backend (Ví dụ: "Email hoặc mật khẩu không đúng")
@@ -151,6 +158,16 @@ class AuthViewModel extends ChangeNotifier {
         id = intId.toString();
       }
     }
+    
+    return id;
+  }
+
+  // Hàm lấy mã bác sĩ (doctorId)
+  Future<int?> getSavedDoctorId() async {
+    final prefs = await SharedPreferences.getInstance();
+    
+    // Ưu tiên tìm key 'ma_nguoi_dung' (String)
+    int? id = prefs.getInt('doctorId');
     
     return id;
   }

@@ -5,7 +5,15 @@ export default class userModel {
     // Hàm tìm kiếm người dùng theo email
     static async findByEmail(email) {
         try {
-            const [rows] = await execute("SELECT * FROM nguoi_dung WHERE Email = ? LIMIT 1", [email]);
+            const query = `
+                SELECT nd.*, bs.Ma_bac_si 
+                FROM nguoi_dung nd
+                LEFT JOIN bac_si bs ON nd.Ma_nguoi_dung = bs.Ma_nguoi_dung
+                WHERE nd.Email = ? 
+                LIMIT 1
+            `;
+            
+            const [rows] = await execute(query, [email]);
             return rows[0] ?? null;
         } catch (error) {
             throw new Error("Lỗi Database: " + error.message);

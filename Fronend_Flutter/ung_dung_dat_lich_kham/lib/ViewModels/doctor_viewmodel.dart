@@ -83,7 +83,8 @@ class DoctorViewModel extends ChangeNotifier {
           }
         }
       } else {
-        print("Lỗi từ server: Mã ${response.statusCode}");
+        final responseData = jsonDecode(response.body);
+        print("Lỗi từ server: Mã ${response.statusCode}, Message: ${responseData['message']}");
       }
     } catch (error) {
       print("Lỗi kết nối API: $error");

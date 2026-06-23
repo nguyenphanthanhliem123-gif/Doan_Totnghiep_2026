@@ -24,6 +24,7 @@ import bookingRoutes from './routes/bookingRoutes.js';
 import appointmentRoutes from './routes/appointmentRoutes.js';
 import paymentRoute from "./routes/paymentRoutes.js";
 import notificationRoute from "./routes/notificationRoutes.js";
+import serviceRoutes from "./routes/serviceRoutes.js";
 
 const app = express();
 const __filename = fileURLToPath(import.meta.url);
@@ -97,6 +98,7 @@ app.use('/api/bookings', bookingRoutes);
 app.use('/api/payment', paymentRoute);
 app.use('/api/appointments', appointmentRoutes);
 app.use('/api/notification', notificationRoute);
+app.use('/api/services', serviceRoutes);
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.use((req,res,next)=>{

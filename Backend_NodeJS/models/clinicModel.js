@@ -1,4 +1,4 @@
-import { execute } from "../config/db.js";
+import { beginTransaction, execute, commitTransaction, rollbackTransaction } from "../config/db.js";
 
 export default class clinicModel {
     // Hàm lấy chi tiết phòng khám theo ID
@@ -37,6 +37,34 @@ export default class clinicModel {
         }
         catch(error){
             throw new Error("Lỗi clinicModel.getAllClinics: " + error.message);
+        }
+    }
+
+    static async updateDoctorClinics(userId, clinicsArray) {
+        // clinicsArray dạng: [{ma_phong_kham: 1, noi_chinh: 1}, {ma_phong_kham: 2, noi_chinh: 0}]
+        const conn = await beginTransaction();
+        try {
+            // 1. Lấy Ma_bac_si từ userId trước
+            const [doctor] = await conn.execute("SELECT Ma_bac_si FROM bac_si WHERE Ma_nguoi_dung = ?", [userId]);
+            if (!doctor.length) throw new Error("Không tìm thấy bác sĩ");
+            const maBacSi = doctor[0].Ma_bac_si;
+
+            // 2. Xóa toàn bộ liên kết phòng khám cũ của bác sĩ này
+            await conn.execute("DELETE FROM bac_si_phong_kham WHERE Ma_bac_si = ?", [maBacSi]);
+
+            // 3. Thêm mới lại các phòng khám được chọn từ giao diện
+            const insertQuery = "INSERT INTO bac_si_phong_kham (Ma_bac_si, Ma_phong_kham, Noi_chinh) VALUES (?, ?, ?)";
+            for (const clinic of clinicsArray) {
+                await conn.execute(insertQuery, [maBacSi, clinic.ma_phong_kham, clinic.noi_chinh]);
+            }
+
+            // Nếu tất cả đều thành công thì lưu vào DB
+            await commitTransaction(conn);
+            return true;
+        } catch (error) {
+            // Nếu có bất kỳ lỗi nào xảy ra, hủy bỏ toàn bộ thao tác (khôi phục dữ liệu cũ)
+            await rollbackTransaction(conn);
+            throw new Error("Lỗi cập nhật phòng khám bác sĩ: " + error.message);
         }
     }
 }

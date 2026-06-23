@@ -17,6 +17,9 @@ class APIDoctorService {
     double? userLat,
     double? userLng,
   }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    if (token == null) throw Exception('Phiên đăng nhập đã hết hạn.');
     try {
       Map<String, String> queryParams = {};
       if (specialtyId != null) queryParams['specialtyId'] = specialtyId.toString();
@@ -30,7 +33,9 @@ class APIDoctorService {
       if (userLng != null) queryParams['userLng'] = userLng.toString();
 
       final uri = Uri.parse('$BASE_URL/api/doctors').replace(queryParameters: queryParams);
-      final res = await http.get(uri);
+      final res = await http.get(
+        uri,
+      );
       final data = jsonDecode(res.body);
 
       if (res.statusCode == 200) {

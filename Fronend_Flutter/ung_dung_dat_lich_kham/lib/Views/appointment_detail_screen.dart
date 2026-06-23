@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ung_dung_dat_lich_kham/Services/jitsi_service.dart';
+import 'package:ung_dung_dat_lich_kham/Views/review_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../constants/ui_constants.dart';
 import '../viewmodels/appointment_viewmodel.dart'; 
@@ -529,7 +530,9 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
         children: [
           Expanded(child: _buildOutlinedButton('Đặt lại lịch', kPrimaryColor, navigateToDoctorDetail)),
           const SizedBox(width: 15),
-          Expanded(child: _buildSolidButton('Đánh giá', Icons.star_border, Colors.green, () { /* TODO: Hiện bottom sheet đánh giá */ })),
+          Expanded(child: _buildSolidButton('Đánh giá', Icons.star_border, Colors.green, () { Navigator.of( context ).push(
+                MaterialPageRoute(builder: (context) => ReviewScreen(appointmentId: appointment.id))
+              ); })),
         ],
       );
     } else {

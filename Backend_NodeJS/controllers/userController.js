@@ -152,7 +152,7 @@ export default class userController {
             const token = await userController.generateToken(user);
             
             return res.status(200).json({ 
-                succeeded: true, token: token, role: user.Phan_quyen, id: user.Ma_nguoi_dung 
+                succeeded: true, token: token, role: user.Phan_quyen, id: user.Ma_nguoi_dung , doctorId: user.Ma_bac_si
             });
             
         } catch (error) {

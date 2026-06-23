@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:ung_dung_dat_lich_kham/Views/review_screen.dart';
 import '../constants/ui_constants.dart';
 import '../viewmodels/appointment_viewmodel.dart';
 import '../models/appointment_model.dart';
@@ -307,7 +308,9 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
           Expanded(
             child: _buildActionBtn(
               icon: Icons.star_border, text: 'Đánh giá', 
-              color: Colors.white, bgColor: Colors.green, onTap: () { /* TODO: BottomSheet Đánh giá */ }
+              color: Colors.white, bgColor: Colors.green, onTap: () { Navigator.of( context ).push(
+                MaterialPageRoute(builder: (context) => ReviewScreen(appointmentId: appointment.id))
+              ); }
             ),
           ),
         ],

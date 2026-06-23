@@ -32,4 +32,35 @@ export default class clinicController {
             });
         }
     }
+
+    static async updateDoctorClinics(req, res) {
+        try {
+            const userId = req.Ma_nguoi_dung; // Lấy ID bác sĩ từ token (middleware auth)
+            
+            // Lấy mảng clinics từ body do Flutter gửi lên
+            const { clinics } = req.body; 
+
+            // 1. Kiểm tra dữ liệu xem có hợp lệ không
+            if (!clinics || !Array.isArray(clinics)) {
+                return res.status(400).json({ 
+                    succeeded: false, 
+                    message: "Dữ liệu phòng khám không hợp lệ" 
+                });
+            }
+
+            await clinicModel.updateDoctorClinics(userId, clinics);
+
+            return res.status(200).json({ 
+                succeeded: true, 
+                message: "Cập nhật cơ sở y tế thành công!" 
+            });
+
+        } catch (error) {
+            console.error("Lỗi cập nhật CSYT:", error);
+            return res.status(500).json({ 
+                succeeded: false, 
+                message: error.message 
+            });
+        }
+    }
 }

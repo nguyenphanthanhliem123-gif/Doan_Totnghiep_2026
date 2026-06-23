@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ung_dung_dat_lich_kham/Models/clinic_model.dart';
+import 'package:ung_dung_dat_lich_kham/ViewModels/doctor_clinic_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/clinic_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/doctor_viewmodel.dart'; // Import để lấy thông tin bác sĩ
 
@@ -23,25 +24,21 @@ class _DoctorClinicSelectionScreenState extends State<DoctorClinicSelectionScree
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      // 1. Load danh sách tất cả phòng khám
+      // Bật hiệu ứng loading nếu muốn...
+      
+      // 1. Tải toàn bộ phòng khám
       await context.read<ClinicViewModel>().fetchAllClinic();
       
-      // 2. LẤY THÔNG TIN BÁC SĨ ĐỂ TÍCH SẴN
-      // (Đảm bảo trước khi vào màn này bạn đã gọi fetchDoctorDetailForDoctor)
+      // 2. Tải 2 ID phòng khám mà bác sĩ đã chọn
+      if(!mounted) return;
       final doctorVM = context.read<DoctorViewModel>();
-      final doctor = doctorVM.doctorDetailForDoctor;
+      await doctorVM.fetchSelectedClinics();
 
-      if (mounted && doctor != null) {
+      // 3. Gán vào State của màn hình để các nút Radio lập tức sáng lên
+      if (mounted) {
         setState(() {
-          // 💡 Tại đây, bạn gán ID phòng khám cũ của bác sĩ vào 2 biến này.
-          // Ví dụ (Hãy thay bằng đúng tên thuộc tính trong DoctorModel của bạn):
-          
-          // _currentClinicId = doctor.maPhongKhamHienTai; 
-          // _primaryClinicId = doctor.maPhongKhamChinh; 
-
-          // (Demo: Tạm gán giá trị 1 và 3 để bạn hình dung giao diện tích sẵn)
-          // _currentClinicId = 1; 
-          // _primaryClinicId = 3; 
+          _currentClinicId = doctorVM.currentClinicId;
+          _primaryClinicId = doctorVM.primaryClinicId;
         });
       }
     });
@@ -73,13 +70,13 @@ class _DoctorClinicSelectionScreenState extends State<DoctorClinicSelectionScree
       }
 
       // 🚀 Gọi API lưu tại đây:
-      // await doctorViewModel.updateDoctorClinics(clinicsToSave);
+      await context.read<DoctorClinicViewmodel>().updateClinicForDoctor(clinicsToSave);
       
-      await Future.delayed(const Duration(seconds: 2)); // Giả lập chờ API
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lưu cơ sở y tế thành công!', style: TextStyle(color: Colors.white)), backgroundColor: Colors.green));
-        Navigator.pop(context); // Quay về
+      final result = await context.read<DoctorClinicViewmodel>().isLoading;
+      if(result){
+        if(mounted){
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Cập nhật dữ liệu cơ sở y tế thành công'), backgroundColor: Colors.greenAccent));
+        }
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red));
@@ -91,6 +88,7 @@ class _DoctorClinicSelectionScreenState extends State<DoctorClinicSelectionScree
   @override
   Widget build(BuildContext context) {
     final clinicVM = context.watch<ClinicViewModel>();
+    final doctorClinicVM = context.watch<DoctorClinicViewmodel>();
     
     // Ép kiểu chuẩn để chống lỗi List<Object>
     final List<ClinicModel> allClinics = List<ClinicModel>.from(clinicVM.listClinic ?? []);
@@ -168,7 +166,7 @@ class _DoctorClinicSelectionScreenState extends State<DoctorClinicSelectionScree
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
               elevation: 0,
             ),
-            child: _isLoading
+            child: _isLoading || doctorClinicVM.isLoading
                 ? const SizedBox(height: 25, width: 25, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                 : const Text('Lưu Thay Đổi', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
           ),

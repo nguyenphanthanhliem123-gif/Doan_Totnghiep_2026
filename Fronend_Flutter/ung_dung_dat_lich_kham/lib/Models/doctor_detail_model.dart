@@ -2,20 +2,36 @@
 class DoctorServiceModel {
   final int id;
   final String name;
+  final int specId;
+  final String specName;
   final double price;
 
   DoctorServiceModel({
     required this.id,
     required this.name,
     required this.price,
+    required this.specId,
+    required this.specName
   });
 
   factory DoctorServiceModel.fromJson(Map<String, dynamic> json) {
     return DoctorServiceModel(
-      id: json['Ma_dich_vu'],
-      name: json['Ten_dich_vu'],
+      id: json['Ma_dich_vu'] ?? 0,
+      name: json['Ten_dich_vu'] ?? '',
       // Chuyển đổi dữ liệu kiểu decimal từ MySQL sang double của Dart
       price: double.tryParse(json['Gia_tien'].toString()) ?? 0.0, 
+      specId: json['Ma_chuye_khoa'] ?? 1,
+      specName: json['Ten_chuyen_khoa'] ?? ''
+    );
+  }
+
+  DoctorServiceModel copyWith({String? name, int? specId, String? specName, double? price}) {
+    return DoctorServiceModel(
+      id: id,
+      name: name ?? this.name,
+      specId: specId ?? this.specId,
+      specName: specName ?? this.specName,
+      price: price ?? this.price,
     );
   }
 }
