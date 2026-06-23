@@ -102,7 +102,8 @@ class AppointmentViewModel extends ChangeNotifier {
           _allAppointments = [];
         }
       } else {
-        print("Lỗi từ server: ${response.body}");
+        final responseData = jsonDecode(response.body);
+        print("Lỗi từ server: ${response.body}, ${responseData['message']}");
       }
     } catch (e) {
       print("Lỗi tải danh sách lịch hẹn: $e");

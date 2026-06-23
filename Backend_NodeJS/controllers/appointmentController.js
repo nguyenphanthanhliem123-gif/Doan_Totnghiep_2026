@@ -1,4 +1,5 @@
 import app from "../index.js";
+import appointmentModel from "../models/AppointmentModel.js";
 import AppointmentModel from "../models/AppointmentModel.js";
 import paymentModel from "../models/paymentModel.js";
 import EmailService from "../services/emailService.js";
@@ -121,11 +122,19 @@ export default class AppointmentController {
 
             if (!newSlotId) return res.status(400).json({ succeeded: false, message: "Thiếu mã khung giờ mới." });
 
-            const result = await AppointmentModel.rescheduleAppointment(appointmentID, newSlotId);
+            const bookingId = await appointmentModel.getAppointmentDetails(appointmentID);
+
+            const result = await appointmentModel.rescheduleAppointment(appointmentID, newSlotId);
 
             if (!result.success) {
                 return res.status(400).json({ succeeded: false, message: result.message });
             }
+            
+            await sendNotification(
+                bookingId.Ma_nguoi_dung_bac_si,
+                'Đổi lịch',
+                'Lịch hẹn ' + bookingId.Ma_booking + ' đã được dời sang thời gian khác.'
+            );
 
             return res.status(200).json({ succeeded: true, message: result.message });
         } catch (error) {

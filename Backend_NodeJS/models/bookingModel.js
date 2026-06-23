@@ -54,19 +54,30 @@ export default class bookingModel {
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
-        const linkJitsi = data.Hinh_thuc == 'online' ? "https://meet.ffmuc.net/": null;
-        // 🌟 ĐÃ FIX: Xóa data.Ma_dich_vu khỏi params
+        // Nếu hình thức là online thì tạo link, nếu không thì để null
+        const linkJitsi = data.Hinh_thuc === 'online' ? `https://meet.ffmuc.net/${data.Ma_booking}` : null;
+        
+        // ✨ ĐÃ SỬA: Đủ 10 tham số theo đúng thứ tự của câu lệnh SQL trên
         const params = [
-            data.Ma_booking, data.Ma_bac_si, data.Ma_benh_nhan, data.Ma_nguoi_than, 
-            data.Ma_khung_gio, data.Hinh_thuc, data.Trieu_chung, data.Tong_tien, linkJitsi + data.Ma_booking
+            data.Ma_booking,       // 1. Ma_booking
+            data.Ma_bac_si,        // 2. Ma_bac_si
+            data.Ma_benh_nhan,     // 3. Ma_benh_nhan
+            data.Ma_nguoi_than,    // 4. Ma_nguoi_than
+            data.Ma_khung_gio,     // 5. Ma_khung_gio
+            data.Hinh_thuc,        // 6. Hinh_thuc
+            data.Trieu_chung,      // 7. Trieu_chung
+            'pending',             // 8. Trang_thai_lich_hen (Thêm giá trị mặc định ở đây)
+            data.Tong_tien,        // 9. Tong_tien
+            linkJitsi              // 10. Link_video_call
         ];
+
         const [result] = await execute(query, params);
         const insertId = result.insertId;
 
         // Ghi nhận lịch sử tạo mới
         await execute(
             `INSERT INTO lich_su_trang_thai_lich_hen (Ma_lich_hen, Trang_thai_cu, Trang_thai_moi, Nguoi_thay_doi) 
-             VALUES (?, NULL, 'pending', 'patient')`,
+            VALUES (?, NULL, 'pending', 'patient')`,
             [insertId]
         );
 
