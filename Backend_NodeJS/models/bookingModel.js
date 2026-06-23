@@ -53,17 +53,12 @@ export default class bookingModel {
             (Ma_booking, Ma_bac_si, Ma_benh_nhan, Ma_nguoi_than, Ma_khung_gio, Hinh_thuc, Trieu_chung, Trang_thai_lich_hen, Tong_tien, Link_video_call) 
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
-<<<<<<< HEAD
 
         const linkJitsi = data.Hinh_thuc == 'online' ? "https://meet.ffmuc.net/": null;
         // 🌟 ĐÃ FIX: Xóa data.Ma_dich_vu khỏi params
         const params = [
             data.Ma_booking, data.Ma_bac_si, data.Ma_benh_nhan, data.Ma_nguoi_than, 
             data.Ma_khung_gio, data.Hinh_thuc, data.Trieu_chung, data.Tong_tien, linkJitsi + data.Ma_booking
-=======
-        const params = [
-            data.Ma_booking, data.Ma_bac_si, data.Ma_benh_nhan, data.Ma_nguoi_than, data.Ma_khung_gio, data.Hinh_thuc, data.Trieu_chung, 'pending', data.Tong_tien, "https://meet.ffmuc.net/" + data.Ma_booking
->>>>>>> 11e808340001cc358ecf72ccb428ff344e1306b3
         ];
         const [result] = await execute(query, params);
         const insertId = result.insertId;
