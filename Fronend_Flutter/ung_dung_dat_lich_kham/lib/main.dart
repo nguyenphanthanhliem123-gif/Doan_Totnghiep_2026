@@ -4,6 +4,7 @@ import 'package:ung_dung_dat_lich_kham/ViewModels/doctor_clinic_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/ViewModels/notification_viewmodel.dart';
 import 'dart:ui';
 import 'package:ung_dung_dat_lich_kham/ViewModels/payment_viewmodel.dart';
+import 'package:ung_dung_dat_lich_kham/viewmodels/schedule_config_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewModels/doctor_service_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/search_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/health_record_viewmodel.dart';
@@ -49,7 +50,8 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AppointmentViewModel()),
         ChangeNotifierProvider(create: (_) => DoctorAppointmentDetailViewModel()),
         ChangeNotifierProvider(create: (_) => DoctorClinicViewmodel()),
-        ChangeNotifierProvider(create: (_) => DoctorServiceViewModel())
+        ChangeNotifierProvider(create: (_) => DoctorServiceViewModel()),
+        ChangeNotifierProvider(create: (_) => ScheduleConfigViewmodel())
       ],
       child: MaterialApp(
         title: 'Hệ thống đặt lịch khám bệnh',

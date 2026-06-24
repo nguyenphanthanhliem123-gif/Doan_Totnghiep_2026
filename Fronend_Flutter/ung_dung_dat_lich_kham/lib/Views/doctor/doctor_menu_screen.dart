@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ung_dung_dat_lich_kham/Constants/ui_constants.dart';
 import 'package:ung_dung_dat_lich_kham/Views/doctor/doctor_profile_detail_screen.dart';
+import 'package:ung_dung_dat_lich_kham/Views/doctor/doctor_schedule_screen.dart';
 import 'package:ung_dung_dat_lich_kham/Views/doctor/review_doctor_screen.dart';
 import 'package:ung_dung_dat_lich_kham/Views/doctor/update_clinic_screen.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/auth_viewmodel.dart';
@@ -171,7 +172,7 @@ class DoctorMenuScreenState extends State<DoctorMenuScreen> {
                         icon: Icons.calendar_month_outlined,
                         iconColor: Colors.green,
                         onTap: () {
-                          // Navigator.push(context, MaterialPageRoute(builder: (context) => const WorkScheduleScreen()));
+                          Navigator.push(context, MaterialPageRoute(builder: (context) => const DoctorScheduleScreen()));
                         },
                       ),
 
