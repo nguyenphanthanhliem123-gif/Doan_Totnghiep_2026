@@ -96,4 +96,29 @@ class ScheduleConfigViewmodel extends ChangeNotifier{
       return false;
     }
   }
+
+
+  Future<void> submitDoctorLeave(String date, String buoi, String reason, BuildContext context) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final result = await _apiScheduleConfig.reportSuddenLeave(date, buoi, reason);
+      
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(result['message'] ?? 'Thao tác hoàn tất'),
+          backgroundColor: result['succeeded'] == true ? Colors.teal : Colors.red,
+          duration: const Duration(seconds: 4),
+        ));
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lỗi kết nối máy chủ'), backgroundColor: Colors.red));
+      }
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 }

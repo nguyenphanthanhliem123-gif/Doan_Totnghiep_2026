@@ -1,6 +1,11 @@
 // Backend_NodeJS/controllers/scheduleController.js
 import ScheduleModel from "../models/scheduleModel.js";
 import doctorModel from "../models/doctorModel.js";
+import VNPayServices from "../services/vnpayService.js";
+import sendNotification from "../utils/notificationHelper.js";
+import paymentModel from "../models/paymentModel.js";
+import moment from 'moment';
+import EmailService from "../services/emailService.js";
 
 export default class ScheduleController {
     static async updateScheduleConfig(req, res) {
@@ -67,7 +72,7 @@ export default class ScheduleController {
     static async reportSuddenLeave(req, res) {
         try {
             const userId = req.Ma_nguoi_dung;
-            const { date, buoi, reason } = req.body; // date: "YYYY-MM-DD"
+            const { date, buoi, reason } = req.body; 
 
             if (!date || !buoi) {
                 return res.status(400).json({ succeeded: false, message: "Vui lòng chọn ngày và buổi cần nghỉ" });
@@ -76,12 +81,66 @@ export default class ScheduleController {
             const doctor = await doctorModel.getDoctorDetailByUserID(userId);
             if (!doctor) return res.status(404).json({ succeeded: false, message: "Không tìm thấy thông tin bác sĩ" });
 
-            // Gọi model cập nhật trạng thái dữ liệu
+            // 1. Gọi model cập nhật trạng thái dữ liệu và lấy về mảng cần hoàn tiền
             const result = await ScheduleModel.registerSuddenLeaveWithoutDBChange(doctor.Ma_bac_si, date, buoi, reason);
+
+            // 🌟 2. XỬ LÝ HOÀN TIẾN (REFUND) TỰ ĐỘNG
+            let refundSuccessCount = 0;
+            if (result.appointmentsToRefund && result.appointmentsToRefund.length > 0) {
+                for (const appt of result.appointmentsToRefund) {
+                    
+                    // Gói dữ liệu theo chuẩn đầu vào của vnpayService.js
+                    const thongTinGiaoDich = {
+                        maBooking: appt.Ma_booking,
+                        soTien: appt.Tong_tien,
+                        maGiaoDich: appt.Ma_giao_dich,
+                        // Convert định dạng SQL Datetime sang chuẩn YYYYMMDDHHmmss của VNPay
+                        ngayGiaoDich: moment(appt.Ngay_thanh_toan).format('YYYYMMDDHHmmss') 
+                    };
+
+                    await sendNotification(
+                        appt.Ma_nguoi_dung,
+                        'Hủy lịch hẹn',
+                        reason
+                    );
+
+                    if (appt.Email) {
+                        const dateTime = new Date(appt.Ngay_kham);
+                        const thongTinEmail = {
+                            maBooking: appt.Ma_booking,
+                            tenBacSi: appt.Ten_bac_si,
+                            ngayKham: appt.Ngay_kham,
+                            gioKham: appt.Gio_kham,
+                            diaChi: appt.Dia_chi_phong_kham
+                        };
+                        EmailService.sendBookingConfirmationEmail(appt.Email, thongTinEmail).catch(err => console.log("Lỗi gửi mail ngầm"));
+                    }
+
+                    if(appt.Trang_thai_thanh_toan == 'pending'){
+                        await paymentModel.updateStatus(appt.Ma_booking, 'fail');
+                    }else{
+                        // Gọi sang cổng VNPay
+                        const isRefunded = await VNPayServices.xulyHoanTienVNPay(thongTinGiaoDich);
+                        
+                        if (isRefunded) {
+                            refundSuccessCount++;
+                            await paymentModel.updateStatus(appt.Ma_booking, 'refunded');
+                        }else{
+                            await paymentModel.updateStatus(appt.Ma_booking, 'refund_fail');
+                        }
+                    }
+                }
+            }
+
+            // Tạo chuỗi thông báo trả về Front-end
+            let responseMsg = `Đã khóa ${result.slotsLocked} ca trống. Tự động hủy ${result.appointmentsCancelled} lịch hẹn.`;
+            if (result.appointmentsToRefund.length > 0) {
+                responseMsg += ` Đã hoàn tiền qua VNPay thành công ${refundSuccessCount}/${result.appointmentsToRefund.length} giao dịch.`;
+            }
 
             return res.status(200).json({
                 succeeded: true,
-                message: `Đã khóa ${result.slotsLocked} ca khám trống. ${result.appointmentsCancelled > 0 ? `Tự động hủy lịch và thông báo tới ${result.appointmentsCancelled} bệnh nhân.` : 'Không có lịch hẹn nào bị ảnh hưởng.'}`
+                message: responseMsg
             });
         } catch (error) {
             return res.status(500).json({ succeeded: false, message: error.message });

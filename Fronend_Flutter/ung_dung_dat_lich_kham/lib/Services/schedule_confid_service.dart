@@ -99,4 +99,29 @@ class APIScheduleConfig{
       return {'succeeded': false, 'message': 'Lỗi server: ${e.toString()}'};
     }
   }
+
+  Future<Map<String, dynamic>> reportSuddenLeave(String date, String buoi, String reason) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      if (token == null) return {'succeeded': false, 'message': 'Hết phiên đăng nhập'};
+
+      final res = await http.post(
+        Uri.parse('$BASE_URL/api/doctors/schedule/leave'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'date': date,
+          'buoi': buoi,
+          'reason': reason,
+        }),
+      );
+
+      return jsonDecode(res.body);
+    } catch (e) {
+      return {'succeeded': false, 'message': 'Lỗi mạng: ${e.toString()}'};
+    }
+  }
 }

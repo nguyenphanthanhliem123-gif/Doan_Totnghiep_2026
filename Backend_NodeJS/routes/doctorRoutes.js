@@ -21,6 +21,7 @@ doctorRoutes.post('/update-clinics', auth, clinicController.updateDoctorClinics)
 doctorRoutes.post('/schedule/config/create', auth, ScheduleController.updateScheduleConfig);
 doctorRoutes.get('/schedule/config', auth, ScheduleController.getScheduleConfig);
 doctorRoutes.post('/schedule/slots/generate', auth, ScheduleController.generateDoctorSlots);
+doctorRoutes.post('/schedule/leave', auth, ScheduleController.reportSuddenLeave);
 
 // ==========================================
 // 3. API CÓ CHỨA BIẾN (:id) - BẮT BUỘC PHẢI ĐỂ CÙNG

@@ -80,18 +80,19 @@ export default class paymentModel{
         }
     }
 
-    static async getPayment(bookingCode){
-        try{
+    static async getPayment(bookingCode) {
+        try {
+            // 1. Câu SQL lấy thông tin thanh toán chung (Đã bỏ JOIN dich_vu)
             const queryData = `
                 SELECT 
                     tt.Ma_thanh_toan,
                     tt.Ma_giao_dich, 
                     lh.Ma_booking, 
+                    lh.Ma_lich_hen, -- Bắt buộc lấy thêm trường này để làm điều kiện tìm dịch vụ
                     nt.Ten_nguoi_than AS Ten_benh_nhan, 
                     nd.Email, 
                     ndbs.Ten_nguoi_dung AS Ten_bac_si,
                     lh.Tong_tien,
-                    dv.Ten_dich_vu,
                     pk.Ten_phong_kham,
                     pk.Vi_tri,
                     kgk.Thoi_gian_Bdau AS Ngay_kham
@@ -102,15 +103,34 @@ export default class paymentModel{
                 JOIN nguoi_than nt ON nt.Ma_benh_nhan = bn.Ma_benh_nhan
                 JOIN bac_si bs ON lh.Ma_bac_si = bs.Ma_bac_si
                 JOIN nguoi_dung ndbs ON bs.Ma_nguoi_dung = ndbs.Ma_nguoi_dung
-                JOIN dich_vu dv ON lh.Ma_dich_vu = dv.Ma_dich_vu
                 JOIN khung_gio_kham kgk ON kgk.Ma_khung_gio = lh.Ma_khung_gio
                 JOIN phong_kham pk ON pk.Ma_phong_kham = kgk.Ma_phong_kham
                 WHERE lh.Ma_booking = ?
             `;
             const [rows] = await execute(queryData, [bookingCode]);
 
-            return rows.length > 0? rows: null;
-        }catch(error){
+            // Nếu không tìm thấy hóa đơn nào, trả về null để Controller tự xử lý lỗi
+            if (rows.length === 0) return null;
+
+            // Tách riêng đối tượng thông tin chung
+            const thongTinChung = rows[0];
+
+            // 2. Câu SQL lấy mảng danh sách dịch vụ từ bảng chi_tiet_lich_hen
+            const queryServices = `
+                SELECT dv.Ma_dich_vu, dv.Ten_dich_vu, ctlh.Gia_tien
+                FROM chi_tiet_lich_hen ctlh
+                JOIN dich_vu dv ON ctlh.Ma_dich_vu = dv.Ma_dich_vu
+                WHERE ctlh.Ma_lich_hen = ?
+            `;
+            const [services] = await execute(queryServices, [thongTinChung.Ma_lich_hen]);
+
+            // 3. Trả về đúng cấu trúc mảng 2 phần tử theo yêu cầu
+            return [
+                thongTinChung,                         // Phần tử 0: Đối tượng thông tin chung
+                { Danh_sach_dich_vu: services || [] }  // Phần tử 1: Đối tượng chứa mảng dịch vụ
+            ];
+
+        } catch (error) {
             throw new Error("Lỗi PaymentModel.getPayment: " + error.message);
         }
     }

@@ -40,6 +40,12 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
             icon: const Icon(Icons.auto_awesome_motion),
             onPressed: () => _showGenerateSlotsPicker(context, viewModel),
           ),
+
+          IconButton(
+            tooltip: 'Báo nghỉ / Khóa lịch ca khám',
+            icon: const Icon(Icons.event_busy, color: Colors.amberAccent),
+            onPressed: () => _openLeaveDialog(context, viewModel),
+          ),
         ],
       ),
       body: viewModel.isLoading
@@ -543,5 +549,97 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
         backgroundColor: success ? Colors.teal : Colors.red,
       ));
     }
+  }
+
+  void _openLeaveDialog(BuildContext context, ScheduleConfigViewmodel viewModel) {
+    DateTime selectedDate = DateTime.now();
+    String selectedBuoi = 'ca_ngay';
+    final reasonController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              title: const Row(
+                children: [
+                  Icon(Icons.warning, color: Colors.orange),
+                  SizedBox(width: 8),
+                  Text('Báo Nghỉ Đột Xuất', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                ],
+              ),
+              content: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'Hệ thống sẽ khóa các ca khám trống và tự động HỦY các lịch hẹn bệnh nhân đã đặt trong thời gian này.',
+                      style: TextStyle(color: Colors.red, fontSize: 13),
+                    ),
+                    const SizedBox(height: 12),
+                    // Chọn ngày nghỉ
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.edit_calendar, color: Colors.teal),
+                      title: Text("Ngày nghỉ: ${selectedDate.day}/${selectedDate.month}/${selectedDate.year}"),
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: selectedDate,
+                          firstDate: DateTime.now(),
+                          lastDate: DateTime.now().add(const Duration(days: 30)),
+                        );
+                        if (picked != null) {
+                          setDialogState(() => selectedDate = picked);
+                        }
+                      },
+                    ),
+                    // Chọn buổi nghỉ
+                    DropdownButtonFormField<String>(
+                      value: selectedBuoi,
+                      decoration: const InputDecoration(labelText: 'Khung thời gian nghỉ', prefixIcon: Icon(Icons.timelapse, color: Colors.teal)),
+                      items: const [
+                        DropdownMenuItem(value: 'ca_ngay', child: Text('Cả ngày hôm đó')),
+                        DropdownMenuItem(value: 'sang', child: Text('Buổi Sáng (Trước 12h)')),
+                        DropdownMenuItem(value: 'chieu', child: Text('Buổi Chiều (12h - 18h)')),
+                        DropdownMenuItem(value: 'toi', child: Text('Buổi Tối (Sau 18h)')),
+                      ],
+                      onChanged: (v) { if (v != null) setDialogState(() => selectedBuoi = v); },
+                    ),
+                    const SizedBox(height: 12),
+                    // Nhập lý do nghỉ
+                    TextFormField(
+                      controller: reasonController,
+                      decoration: const InputDecoration(labelText: 'Lý do báo nghỉ', border: OutlineInputBorder()),
+                      validator: (value) => (value == null || value.isEmpty) ? 'Vui lòng nhập lý do để báo cho bệnh nhân' : null,
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Đóng', style: TextStyle(color: Colors.grey))),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                  onPressed: () async {
+                    if (formKey.currentState!.validate()) {
+                      Navigator.pop(ctx);
+                      // Định dạng chuỗi ngày YYYY-MM-DD gửi lên server
+                      String dateStr = "${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}";
+                      
+                      await viewModel.submitDoctorLeave(dateStr, selectedBuoi, reasonController.text, context);
+                    }
+                  },
+                  child: const Text('Xác nhận nghỉ', style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 }

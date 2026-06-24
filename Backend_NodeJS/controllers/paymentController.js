@@ -158,20 +158,32 @@ export default class paymentController {
                     await paymentModel.updateStatus(bookingId, 'paid');
                     await bookingModel.saveTransactionCode(vnp_TransactionNo, thoiDiemThanhToanChuan, rows[0].Ma_thanh_toan);
                     console.log(`Booking ${bookingId} thanh toán THÀNH CÔNG!`);
-                    if (rows.length > 0) {
+                    if (rows && rows.length > 0) {
+                        const thongTinChung = rows[0]; 
+                        const doiTuongDichVu = rows[1] || { Danh_sach_dich_vu: [] };
+                        const danhSachDichVu = doiTuongDichVu.Danh_sach_dich_vu || [];
+
+                        // Gộp tên các dịch vụ lại thành một chuỗi cách nhau bằng dấu phẩy (Ví dụ: "Khám tổng quát, Xét nghiệm máu")
+                        const chuoiTenDichVu = danhSachDichVu.length > 0 
+                            ? danhSachDichVu.map(dv => dv.Ten_dich_vu).join(', ') 
+                            : "Dịch vụ khám bệnh";
+
+                        // Tạo gói dữ liệu chuẩn hóa để truyền vào hàm gửi hóa đơn email
                         const thongTinHoaDon = {
-                            maGiaoDich: rows[0].Ma_giao_dich,
-                            maBooking: rows[0].Ma_booking,
-                            tenBenhNhan: rows[0].Ten_benh_nhan,
-                            emailNguoiDung: rows[0].Email,
-                            tenBacSi: rows[0].Ten_bac_si,
-                            tenDichVu: rows[0].Ten_dich_vu,
-                            soTien: rows[0].Tong_tien,
-                            tenPhongKham: rows[0].Ten_phong_kham,
-                            viTriPhongKham: rows[0].Vi_tri
+                            maGiaoDich: thongTinChung.Ma_giao_dich,
+                            maBooking: thongTinChung.Ma_booking,
+                            tenBenhNhan: thongTinChung.Ten_benh_nhan,
+                            emailNguoiDung: thongTinChung.Email,
+                            tenBacSi: thongTinChung.Ten_bac_si,
+                            tenDichVu: chuoiTenDichVu, // 🌟 Chuỗi tên các dịch vụ sau khi đã nối lại với nhau
+                            soTien: thongTinChung.Tong_tien,
+                            tenPhongKham: thongTinChung.Ten_phong_kham,
+                            viTriPhongKham: thongTinChung.Vi_tri
                         };
 
-                        // Chạy ngầm việc gửi email để không làm chậm phản hồi (response) về MoMo
+                        console.log("👉 Chuẩn bị gửi hóa đơn cho các dịch vụ:", chuoiTenDichVu);
+
+                        // Chạy ngầm việc gửi email hóa đơn PDF
                         taoVaGuiHoaDonPDF(thongTinHoaDon).catch(err => console.error("Lỗi gửi email ngầm:", err));
                     }
                     return res.status(200).send("Thanh toán thành công. Vui lòng quay lại ứng dụng.");

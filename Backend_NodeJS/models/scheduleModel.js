@@ -1,5 +1,5 @@
 // Backend_NodeJS/models/scheduleModel.js
-import { execute } from "../config/db.js";
+import { beginTransaction, commitTransaction, execute, rollbackTransaction } from "../config/db.js";
 
 export default class ScheduleModel {
     // Lưu hoặc cập nhật cấu hình thời gian
@@ -52,9 +52,10 @@ export default class ScheduleModel {
     }
 
     static async generateSlotsForDateRange(doctorId, startDateStr, endDateStr) {
+        let conn = await beginTransaction();
         try {
             // 1. Lấy thông số cấu hình thời gian của bác sĩ
-            const [configRows] = await execute(
+            const [configRows] = await conn.execute(
                 `SELECT Thoi_gian_slot, Thoi_gian_nghi FROM cau_hinh_lich_kham WHERE Ma_bac_si = ?`, 
                 [doctorId]
             );
@@ -64,14 +65,14 @@ export default class ScheduleModel {
             const { Thoi_gian_slot: slotTime, Thoi_gian_nghi: breakTime } = configRows[0];
 
             // 2. Lấy danh sách các buổi đăng ký làm việc cố định ('lam')
-            const [weeklySchedule] = await execute(
+            const [weeklySchedule] = await conn.execute(
                 `SELECT Thu_trong_tuan, Gio_bat_dau, Gio_ket_thuc FROM lich_lam_viec_co_dinh WHERE Ma_bac_si = ? AND Trang_thai = 'lam'`, 
                 [doctorId]
             );
             if (weeklySchedule.length === 0) return { message: "Không có buổi làm việc nào được cấu hình trạng thái làm." };
 
             // 3. Lấy mã phòng khám chính của bác sĩ để điền vào khung giờ
-            const [clinicRows] = await execute(
+            const [clinicRows] = await conn.execute(
                 `SELECT Ma_phong_kham FROM bac_si_phong_kham WHERE Ma_bac_si = ? ORDER BY Noi_chinh DESC LIMIT 1`,
                 [doctorId]
             );
@@ -122,14 +123,14 @@ export default class ScheduleModel {
                         const slotEndStr = `${dateStr} ${minutesToTimeStr(startMin + slotTime)}`;
 
                         // 5. Kiểm tra xem khung giờ này đã được tạo trước đó chưa
-                        const [existing] = await execute(
+                        const [existing] = await conn.execute(
                             `SELECT 1 FROM khung_gio_kham WHERE Ma_bac_si = ? AND Thoi_gian_Bdau = ? AND Thoi_gian_Kthuc = ? LIMIT 1`,
                             [doctorId, slotStartStr, slotEndStr]
                         );
 
                         if (!existing || existing.length === 0) {
                             // Tiến hành thêm khung giờ mới vào DB
-                            await execute(
+                            await conn.execute(
                                 `INSERT INTO khung_gio_kham (Ma_bac_si, Ma_phong_kham, Thoi_gian_Bdau, Thoi_gian_Kthuc, Trang_thai)
                                  VALUES (?, ?, ?, ?, 'available')`,
                                 [doctorId, clinicId, slotStartStr, slotEndStr]
@@ -145,14 +146,17 @@ export default class ScheduleModel {
                 // Tăng lên 1 ngày cho vòng lặp kế tiếp
                 current.setDate(current.getDate() + 1);
             }
+            await commitTransaction(conn);
 
             return { succeeded: true, slotsCreated: slotsCreatedCount };
         } catch (error) {
+            await rollbackTransaction(conn);
             throw new Error('Lỗi tự động phát sinh khung giờ khám: ' + error.message);
         }
     }
 
     static async registerSuddenLeaveWithoutDBChange(doctorId, dateStr, buoi, reason) {
+        let conn = await beginTransaction();
         try {
             // Khởi tạo điều kiện lọc theo Giờ của Buổi nghỉ
             let hourCondition = "";
@@ -161,7 +165,7 @@ export default class ScheduleModel {
             else if (buoi === 'toi') hourCondition = "AND HOUR(Thoi_gian_Bdau) >= 18";
 
             // LỆNH 1: Khóa thẳng các slot trống (chuyển available -> locked)
-            const [lockResult] = await execute(
+            const [lockResult] = await conn.execute(
                 `UPDATE khung_gio_kham 
                  SET Trang_thai = 'locked' 
                  WHERE Ma_bac_si = ? AND DATE(Thoi_gian_Bdau) = ? ${hourCondition} AND Trang_thai = 'available'`,
@@ -169,39 +173,74 @@ export default class ScheduleModel {
             );
 
             // LỆNH 2: Tìm các ca đã bị bệnh nhân đặt trước ('booked') để xử lý hủy
-            const [bookedSlots] = await execute(
+            const [bookedSlots] = await conn.execute(
                 `SELECT Ma_khung_gio FROM khung_gio_kham 
                  WHERE Ma_bac_si = ? AND DATE(Thoi_gian_Bdau) = ? ${hourCondition} AND Trang_thai = 'booked'`,
                 [doctorId, dateStr]
             );
-
+            let appointmentsToRefund = [];
             let cancelledCount = 0;
             // Nếu có lịch hẹn bị ảnh hưởng, tiến hành hủy lịch của bệnh nhân
             if (bookedSlots && bookedSlots.length > 0) {
                 const slotIds = bookedSlots.map(s => s.Ma_khung_gio);
+                const slotIdsStr = slotIds.join(',');
+
+                // 🌟 BƯỚC MỚI: Truy vấn lấy thông tin giao dịch VNPay trước khi hủy
+                // Điều kiện: Chỉ lấy những lịch hẹn đã có record trong bảng thanh_toan với trạng thái thành công
+                const [paidAppointments] = await execute(
+                    `SELECT 
+                        lh.Ma_lich_hen,
+                        lh.Ma_booking, 
+                        tt.Tong_tien, 
+                        tt.Ma_giao_dich, 
+                        tt.Thoi_diem_thanh_toan AS Ngay_thanh_toan,
+                        tt.Trang_thai_thanh_toan,
+                        bn.Ma_nguoi_dung,
+                        nd_bn.Email,
+                        nd_bs.Ten_nguoi_dung AS Ten_bac_si,           -- Tên bác sĩ lấy từ tài khoản người dùng
+                        DATE(kg.Thoi_gian_Bdau) AS Ngay_kham,         -- Tách riêng ngày khám (Định dạng: YYYY-MM-DD)
+                        TIME_FORMAT(kg.Thoi_gian_Bdau, '%H:%i') AS Gio_kham, -- Định dạng giờ khám đẹp (Ví dụ: 08:30)
+                        pk.Vi_tri AS Dia_chi_phong_kham,             -- Địa chỉ cụ thể của phòng khám lịch hẹn
+                        kg.Thoi_gian_Bdau                             -- Gốc thời gian bắt đầu (nếu bạn cần dùng format ở Node.js)
+                    FROM lich_hen lh
+                    JOIN thanh_toan tt ON lh.Ma_lich_hen = tt.Ma_lich_hen
+                    JOIN benh_nhan bn ON lh.Ma_benh_nhan = bn.Ma_benh_nhan
+                    JOIN khung_gio_kham kg ON lh.Ma_khung_gio = kg.Ma_khung_gio   -- Lấy khung giờ gốc của ca khám
+                    JOIN bac_si bs ON kg.Ma_bac_si = bs.Ma_bac_si               -- Xác định bác sĩ phụ trách ca đó
+                    JOIN nguoi_dung nd_bs ON bs.Ma_nguoi_dung = nd_bs.Ma_nguoi_dung -- Lấy tên của bác sĩ trong bảng người dùng
+                    JOIN nguoi_dung nd_bn ON bn.Ma_nguoi_dung = nd_bn.Ma_nguoi_dung
+                    LEFT JOIN phong_kham pk ON kg.Ma_phong_kham = pk.Ma_phong_kham -- Lấy địa chỉ phòng khám của khung giờ đó
+                    WHERE lh.Ma_khung_gio IN (${slotIdsStr}) 
+                    AND lh.Trang_thai_lich_hen != 'cancelled' AND lh.Trang_thai_lich_hen != 'done' AND lh.Trang_thai_lich_hen != 'absent'
+                    AND tt.Trang_thai_thanh_toan = 'paid'`
+                );
+                appointmentsToRefund = paidAppointments;
                 
                 // Cập nhật trạng thái lịch hẹn sang 'da_huy' và đính kèm lý do vào 'Ghi_chu' có sẵn
-                const [appointmentResult] = await execute(
+                const [appointmentResult] = await conn.execute(
                     `UPDATE lich_hen 
-                     SET Trang_thai = 'da_huy', Ghi_chu = ? 
-                     WHERE Ma_khung_gio IN (${slotIds.join(',')}) AND Trang_thai != 'da_huy'`,
-                    [`Bác sĩ báo nghỉ đột xuất: ${reason || 'Không có lý do cụ thể.'}`]
+                     SET Trang_thai_lich_hen = 'cancelled' 
+                     WHERE Ma_khung_gio IN (${slotIds.join(',')}) AND Trang_thai_lich_hen != 'cancelled' AND Trang_thai_lich_hen != 'done' AND Trang_thai_lich_hen != 'absent'`
                 );
                 
                 // Đồng thời chuyển luôn các slot 'booked' này thành 'locked' để đóng ca khám
-                await execute(
+                await conn.execute(
                     `UPDATE khung_gio_kham SET Trang_thai = 'locked' WHERE Ma_khung_gio IN (${slotIds.join(',')})`
                 );
                 
                 cancelledCount = appointmentResult.affectedRows || 0;
             }
 
+            await commitTransaction(conn);
+
             return { 
                 succeeded: true, 
                 slotsLocked: lockResult.affectedRows || 0,
-                appointmentsCancelled: cancelledCount 
+                appointmentsCancelled: cancelledCount,
+                appointmentsToRefund: appointmentsToRefund
             };
         } catch (error) {
+            await rollbackTransaction(conn);
             throw new Error('Lỗi khóa lịch: ' + error.message);
         }
     }
