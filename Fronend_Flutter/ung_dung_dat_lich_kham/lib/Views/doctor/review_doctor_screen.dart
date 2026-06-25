@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:ung_dung_dat_lich_kham/Constants/ui_constants.dart';
 import 'package:ung_dung_dat_lich_kham/models/review_model.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/review_viewmodel.dart';
 
@@ -49,11 +50,11 @@ class _ReviewsDoctorScreenState extends State<ReviewsDoctorScreen> {
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        title: const Text('Đánh giá từ bệnh nhân', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
+        title: const Text('Đánh giá Bác sĩ', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        backgroundColor: kPrimaryColor, // Khớp với màu UI của bạn
         elevation: 0,
         centerTitle: true,
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: reviewVM.isLoading
       ? Center(child: CircularProgressIndicator(),)

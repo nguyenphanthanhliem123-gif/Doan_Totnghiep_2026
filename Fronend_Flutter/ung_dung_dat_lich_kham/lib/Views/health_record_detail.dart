@@ -43,7 +43,10 @@ class _HealthRecordMenuScreenState extends State<HealthRecordMenuScreen> {
         appBar: AppBar(
           backgroundColor: kPrimaryColor,
           elevation: 0,
-          title: const Text('Lỗi Tải Dữ Liệu', style: TextStyle(color: Colors.white)),
+          title: const Text(
+            'Hồ sơ cá nhân',
+            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+          ),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
             onPressed: () => Navigator.pop(context),

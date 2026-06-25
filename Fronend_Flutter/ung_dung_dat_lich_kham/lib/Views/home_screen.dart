@@ -136,6 +136,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final specialtyVM = context.watch<SpecialtyViewModel>();
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -155,7 +156,7 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 25),
               _buildSpecialtyHeader(),
               const SizedBox(height: 15),
-              _buildSpecialtyGrid(),
+              _buildSpecialtyGrid(specialtyVM),
               const SizedBox(height: 20),
             ],
           ),
@@ -512,10 +513,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildSpecialtyGrid() {
-    final specialtyVM = context.watch<SpecialtyViewModel>();
-
-    IconData _getIconData(String? iconName) {
+  IconData _getIconData(String? iconName) {
       switch (iconName) {
         case 'tooth': return Icons.clean_hands_rounded; 
         case 'spa': return Icons.spa_rounded; 
@@ -525,57 +523,80 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20.0),
-      child: specialtyVM.isLoading
-        ? const Center(child: CircularProgressIndicator(),)
-        : specialtyVM.errorMessage.isNotEmpty
-          ? Center(child: Text(specialtyVM.errorMessage, style: const TextStyle(color: Colors.red)))
-          : specialtyVM.listSpecialty == null || specialtyVM.listSpecialty!.isEmpty
-            ? const Center(child: Text('Không tìm thấy chuyên khoa nào.'))
-            : GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: specialtyVM.listSpecialty!.length,
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            crossAxisSpacing: 15,
-            mainAxisSpacing: 15,
-            childAspectRatio: 1,
-          ),
-          itemBuilder: (context, index) {
-            final specialties = specialtyVM.listSpecialty![index];
-            return InkWell(
+  Widget _buildSpecialtyGrid(SpecialtyViewModel specialtyVM) {
+    if (specialtyVM.isLoading) {
+      return const Center(child: CircularProgressIndicator(color: kPrimaryColor));
+    }
+    if (specialtyVM.listSpecialty == null || specialtyVM.listSpecialty!.isEmpty) {
+      return const Center(child: Text("Không có dữ liệu chuyên khoa", style: TextStyle(color: Colors.grey)));
+    }
+
+    // Giới hạn chỉ lấy tối đa 6 chuyên khoa như yêu cầu
+    final displaySpecialties = specialtyVM.listSpecialty!;
+
+    return SizedBox(
+      height: 105, // Cố định chiều cao vừa vặn cho item cuộn ngang
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal, // Chuyển thành cuộn ngang giống ảnh mẫu
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: displaySpecialties.length,
+        itemBuilder: (context, index) {
+          final specialties = displaySpecialties[index];
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0), // Khoảng cách giữa các item
+            child: InkWell(
               onTap: () {
-                if(!mounted) return;
+                if (!mounted) return;
                 Navigator.of(context).push(
-                  MaterialPageRoute(builder: (context) => DoctorListScreen(specialtyId: specialties.id, specialtyName: specialties.name,))
+                  MaterialPageRoute(
+                    builder: (context) => DoctorListScreen(
+                      specialtyId: specialties.id,
+                      specialtyName: specialties.name,
+                    ),
+                  ),
                 );
               },
+              borderRadius: BorderRadius.circular(12),
               child: Container(
-                decoration: BoxDecoration(
-                  color: primaryCyan,
-                  borderRadius: BorderRadius.circular(20),
-                ),
+                width: 85, // Cố định độ rộng của mỗi ô chuyên khoa
+                padding: const EdgeInsets.symmetric(vertical: 8),
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.start,
                   children: [
-                    Icon(_getIconData(specialties.image), color: Colors.white, size: 36),
-                    const SizedBox(height: 8),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                      child: Text(
-                        specialties.name,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                    // Icon bọc trong vòng tròn nền màu nhạt giống hệt ảnh mẫu
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: kPrimaryColor.withOpacity(0.1), // Màu nền Cyan nhạt
+                        shape: BoxShape.circle,
                       ),
-                    )
+                      child: Icon(
+                        _getIconData(specialties.image), 
+                        color: kPrimaryColor, // Icon màu Cyan đậm chủ đạo
+                        size: 26,
+                      ),
+                    ),
+                    const SizedBox(height: 8), // Khoảng cách giữa icon và chữ
+                    // Chữ hiển thị tên chuyên khoa
+                    Text(
+                      specialties.name,
+                      textAlign: TextAlign.center,
+                      maxLines: 2, // Tối đa 2 dòng để không bị lỗi giao diện
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.black87, 
+                        fontSize: 12, 
+                        fontWeight: FontWeight.w500, // Độ đậm vừa phải thanh lịch
+                        height: 1.2,
+                      ),
+                    ),
                   ],
                 ),
               ),
-            );
-          },
-        ),
-      );
-  }
+            ),
+          );
+        },
+      ),
+    );
+}
 }

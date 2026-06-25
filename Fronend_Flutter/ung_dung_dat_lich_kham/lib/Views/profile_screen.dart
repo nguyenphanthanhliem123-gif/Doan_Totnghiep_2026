@@ -56,20 +56,11 @@ class _ProfileScreen extends State<ProfileScreen> {
     print('=== USER: $user');
 
     return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(80),
-        child: Container(
-          decoration: const BoxDecoration(
-            color: kPrimaryColor,
-            borderRadius: BorderRadius.only(bottomLeft: Radius.circular(30), bottomRight: Radius.circular(30)),
-          ),
-          child: AppBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            title: const Text('Thông tin cá nhân', style: kHeaderTextStyle),
-            centerTitle: true,
-          ),
-        ),
+      appBar: AppBar(
+        backgroundColor: kPrimaryColor,
+        elevation: 0,
+        centerTitle: true,
+        title: Text('Thông tin cá nhân', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
       ),
       // 3. XỬ LÝ TRẠNG THÁI LOADING VÀ HIỂN THỊ DỮ LIỆU
       body: profileVM.isLoading 
@@ -126,7 +117,6 @@ class _ProfileScreen extends State<ProfileScreen> {
                               MaterialPageRoute(builder: (context) => HealthRecordListScreen())
                             );
                           }),
-                          _buildOptionItem(Icons.payment, 'Phương thức thanh toán', true, (){}),
                           
                           // MỚI THÊM: Lịch sử giao dịch
                           _buildOptionItem(Icons.receipt_long, 'Lịch sử giao dịch', true, (){

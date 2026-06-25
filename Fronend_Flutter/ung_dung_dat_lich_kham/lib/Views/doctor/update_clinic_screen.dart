@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:ung_dung_dat_lich_kham/Constants/ui_constants.dart';
 import 'package:ung_dung_dat_lich_kham/Models/clinic_model.dart';
 import 'package:ung_dung_dat_lich_kham/ViewModels/doctor_clinic_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/clinic_viewmodel.dart';
-import 'package:ung_dung_dat_lich_kham/viewmodels/doctor_viewmodel.dart'; // Import để lấy thông tin bác sĩ
+import 'package:ung_dung_dat_lich_kham/viewmodels/doctor_viewmodel.dart';
 
 class DoctorClinicSelectionScreen extends StatefulWidget {
   const DoctorClinicSelectionScreen({super.key});
@@ -101,8 +102,8 @@ class _DoctorClinicSelectionScreenState extends State<DoctorClinicSelectionScree
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
         title: const Text('Cơ sở y tế công tác', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
+        backgroundColor: kPrimaryColor,
+        foregroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
       ),

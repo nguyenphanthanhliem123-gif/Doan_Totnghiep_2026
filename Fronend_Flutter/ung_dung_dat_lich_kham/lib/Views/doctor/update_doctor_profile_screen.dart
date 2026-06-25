@@ -6,7 +6,7 @@ import 'package:ung_dung_dat_lich_kham/Models/specialtyModel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/specialty_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/profile_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/doctor_viewmodel.dart';
-// import các hằng số màu sắc của bạn (kPrimaryColor, v.v...)
+import 'package:ung_dung_dat_lich_kham/Constants/ui_constants.dart';
 
 class UpdateDoctorProfileScreen extends StatefulWidget {
   final int userId; // Nhận userId để sau khi update xong có thể load lại profile
@@ -144,9 +144,21 @@ void initState() {
     final doctor = doctorVM.doctorDetailForDoctor;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Cập nhật hồ sơ Bác sĩ'),
-        backgroundColor: Colors.blueAccent, // Thay bằng kPrimaryColor của bạn
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(80),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: kPrimaryColor,
+            borderRadius: BorderRadius.only(bottomLeft: Radius.circular(30), bottomRight: Radius.circular(30)),
+          ),
+          child: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            title: const Text('Cập nhật hồ sơ Bác sĩ', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)), // Đổi tên hiển thị tùy file
+            centerTitle: true,
+            iconTheme: const IconThemeData(color: Colors.white),
+          ),
+        ),
       ),
       body: _isSubmitting || specialtyVM.isLoading || specialtyList == null || doctorVM.isLoading || doctor == null
         ? const Center(child: CircularProgressIndicator()) 
@@ -250,7 +262,7 @@ void initState() {
                 child: ElevatedButton(
                   onPressed: _submitAllData,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blueAccent,
+                    backgroundColor: kPrimaryColor,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
                   ),
                   child: const Text('Lưu Thay Đổi', style: TextStyle(fontSize: 18, color: Colors.white)),

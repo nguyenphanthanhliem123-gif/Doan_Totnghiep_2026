@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:ung_dung_dat_lich_kham/Constants/ui_constants.dart';
 import 'package:ung_dung_dat_lich_kham/Models/specialtyModel.dart';
 import 'package:ung_dung_dat_lich_kham/viewModels/doctor_service_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/auth_viewmodel.dart';
@@ -299,10 +300,8 @@ class _DoctorServicesScreenState extends State<DoctorServicesScreen> {
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        title: const Text('Dịch vụ & Giá khám', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
-        elevation: 0,
+        backgroundColor: kPrimaryColor,
+        title: const Text('Dịch vụ & Giá khám', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         centerTitle: true,
       ),
       body: doctorVM.isLoading || _isLoading

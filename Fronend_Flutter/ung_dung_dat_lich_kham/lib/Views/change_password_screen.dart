@@ -41,16 +41,25 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, // Nền chuẩn
-      appBar: AppBar( // 🌟 Đã đưa về AppBar chuẩn, bỏ container bo góc đáy rườm rà
+      appBar: AppBar(
         backgroundColor: kPrimaryColor,
         elevation: 0,
-        title: const Text('Quản lý mật khẩu', style: kHeaderTextStyle),
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
+        title: Text(
+          'Quản lý mật khẩu',
+          style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+
+        /*actions: [
+          IconButton(
+            icon: const Icon(Icons.filter_list_rounded, color: Colors.white),
+            onPressed: () => _showFilterBottomSheet(context), // Gọi hàm mở bộ lọc
+          )
+        ],*/
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(kDefaultPadding), // Lề 20 chuẩn

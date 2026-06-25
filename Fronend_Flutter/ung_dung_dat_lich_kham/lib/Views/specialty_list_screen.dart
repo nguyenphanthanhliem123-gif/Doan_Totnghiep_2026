@@ -42,7 +42,7 @@ class _SpecialtyListScreenState extends State<SpecialtyListScreen> {
     final specialtyVM = context.watch<SpecialtyViewModel>();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
         backgroundColor: kPrimaryColor,
         elevation: 0,
@@ -57,88 +57,100 @@ class _SpecialtyListScreenState extends State<SpecialtyListScreen> {
         ),
       ),
       body: specialtyVM.isLoading
-          ? const Center(child: CircularProgressIndicator(color: kPrimaryColor))
-          : specialtyVM.errorMessage.isNotEmpty
-              ? Center(child: Text(specialtyVM.errorMessage, style: const TextStyle(color: Colors.red)))
-              : specialtyVM.listSpecialty == null || specialtyVM.listSpecialty!.isEmpty
-                  ? const Center(child: Text('Không tìm thấy chuyên khoa nào.'))
-                  : GridView.builder(
+        ? const Center(child: CircularProgressIndicator(color: kPrimaryColor))
+        : (specialtyVM.listSpecialty == null || specialtyVM.listSpecialty!.isEmpty)
+            ? const Center(child: Text("Không có dữ liệu chuyên khoa", style: TextStyle(color: Colors.grey)))
+            : ListView.separated(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                itemCount: specialtyVM.listSpecialty!.length,
+                separatorBuilder: (context, index) => const SizedBox(height: 16), // Khoảng cách giữa các thẻ
+                itemBuilder: (context, index) {
+                  final specialty = specialtyVM.listSpecialty![index];
+                  
+                  return InkWell(
+                    onTap: () {
+                      if (!mounted) return;
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => DoctorListScreen(
+                            specialtyId: specialty.id,
+                            specialtyName: specialty.name,
+                          ),
+                        ),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
                       padding: const EdgeInsets.all(16),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 14,
-                        mainAxisSpacing: 14,
-                        childAspectRatio: 0.88,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.04),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          )
+                        ],
                       ),
-                      itemCount: specialtyVM.listSpecialty!.length,
-                      itemBuilder: (context, index) {
-                        final specialty = specialtyVM.listSpecialty![index];
-                        return _buildSpecialtyCard(specialty);
-                      },
+                      child: Row(
+                        children: [
+                          // 1. Icon bên trái
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: kPrimaryColor.withOpacity(0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              _getIconData(specialty.image),
+                              color: kPrimaryColor,
+                              size: 32,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          
+                          // 2. Nội dung ở giữa
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  specialty.name,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF1A202C),
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  specialty.description,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.grey,
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          
+                          // 3. Nút mũi tên điều hướng bên phải
+                          const Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            size: 16,
+                            color: Colors.grey,
+                          )
+                        ],
+                      ),
                     ),
-    );
-  }
-
-  Widget _buildSpecialtyCard(SpecialtyModel specialty) {
-    return InkWell(
-      onTap: () {
-        if(!mounted) return;
-        Navigator.of(context).push(
-          MaterialPageRoute(builder: (context) => DoctorListScreen(specialtyId: specialty.id, specialtyName: specialty.name,))
-        );
-      },
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.02),
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            )
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center, 
-          children: [
-            // Vòng tròn chứa Icon chuyên khoa
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: kPrimaryColor.withOpacity(0.08),
-                shape: BoxShape.circle,
+                  );
+                },
               ),
-              child: Icon(
-                _getIconData(specialty.image), 
-                color: kPrimaryColor, 
-                size: 32,
-              ),
-            ),
-            const SizedBox(height: 12),
-            // Tên chuyên khoa
-            Text(
-              specialty.name,
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF1A202C)),
-            ),
-            const SizedBox(height: 4),
-            // Mô tả ngắn chuyên khoa
-            Text(
-              specialty.description,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 11, color: kGreyTextColor, height: 1.3),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
