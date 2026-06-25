@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:ung_dung_dat_lich_kham/Constants/ui_constants.dart';
 import 'package:ung_dung_dat_lich_kham/Models/paymentModel.dart';
 import 'package:ung_dung_dat_lich_kham/ViewModels/payment_viewmodel.dart';
-
-// Đảm bảo bạn đã import file PaymentModel của bạn vào đây
-// import 'payment_model.dart'; 
 
 class TransactionHistoryScreen extends StatefulWidget {
   const TransactionHistoryScreen({Key? key}) : super(key: key);
@@ -15,15 +13,26 @@ class TransactionHistoryScreen extends StatefulWidget {
 }
 
 class _TransactionHistoryScreenState extends State<TransactionHistoryScreen>{
-      @override
+  // 1. Khai báo biến lưu trạng thái lọc hiện tại
+  String _selectedStatus = 'Tất cả';
+
+  // 2. Danh sách các trạng thái để hiển thị trên thanh lọc
+  final List<String> _statusOptions = [
+    'Tất cả',
+    'Thành công',
+    'Đang chờ',
+    'Thất bại',
+    'Đã hoàn tiền',
+    'Hoàn tiền thất bại'
+  ];
+
+  @override
   void initState() {
     super.initState();
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<PaymentViewmodel>().fetchPaymentHistory();
     });
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -34,25 +43,68 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen>{
       appBar: AppBar(
         title: const Text(
           'Lịch sử giao dịch',
-          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: kPrimaryColor,
         elevation: 0,
         centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.black87),
       ),
-      body: _buildBody(transactionsVM), // Tách logic ra một hàm riêng cho gọn
+      body: Column(
+        children: [
+          // Hiển thị thanh lọc trạng thái
+          _buildFilterChips(),
+          
+          // Hiển thị nội dung danh sách
+          Expanded(child: _buildBody(transactionsVM)),
+        ],
+      ),
     );
   }
 
-  // Hàm xử lý các trạng thái giao diện
+  // Widget hiển thị thanh lọc (vuốt ngang được)
+  Widget _buildFilterChips() {
+    return Container(
+      color: Colors.white,
+      width: double.infinity,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        child: Row(
+          children: _statusOptions.map((status) {
+            final isSelected = _selectedStatus == status;
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: FilterChip(
+                label: Text(status),
+                selected: isSelected,
+                onSelected: (bool selected) {
+                  setState(() {
+                    _selectedStatus = status;
+                  });
+                },
+                backgroundColor: Colors.grey[200],
+                selectedColor: kPrimaryColor.withOpacity(0.2),
+                checkmarkColor: kPrimaryColor,
+                side: BorderSide.none,
+                labelStyle: TextStyle(
+                  color: isSelected ? kPrimaryColor : Colors.black87,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  // Hàm xử lý các trạng thái giao diện và danh sách
   Widget _buildBody(PaymentViewmodel vm) {
-    // 1. Nếu đang tải API -> Hiển thị vòng xoay
     if (vm.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    // 2. Nếu có lỗi xảy ra (mất mạng, lỗi server, v.v.)
     if (vm.errorMessage != null && vm.errorMessage!.isNotEmpty) {
       return Center(
         child: Text(
@@ -63,7 +115,6 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen>{
       );
     }
 
-    // 3. Nếu tải xong nhưng danh sách null hoặc rỗng
     if (vm.listPayment == null || vm.listPayment!.isEmpty) {
       return const Center(
         child: Text(
@@ -73,12 +124,31 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen>{
       );
     }
 
-    // 4. Nếu có dữ liệu -> Hiển thị danh sách
+    // 3. THỰC HIỆN LỌC DỮ LIỆU
+    List<PaymentModel> filteredList = vm.listPayment!;
+    if (_selectedStatus != 'Tất cả') {
+      filteredList = filteredList.where((transaction) {
+        // So sánh không phân biệt hoa thường để tránh lỗi dữ liệu từ API
+        return transaction.trangThai.toLowerCase() == _selectedStatus.toLowerCase();
+      }).toList();
+    }
+
+    // 4. Nếu sau khi lọc mà danh sách rỗng
+    if (filteredList.isEmpty) {
+      return const Center(
+        child: Text(
+          'Không có giao dịch nào phù hợp.',
+          style: TextStyle(fontSize: 16, color: Colors.grey),
+        ),
+      );
+    }
+
+    // 5. Hiển thị danh sách ĐÃ LỌC
     return ListView.builder(
       padding: const EdgeInsets.all(16.0),
-      itemCount: vm.listPayment!.length,
+      itemCount: filteredList.length,
       itemBuilder: (context, index) {
-        final transaction = vm.listPayment![index];
+        final transaction = filteredList[index];
         return TransactionCard(transaction: transaction);
       },
     );
@@ -91,7 +161,7 @@ class TransactionCard extends StatelessWidget {
 
   const TransactionCard({Key? key, required this.transaction}) : super(key: key);
 
-  // Xử lý màu sắc của trạng thái
+  // Đã cập nhật thêm màu cho các trạng thái hoàn tiền
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'thành công':
@@ -99,26 +169,28 @@ class TransactionCard extends StatelessWidget {
       case 'đang chờ':
         return Colors.orange;
       case 'thất bại':
-      case 'đã hủy':
         return Colors.red;
+      case 'đã hoàn tiền':
+        return Colors.purple; // Màu tím cho hoàn tiền thành công
+      case 'hoàn tiền thất bại':
+        return Colors.deepOrange; // Màu cam đậm cho hoàn tiền thất bại
       default:
         return Colors.grey;
     }
   }
 
-  // Xử lý icon phương thức thanh toán
   Widget _getMethodIcon(String method) {
     IconData iconData;
     Color iconColor;
 
-    if (method.toLowerCase().contains('momo')) {
+    if (method.toLowerCase().contains('Ví VNPay')) {
       iconData = Icons.account_balance_wallet;
       iconColor = Colors.pink;
-    } else if (method.toLowerCase().contains('chuyển khoản')) {
+    } else if (method.toLowerCase().contains('Tiền mặt')) {
       iconData = Icons.account_balance;
       iconColor = Colors.blue;
     } else {
-      iconData = Icons.payments; // Tiền mặt
+      iconData = Icons.payments; 
       iconColor = Colors.teal;
     }
 
@@ -134,9 +206,7 @@ class TransactionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Format tiền tệ VNĐ
     final currencyFormat = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
-    // Format ngày giờ
     final dateFormat = DateFormat('dd/MM/yyyy - HH:mm');
 
     return Container(

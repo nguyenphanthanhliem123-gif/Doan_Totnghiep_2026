@@ -31,13 +31,15 @@ export default class paymentModel{
                 if (row.method === 'momo') methodDisplay = "Ví MoMo";
                 if (row.method === 'cash') methodDisplay = "Tiền mặt";
                 if (row.method === 'transfer') methodDisplay = "Chuyển khoản";
+                if (row.method === 'vnpay') methodDisplay = "Ví VNPay";
 
                 // Chuẩn hóa trạng thái thanh toán theo yêu cầu
                 let statusDisplay = "Chờ xử lý";
                 if (row.status === 'paid') statusDisplay = "Thành công";
-                if (row.status === 'refunded') statusDisplay = "Hoàn tiền";
+                if (row.status === 'refunded') statusDisplay = " Đã hoàn tiền";
                 if (row.status === 'failed') statusDisplay = "Thất bại";
                 if (row.status === 'pending') statusDisplay = "Đang chờ";
+                if (row.status === 'refund_fail') statusDisplay = "Hoàn tiền thất bại";
 
                 return {
                     paymentId: row.paymentId,

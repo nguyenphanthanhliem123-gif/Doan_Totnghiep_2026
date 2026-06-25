@@ -91,22 +91,19 @@ class _ProfileDetailScreenState extends State<ProfileDetailScreen> {
   Widget build(BuildContext context) {
     final profileViewModel = context.watch<ProfileViewModel>();
     final user = profileViewModel.userProfile;
-    print('=== isLoading: $_isLoading, profileVM: ${profileViewModel.isLoading}, user: $user');
 
     return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(80),
-        child: Container(
-          decoration: const BoxDecoration(
-            color: kPrimaryColor,
-            borderRadius: BorderRadius.only(bottomLeft: Radius.circular(30), bottomRight: Radius.circular(30)),
-          ),
-          child: AppBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            title: const Text('Hồ sơ cá nhân', style: kHeaderTextStyle),
-            centerTitle: true,
-          ),
+      appBar: AppBar(
+        backgroundColor: kPrimaryColor,
+        elevation: 0,
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          'Hồ sơ cá nhân',
+          style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
         ),
       ),
       body: _isLoading || profileViewModel.isLoading || user == null

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:ung_dung_dat_lich_kham/Constants/ui_constants.dart';
 import 'package:ung_dung_dat_lich_kham/Models/schedule_config_model.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/schedule_config_viewmodel.dart';
 
@@ -30,7 +31,7 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
       backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
         title: const Text('Cấu hình lịch làm việc', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-        backgroundColor: Colors.teal, // Khớp với màu UI của bạn
+        backgroundColor: kPrimaryColor, // Khớp với màu UI của bạn
         elevation: 0,
         centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.white),
@@ -95,7 +96,7 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
             child: OutlinedButton.icon(
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.teal,
-                side: const BorderSide(color: Colors.teal),
+                side: const BorderSide(color: kPrimaryColor),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
               icon: const Icon(Icons.edit, size: 16),
@@ -241,7 +242,7 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
                     height: 50,
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.teal,
+                        backgroundColor: kPrimaryColor,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                       onPressed: () async {
@@ -324,7 +325,7 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
                   height: 50,
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.teal,
+                      backgroundColor: kPrimaryColor,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                     onPressed: () async {

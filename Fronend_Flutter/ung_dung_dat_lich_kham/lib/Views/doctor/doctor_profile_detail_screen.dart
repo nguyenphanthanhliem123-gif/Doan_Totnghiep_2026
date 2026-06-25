@@ -2,11 +2,11 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart' hide Size;
 import 'package:provider/provider.dart';
+import 'package:ung_dung_dat_lich_kham/Constants/ui_constants.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/doctor_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/auth_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/profile_viewmodel.dart';
-// import 'package:ung_dung_dat_lich_kham/viewmodels/doctor_viewmodel.dart'; // Import ViewModel quản lý API bác sĩ của bạn
-import 'update_doctor_profile_screen.dart'; // Import màn hình Update vừa tạo ở trên
+import 'update_doctor_profile_screen.dart';
 
 class DoctorProfileDetailScreen extends StatefulWidget {
   const DoctorProfileDetailScreen({super.key});
@@ -62,20 +62,12 @@ class _DoctorProfileDetailScreenState extends State<DoctorProfileDetailScreen> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(80),
-        child: Container(
-          decoration: const BoxDecoration(
-            color: Colors.blueAccent, // Đổi thành kPrimaryColor của bạn
-            borderRadius: BorderRadius.only(bottomLeft: Radius.circular(30), bottomRight: Radius.circular(30)),
-          ),
-          child: AppBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            title: const Text('Hồ sơ Bác sĩ', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-            centerTitle: true,
-          ),
-        ),
+      appBar: AppBar(
+        title: const Text('Hồ sơ bác sĩ', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        backgroundColor: kPrimaryColor, // Khớp với màu UI của bạn
+        elevation: 0,
+        centerTitle: true,
+        iconTheme: const IconThemeData(color: Colors.white),
       ),
       body: _isLoading || profileViewModel.isLoading || doctorViewModel.isLoading || user == null || doctor == null
           ? const Center(child: CircularProgressIndicator(color: Colors.blueAccent))
@@ -151,7 +143,7 @@ class _DoctorProfileDetailScreenState extends State<DoctorProfileDetailScreen> {
                       icon: const Icon(Icons.edit, color: Colors.white),
                       label: const Text('Cập nhật hồ sơ', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blueAccent, 
+                        backgroundColor: kPrimaryColor, 
                         minimumSize: const Size(double.infinity, 50),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
                         elevation: 2,

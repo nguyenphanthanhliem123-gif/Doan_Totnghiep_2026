@@ -23,7 +23,7 @@ class DoctorMenuScreenState extends State<DoctorMenuScreen> {
   int? _userId; // 💡 Đổi thành int? để lưu mã số trực tiếp truyền cho màn hình sau
 
   // Tạm định nghĩa màu chủ đạo (Bạn có thể dùng kPrimaryColor của bạn)
-  final Color primaryColor = Colors.blueAccent;
+  final Color primaryColor = kPrimaryColor;
 
   @override
   void initState() {
@@ -173,18 +173,6 @@ class DoctorMenuScreenState extends State<DoctorMenuScreen> {
                         iconColor: Colors.green,
                         onTap: () {
                           Navigator.push(context, MaterialPageRoute(builder: (context) => const DoctorScheduleScreen()));
-                        },
-                      ),
-
-                      // 3. Nút Khóa lịch & Báo nghỉ đột xuất
-                      _buildMenuCard(
-                        context: context,
-                        title: 'Khóa lịch & Báo nghỉ',
-                        subtitle: 'Tạm ngưng nhận bệnh nhân đột xuất',
-                        icon: Icons.event_busy_outlined,
-                        iconColor: Colors.redAccent,
-                        onTap: () {
-                          // Navigator.push(context, MaterialPageRoute(builder: (context) => const BlockScheduleScreen()));
                         },
                       ),
 
