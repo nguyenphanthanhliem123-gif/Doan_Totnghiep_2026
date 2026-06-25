@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../viewmodels/review_viewmodel.dart';
-import '../constants/ui_constants.dart';
+import '../Constants/ui_constants.dart'; // 🌟 Đồng bộ UI Constants
 
 class DoctorReviewScreen extends StatefulWidget {
   const DoctorReviewScreen({super.key});
@@ -41,7 +41,7 @@ class _DoctorReviewScreenState extends State<DoctorReviewScreen> {
         ),
         title: const Text(
           "Đánh Giá & Nhận Xét",
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+          style: kHeaderTextStyle, // 🌟 Text Style chuẩn
         ),
       ),
       body: reviewVM.isLoading
@@ -52,7 +52,7 @@ class _DoctorReviewScreenState extends State<DoctorReviewScreen> {
                 // PHẦN 1: BẢNG THỐNG KÊ TỔNG QUAN RATING
                 // ==========================================
                 Container(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(kDefaultPadding), // Lề 20
                   decoration: BoxDecoration(
                     color: Colors.white,
                     boxShadow: [
@@ -64,7 +64,6 @@ class _DoctorReviewScreenState extends State<DoctorReviewScreen> {
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          // Điểm số trung bình (Bên trái)
                           Expanded(
                             flex: 2,
                             child: Column(
@@ -86,7 +85,6 @@ class _DoctorReviewScreenState extends State<DoctorReviewScreen> {
                             ),
                           ),
                           
-                          // Các thanh tiến trình phân phối sao (Bên phải)
                           Expanded(
                             flex: 3,
                             child: Column(
@@ -103,7 +101,6 @@ class _DoctorReviewScreenState extends State<DoctorReviewScreen> {
                       ),
                       const SizedBox(height: 20),
                       
-                      // Thanh trượt ngang chọn bộ lọc số sao
                       SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: Row(
@@ -126,15 +123,14 @@ class _DoctorReviewScreenState extends State<DoctorReviewScreen> {
                   child: reviewVM.reviews.isEmpty
                       ? const Center(child: Text("Không có đánh giá nào phù hợp.", style: TextStyle(color: kGreyTextColor)))
                       : ListView.separated(
-                          padding: const EdgeInsets.all(20),
+                          padding: const EdgeInsets.all(kDefaultPadding), // Lề 20
                           itemCount: reviewVM.reviews.length,
-                          separatorBuilder: (context, index) => const Divider(height: 30, color: Colors.black12),
+                          separatorBuilder: (context, index) => const Divider(height: 30, color: kBorderCyan), // Đường viền chuẩn
                           itemBuilder: (context, index) {
                             final review = reviewVM.reviews[index];
                             return Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // Ảnh đại diện người dùng hoặc placeholder
                                 CircleAvatar(
                                   radius: 22,
                                   backgroundColor: Colors.grey.shade200,
@@ -144,7 +140,6 @@ class _DoctorReviewScreenState extends State<DoctorReviewScreen> {
                                 ),
                                 const SizedBox(width: 15),
                                 
-                                // Nội dung chi tiết bài review
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -205,8 +200,8 @@ class _DoctorReviewScreenState extends State<DoctorReviewScreen> {
               borderRadius: BorderRadius.circular(10),
               child: LinearProgressIndicator(
                 value: percentage,
-                backgroundColor: Colors.grey.shade200,
-                color: kPrimaryColor,
+                backgroundColor: kLightCyanBg1, // Màu nền của thanh
+                color: kPrimaryColor, // Màu chạy phần trăm chuẩn
                 minHeight: 6,
               ),
             ),
@@ -225,8 +220,8 @@ class _DoctorReviewScreenState extends State<DoctorReviewScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected ? kPrimaryColor : Colors.white,
-          border: Border.all(color: isSelected ? kPrimaryColor : Colors.grey.shade300),
-          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: isSelected ? kPrimaryColor : kBorderCyan),
+          borderRadius: BorderRadius.circular(kBorderRadiusLarge), // Bo 20
         ),
         child: Text(
           label,

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../constants/ui_constants.dart';
-import '../viewmodels/auth_viewmodel.dart'; // Đồng bộ dùng nhất quán chữ thường 'viewmodels'
+import '../Constants/ui_constants.dart'; // 🌟 Import đồng bộ UI
+import '../viewmodels/auth_viewmodel.dart'; 
 import 'package:ung_dung_dat_lich_kham/viewmodels/profile_viewmodel.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
@@ -24,7 +24,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     _loadUserID();
   }
 
-  // Nạp ID từ AuthViewModel ngay khi màn hình khởi tạo
   Future<void> _loadUserID() async {
     try {
       final authVM = Provider.of<AuthViewModel>(context, listen: false);
@@ -42,45 +41,44 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(80),
-        child: Container(
-          decoration: const BoxDecoration(
-            color: kPrimaryColor,
-            borderRadius: BorderRadius.only(bottomLeft: Radius.circular(30), bottomRight: Radius.circular(30)),
-          ),
-          child: AppBar(
-            backgroundColor: Colors.transparent,
-            elevation: 0,
-            title: const Text('Quản lý mật khẩu', style: kHeaderTextStyle),
-            centerTitle: true,
-          ),
+      backgroundColor: Colors.white, // Nền chuẩn
+      appBar: AppBar( // 🌟 Đã đưa về AppBar chuẩn, bỏ container bo góc đáy rườm rà
+        backgroundColor: kPrimaryColor,
+        elevation: 0,
+        title: const Text('Quản lý mật khẩu', style: kHeaderTextStyle),
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
         ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
+        padding: const EdgeInsets.all(kDefaultPadding), // Lề 20 chuẩn
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const SizedBox(height: 10),
             const Text('Mật khẩu hiện tại', style: kLabelTextStyle), 
             const SizedBox(height: 8),
             _buildPasswordField(_currentPassCtrl),
-            const SizedBox(height: 20),
+            const SizedBox(height: kSpacingLarge),
+            
             const Text('Mật khẩu mới', style: kLabelTextStyle), 
             const SizedBox(height: 8),
             _buildPasswordField(_newPassCtrl),
-            const SizedBox(height: 20),
+            const SizedBox(height: kSpacingLarge),
+            
             const Text('Xác nhận mật khẩu', style: kLabelTextStyle), 
             const SizedBox(height: 8),
             _buildPasswordField(_confirmPassCtrl),
             const SizedBox(height: 40),
+            
             ElevatedButton(
               onPressed: () async {
                 final currentPass = _currentPassCtrl.text.trim();
                 final newPass = _newPassCtrl.text.trim();
                 final confirmPass = _confirmPassCtrl.text.trim();
 
-                // 1. Kiểm tra tính hợp lệ của dữ liệu đầu vào
                 if (currentPass.isEmpty || newPass.isEmpty || confirmPass.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Vui lòng nhập đầy đủ thông tin!')),
@@ -95,7 +93,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   return;
                 }
 
-                // 2. Lấy userID hiện tại (Bảo mật kép: nếu initState chưa nạp kịp thì lấy lại tại trận)
                 int? activeUserID = userID;
                 if (activeUserID == null || activeUserID == 0) {
                   try {
@@ -109,7 +106,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   }
                 }
 
-                // Nếu sau khi kiểm tra lại vẫn hoàn toàn trống ID
                 if (activeUserID == null || activeUserID == 0) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Lỗi: Hệ thống không xác định được danh tính. Vui lòng thử đăng nhập lại!')),
@@ -117,29 +113,24 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                   return;
                 }
 
-                // 3. Tiến hành gọi ProfileViewModel để đổi mật khẩu
                 try {
                   final profileVM = context.read<ProfileViewModel>();
 
-                  // Hiển thị vòng tròn Loading chặn tương tác
                   showDialog(
                     context: context,
                     barrierDismissible: false,
                     builder: (context) => const Center(child: CircularProgressIndicator()),
                   );
 
-                  // Gọi API đổi mật khẩu xử lý bất đồng bộ
                   await profileVM.changePassword(activeUserID, newPass, currentPass);
 
-                  if (context.mounted) Navigator.pop(context); // Tắt Loading Dialog
+                  if (context.mounted) Navigator.pop(context); 
                   if (!context.mounted) return;
 
-                  // 4. Xử lý kết quả phản hồi từ API thông qua ViewModel
                   if (profileVM.changePassResult == true) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Đổi mật khẩu thành công!')),
                     );
-                    // Xóa trắng form nhập liệu
                     _currentPassCtrl.clear(); 
                     _newPassCtrl.clear(); 
                     _confirmPassCtrl.clear();
@@ -150,18 +141,19 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                           content: Text('Lỗi: $errorText'),
-                          backgroundColor: Colors.green,
+                          backgroundColor: Colors.redAccent, // Thông báo lỗi nên để màu đỏ thay vì xanh
                         ));
                   }
                 } catch (e) {
-                  if (context.mounted) Navigator.pop(context); // Đảm bảo đóng loading nếu sập
+                  if (context.mounted) Navigator.pop(context); 
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi hệ thống: $e')));
                 }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: kPrimaryColor,
                 minimumSize: const Size(double.infinity, 50),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusLarge)), // Bo góc 20
               ),
               child: const Text('Đổi mật khẩu', style: kButtonTextStyle),
             ),
@@ -171,15 +163,24 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     );
   }
 
+  // Cập nhật hàm tạo TextField để giống hệt CreateNewPasswordScreen
   Widget _buildPasswordField(TextEditingController controller) {
-    return TextFormField(
-      controller: controller,
-      obscureText: true,
-      decoration: InputDecoration(
-        fillColor: kInputBackgroundColor,
-        filled: true,
-        suffixIcon: const Icon(Icons.visibility_off_outlined, color: kGreyTextColor),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+    return Container(
+      decoration: BoxDecoration(
+        color: kLightCyanBg1, // Nền xanh nhạt chuẩn
+        borderRadius: BorderRadius.circular(kBorderRadiusLarge) // Bo góc 20 chuẩn
+      ),
+      child: TextField(
+        controller: controller,
+        obscureText: true,
+        style: const TextStyle(color: kPrimaryColor, fontWeight: FontWeight.w500),
+        decoration: InputDecoration(
+          hintText: '***************',
+          hintStyle: TextStyle(color: kPrimaryColor.withOpacity(0.5)),
+          suffixIcon: const Icon(Icons.visibility_off_outlined, color: kPrimaryColor),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        ),
       ),
     );
   }

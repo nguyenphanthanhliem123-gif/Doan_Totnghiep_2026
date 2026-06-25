@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:ung_dung_dat_lich_kham/Services/jitsi_service.dart';
 import 'package:ung_dung_dat_lich_kham/Views/review_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../constants/ui_constants.dart';
+import '../Constants/ui_constants.dart'; // 🌟 Đã sửa thành Constants
 import '../viewmodels/appointment_viewmodel.dart'; 
 import 'doctor_detail_screen.dart';
 import 'reschedule_bottom_sheet.dart'; 
@@ -27,17 +27,13 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
     });
   }
 
-  // Hàm kiểm tra đã đến giờ khám chưa
   bool _canJoinMeeting(DateTime startTime) {
     final now = DateTime.now();
     final startTimeBuffer = startTime.subtract(const Duration(minutes: 15));
-    final endTimeBuffer = startTime.add(const Duration(hours: 1)); // Cho phép vào sau 1 tiếng
+    final endTimeBuffer = startTime.add(const Duration(hours: 1)); 
     return now.isAfter(startTimeBuffer) && now.isBefore(endTimeBuffer);
   }
 
-  // ==========================================
-  // CÁC HÀM FORMAT DỮ LIỆU DÀNH RIÊNG CHO UI
-  // ==========================================
   String formatCurrency(double amount) {
     String result = amount.toStringAsFixed(0);
     result = result.replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.');
@@ -67,7 +63,6 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
     }
   }
 
-  // Hàm gọi Jitsi Meet
   void _handleJoinMeeting(String bookingCode, String patientName) async {
     try {
       print("Đang bắt đầu gọi Jitsi cho: $bookingCode");
@@ -89,7 +84,7 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
 
     if (appVM.isLoading) {
       return const Scaffold(
-        backgroundColor: Color(0xFFF5F5F5),
+        backgroundColor: kLightCyanBg2, // 🌟 Nền chuẩn
         body: Center(child: CircularProgressIndicator(color: kPrimaryColor))
       );
     }
@@ -115,7 +110,7 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
     final generalStatus = _getGeneralStatus(appointment.status);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: kLightCyanBg2, // 🌟 Chuẩn nền
       body: SingleChildScrollView(
         padding: const EdgeInsets.only(bottom: 100),
         child: Column(
@@ -142,19 +137,19 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                             icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
                             onPressed: () => Navigator.pop(context),
                           ),
-                          const Text("Chi tiết Lịch hẹn", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                          const Text("Chi tiết Lịch hẹn", style: kHeaderTextStyle), // 🌟 Chuẩn Text
                           const SizedBox(width: 48), 
                         ],
                       ),
                     ),
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      padding: const EdgeInsets.symmetric(horizontal: kDefaultPadding), // 🌟 Lề 20
                       child: Row(
                         children: [
                           CircleAvatar(
                             radius: 40,
                             backgroundColor: Colors.white,
-                            // 🌟 FIX LỖI 2: Chỉ load dạng Network khi chuỗi bắt đầu bằng http tránh crash app
+                            // 🌟 FIX LỖI 2: Giữ nguyên logic NetworkImage tránh crash app
                             backgroundImage: (appointment.doctorAvatar != null && 
                                              appointment.doctorAvatar!.isNotEmpty && 
                                              appointment.doctorAvatar!.startsWith('http'))
@@ -189,9 +184,9 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
               child: Column(
                 children: [
                   _buildInfoRow("Mã đặt lịch", appointment.bookingCode, isBoldValue: true),
-                  const Divider(height: 20, color: Colors.black12),
+                  const Divider(height: 20, color: kBorderCyan),
                   _buildInfoRow("Trạng thái", "", customValueWidget: _buildStatusBadge(generalStatus)),
-                  const Divider(height: 20, color: Colors.black12),
+                  const Divider(height: 20, color: kBorderCyan),
                   _buildInfoRow(
                     "Thanh toán", 
                     "", 
@@ -223,7 +218,7 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(formatDate(appointment.startTime), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                            Text(formatDate(appointment.startTime), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: kTextColor)),
                             const SizedBox(height: 4),
                             Text("${formatTime(appointment.startTime)} - ${formatTime(appointment.endTime)}", style: const TextStyle(color: kGreyTextColor)),
                           ],
@@ -231,7 +226,7 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                       )
                     ],
                   ),
-                  const Divider(height: 25, color: Colors.black12),
+                  const Divider(height: 25, color: kBorderCyan),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -241,7 +236,7 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(appointment.type == 'offline' ? appointment.clinicName : "Khám trực tuyến (Video Call)", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                            Text(appointment.type == 'offline' ? appointment.clinicName : "Khám trực tuyến (Video Call)", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: kTextColor)),
                             if (appointment.type == 'offline') ...[
                               const SizedBox(height: 4),
                               Text(appointment.clinicAddress, style: const TextStyle(color: kGreyTextColor, height: 1.3)),
@@ -252,7 +247,7 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                     ],
                   ),
                   
-                  // 🌟 FIX LỖI 1: Tách Consumer ra khỏi Row, đưa xuống đây để làm nút full-width an toàn trong Column
+                  // 🌟 FIX LỖI 1: Nút Jitsi Full Width (Giữ nguyên logic của bạn)
                   if (appointment.type == 'online' && appointment.status != 'done' && appointment.status != 'cancelled') ...[
                     const SizedBox(height: 15),
                     Consumer<AppointmentViewModel>(
@@ -271,7 +266,7 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                               backgroundColor: canJoin ? Colors.blueAccent : Colors.grey[300],
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusSmall)), // 🌟 Bo 12
                               elevation: canJoin ? 2 : 0,
                             ),
                             icon: Icon(Icons.videocam, color: canJoin ? Colors.white : Colors.grey),
@@ -306,7 +301,7 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                   _buildInfoRow("Dịch vụ", appointment.serviceName),
                   const SizedBox(height: 10),
                   _buildInfoRow("Phương thức", appointment.paymentMethod == 'momo' ? 'Ví MoMo' : (appointment.paymentMethod == 'transfer' ? 'Chuyển khoản' : 'Tiền mặt')),
-                  const Divider(height: 20, color: Colors.black12),
+                  const Divider(height: 20, color: kBorderCyan),
                   _buildInfoRow("Tổng tiền", formatCurrency(appointment.totalPrice), valueColor: kPrimaryColor, isBoldValue: true, valueSize: 16),
                 ],
               ),
@@ -317,14 +312,14 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
             // ==========================================
             _buildSectionTitle("Mô tả triệu chứng"),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.symmetric(horizontal: kDefaultPadding),
               child: Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(15),
                 decoration: BoxDecoration(
                   color: Colors.white, 
-                  borderRadius: BorderRadius.circular(10), 
-                  border: Border.all(color: Colors.grey.shade300)
+                  borderRadius: BorderRadius.circular(kBorderRadiusSmall), // 🌟 Bo 12
+                  border: Border.all(color: kBorderCyan)
                 ),
                 child: Text(
                   (appointment.note != null && appointment.note!.isNotEmpty) ? appointment.note! : 'Không có ghi chú.', 
@@ -337,10 +332,10 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
       ),
 
       // ==========================================
-      // STICKY BOTTOM BAR (Thanh hành động)
+      // STICKY BOTTOM BAR
       // ==========================================
       bottomSheet: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+        padding: const EdgeInsets.symmetric(horizontal: kDefaultPadding, vertical: 15),
         decoration: BoxDecoration(
           color: Colors.white, 
           boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))]
@@ -355,18 +350,18 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
   // ==========================================
   Widget _buildSectionTitle(String title) {
     return Padding(
-      padding: const EdgeInsets.only(left: 20, top: 25, bottom: 10),
+      padding: const EdgeInsets.only(left: kDefaultPadding, top: 25, bottom: 10),
       child: Text(title, style: const TextStyle(color: kPrimaryColor, fontSize: 16, fontWeight: FontWeight.bold)),
     );
   }
 
   Widget _buildCardContainer({required Widget child}) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
+      margin: const EdgeInsets.symmetric(horizontal: kDefaultPadding),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white, 
-        borderRadius: BorderRadius.circular(15), 
+        borderRadius: BorderRadius.circular(kBorderRadiusLarge), // 🌟 Bo 20
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))]
       ),
       child: child,
@@ -549,7 +544,7 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
         foregroundColor: color, 
         side: BorderSide(color: color), 
         padding: const EdgeInsets.symmetric(vertical: 12), 
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusSmall)) // 🌟 Bo 12
       ),
       onPressed: onTap,
       child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
@@ -562,7 +557,7 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
         backgroundColor: bgColor, 
         foregroundColor: Colors.white, 
         padding: const EdgeInsets.symmetric(vertical: 12), 
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)), 
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusSmall)), // 🌟 Bo 12
         elevation: 0
       ),
       onPressed: onTap,

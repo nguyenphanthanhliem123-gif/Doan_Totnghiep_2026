@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../constants/ui_constants.dart';
+import '../Constants/ui_constants.dart';
 import '../viewmodels/doctor_viewmodel.dart';
 import '../viewmodels/appointment_viewmodel.dart';
 import '../models/doctor_detail_model.dart';

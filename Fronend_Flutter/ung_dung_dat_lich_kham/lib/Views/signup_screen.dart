@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../viewmodels/auth_viewmodel.dart';
+import '../Constants/ui_constants.dart'; // 🌟 Đã thêm import đồng bộ UI
 import 'otp_verification_screen.dart';
 
 class SignupScreen extends StatefulWidget {
@@ -12,7 +13,6 @@ class SignupScreen extends StatefulWidget {
 
 class _SignupScreenState extends State<SignupScreen> {
   final TextEditingController _nameController = TextEditingController();
-  // Đã xóa _phoneController
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passController = TextEditingController();
   final TextEditingController _confirmPassController = TextEditingController();
@@ -20,9 +20,7 @@ class _SignupScreenState extends State<SignupScreen> {
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
 
-  final Color primaryColor = const Color(0xFF4BCBEB);
-  final Color textFieldBgColor = const Color(0xFFEAF8FB);
-  final Color labelColor = const Color(0xFF2D2D2D);
+  // Đã xóa các màu hardcode
 
   @override
   void dispose() {
@@ -38,9 +36,9 @@ class _SignupScreenState extends State<SignupScreen> {
     final authVM = Provider.of<AuthViewModel>(context);
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.white, // Đồng bộ nền
       appBar: AppBar(
-        backgroundColor: primaryColor,
+        backgroundColor: kPrimaryColor, // Màu chuẩn
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
@@ -49,11 +47,11 @@ class _SignupScreenState extends State<SignupScreen> {
         ),
         title: const Text(
           'Đăng Ký',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: kHeaderTextStyle, // Style chuẩn
         ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.all(kDefaultPadding), // Đồng bộ lề 20
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -67,7 +65,7 @@ class _SignupScreenState extends State<SignupScreen> {
               textCapitalization: TextCapitalization.words, 
             ),
             
-            const SizedBox(height: 16),
+            const SizedBox(height: kSpacingSmall), // Dùng khoảng cách chuẩn
             _buildLabel('Email'),
             _buildTextField(
               controller: _emailController,
@@ -75,7 +73,7 @@ class _SignupScreenState extends State<SignupScreen> {
               keyboardType: TextInputType.emailAddress,
             ),
             
-            const SizedBox(height: 16),
+            const SizedBox(height: kSpacingSmall),
             _buildLabel('Mật khẩu'),
             _buildTextField(
               controller: _passController,
@@ -84,7 +82,7 @@ class _SignupScreenState extends State<SignupScreen> {
               suffixIcon: IconButton(
                 icon: Icon(
                   _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                  color: primaryColor,
+                  color: kPrimaryColor,
                 ),
                 onPressed: () {
                   setState(() => _obscurePassword = !_obscurePassword);
@@ -92,7 +90,7 @@ class _SignupScreenState extends State<SignupScreen> {
               ),
             ),
             
-            const SizedBox(height: 16),
+            const SizedBox(height: kSpacingSmall),
             _buildLabel('Xác nhận mật khẩu'),
             _buildTextField(
               controller: _confirmPassController,
@@ -101,7 +99,7 @@ class _SignupScreenState extends State<SignupScreen> {
               suffixIcon: IconButton(
                 icon: Icon(
                   _obscureConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                  color: primaryColor,
+                  color: kPrimaryColor,
                 ),
                 onPressed: () {
                   setState(() => _obscureConfirmPassword = !_obscureConfirmPassword);
@@ -109,12 +107,11 @@ class _SignupScreenState extends State<SignupScreen> {
               ),
             ),
             
-            const SizedBox(height: 30),
+            const SizedBox(height: kSpacingLarge), // Dùng khoảng cách chuẩn
             ElevatedButton(
               onPressed: authVM.isLoading
                   ? null
                   : () async {
-                      // Nhận kết quả Map từ API
                       final result = await authVM.register(
                         _nameController.text.trim(),
                         _emailController.text.trim(),
@@ -136,32 +133,29 @@ class _SignupScreenState extends State<SignupScreen> {
                       }
                     },
               style: ElevatedButton.styleFrom(
-                backgroundColor: primaryColor,
+                backgroundColor: kPrimaryColor,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
+                  borderRadius: BorderRadius.circular(kBorderRadiusLarge), // Bo góc chuẩn
                 ),
               ),
               child: authVM.isLoading
                   ? const CircularProgressIndicator(color: Colors.white)
-                  : const Text(
-                      'Đăng Ký',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-                    ),
+                  : const Text('Đăng Ký', style: kButtonTextStyle), // Style chuẩn
             ),
             
-            const SizedBox(height: 30),
+            const SizedBox(height: kSpacingLarge),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text('Đã có tài khoản? '),
+                const Text('Đã có tài khoản? ', style: TextStyle(color: kGreyTextColor)),
                 GestureDetector(
                   onTap: () {
                     Navigator.pop(context); 
                   },
-                  child: Text(
+                  child: const Text(
                     'Đăng nhập',
-                    style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold),
+                    style: TextStyle(color: kPrimaryColor, fontWeight: FontWeight.bold),
                   ),
                 ),
               ],
@@ -175,10 +169,7 @@ class _SignupScreenState extends State<SignupScreen> {
   Widget _buildLabel(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0, left: 4.0),
-      child: Text(
-        text,
-        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: labelColor),
-      ),
+      child: Text(text, style: kLabelTextStyle), // Dùng style chuẩn
     );
   }
 
@@ -192,18 +183,18 @@ class _SignupScreenState extends State<SignupScreen> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: textFieldBgColor,
-        borderRadius: BorderRadius.circular(15),
+        color: kLightCyanBg1, // Nền chuẩn
+        borderRadius: BorderRadius.circular(kBorderRadiusLarge), // Bo góc chuẩn
       ),
       child: TextField(
         controller: controller,
         obscureText: obscureText,
         keyboardType: keyboardType,
         textCapitalization: textCapitalization,
-        style: TextStyle(color: primaryColor, fontWeight: FontWeight.w500),
+        style: const TextStyle(color: kPrimaryColor, fontWeight: FontWeight.w500),
         decoration: InputDecoration(
           hintText: hintText,
-          hintStyle: TextStyle(color: primaryColor.withOpacity(0.5)),
+          hintStyle: TextStyle(color: kPrimaryColor.withOpacity(0.5)),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           suffixIcon: suffixIcon,

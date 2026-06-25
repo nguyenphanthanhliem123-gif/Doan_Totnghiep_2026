@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ung_dung_dat_lich_kham/Models/schedule_config_model.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/schedule_config_viewmodel.dart';
+import '../../Constants/ui_constants.dart'; // 🌟 Import đồng bộ UI Constants chữ viết hoa
 
 class DoctorScheduleScreen extends StatefulWidget {
   const DoctorScheduleScreen({super.key});
@@ -19,7 +20,6 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
     });
   }
 
-  // Chuyển thứ số nguyên thành Text
   String _getDayName(int thu) => thu == 8 ? "Chủ Nhật" : "Thứ $thu";
 
   @override
@@ -27,10 +27,10 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
     final viewModel = context.watch<ScheduleConfigViewmodel>();
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
+      backgroundColor: kLightCyanBg2, // 🌟 Đồng bộ màu nền
       appBar: AppBar(
-        title: const Text('Cấu hình lịch làm việc', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-        backgroundColor: Colors.teal, // Khớp với màu UI của bạn
+        title: const Text('Cấu hình lịch làm việc', style: kHeaderTextStyle), // 🌟 Chuẩn hóa Text style
+        backgroundColor: kPrimaryColor, // 🌟 Đồng bộ màu chủ đạo chuẩn hệ thống
         elevation: 0,
         centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.white),
@@ -40,7 +40,6 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
             icon: const Icon(Icons.auto_awesome_motion),
             onPressed: () => _showGenerateSlotsPicker(context, viewModel),
           ),
-
           IconButton(
             tooltip: 'Báo nghỉ / Khóa lịch ca khám',
             icon: const Icon(Icons.event_busy, color: Colors.amberAccent),
@@ -49,14 +48,14 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
         ],
       ),
       body: viewModel.isLoading
-          ? const Center(child: CircularProgressIndicator(color: Colors.teal))
+          ? const Center(child: CircularProgressIndicator(color: kPrimaryColor))
           : Column(
               children: [
                 _buildGlobalConfigHeader(context, viewModel),
                 Expanded(
                   child: ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    itemCount: 7, // Thứ 2 đến Chủ nhật (2 -> 8)
+                    padding: const EdgeInsets.all(kDefaultPadding), // Lề 20 chuẩn
+                    itemCount: 7, 
                     itemBuilder: (context, index) {
                       int thu = index + 2; 
                       return _buildDayCard(context, thu, viewModel);
@@ -68,16 +67,15 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
     );
   }
 
-  // 1. HEADER CẤU HÌNH THỜI GIAN CHUNG (Phục vụ cho model của bạn)
   Widget _buildGlobalConfigHeader(BuildContext context, ScheduleConfigViewmodel viewModel) {
     final config = viewModel.currentConfig;
     if (config == null) return const SizedBox();
     
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
+      padding: const EdgeInsets.all(kDefaultPadding),
+      decoration: const BoxDecoration(
         color: Colors.white,
-        border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+        border: Border(bottom: BorderSide(color: kBorderCyan)),
       ),
       child: Column(
         children: [
@@ -94,9 +92,9 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
             width: double.infinity,
             child: OutlinedButton.icon(
               style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.teal,
-                side: const BorderSide(color: Colors.teal),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                foregroundColor: kPrimaryColor,
+                side: const BorderSide(color: kPrimaryColor),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusSmall)), // Bo 12
               ),
               icon: const Icon(Icons.edit, size: 16),
               label: const Text("Chỉnh sửa cấu hình chung", style: TextStyle(fontWeight: FontWeight.bold)),
@@ -111,19 +109,17 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
   Widget _buildInfoItem(IconData icon, String value, String label) {
     return Column(
       children: [
-        Icon(icon, color: Colors.teal, size: 24),
+        Icon(icon, color: kPrimaryColor, size: 24),
         const SizedBox(height: 4),
-        Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-        Text(label, style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+        Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: kTextColor)),
+        Text(label, style: const TextStyle(color: kGreyTextColor, fontSize: 12)),
       ],
     );
   }
 
-  // 2. CARD HIỂN THỊ TỪNG NGÀY
   Widget _buildDayCard(BuildContext context, int thu, ScheduleConfigViewmodel viewModel) {
     final shifts = viewModel.getShiftsForDay(thu);
     
-    // Đánh giá trạng thái
     bool isConfigured = shifts.isNotEmpty;
     bool isDayOff = isConfigured && shifts.every((s) => s.trangThai == 'nghi');
     
@@ -132,34 +128,33 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
     Widget subtitle;
 
     if (!isConfigured) {
-      statusColor = Colors.grey;
+      statusColor = kGreyTextColor;
       statusText = "Chưa cấu hình";
-      subtitle = const Text("Nhấn để thiết lập ca làm việc", style: TextStyle(color: Colors.grey, fontSize: 13));
+      subtitle = const Text("Nhấn để thiết lập ca làm việc", style: TextStyle(color: kGreyTextColor, fontSize: 13));
     } else if (isDayOff) {
       statusColor = Colors.redAccent;
       statusText = "Nghỉ";
       subtitle = const Text("Ngày nghỉ ngơi", style: TextStyle(color: Colors.redAccent, fontSize: 13));
     } else {
-      statusColor = Colors.teal;
+      statusColor = kPrimaryColor;
       statusText = "Làm việc";
-      // Render các ca làm việc
       final activeShifts = shifts.where((s) => s.trangThai == 'lam').map((s) {
         String buoiStr = s.buoi == 'sang' ? "Sáng" : s.buoi == 'chieu' ? "Chiều" : "Tối";
         return "$buoiStr (${s.gioBatDau}-${s.gioKetThuc})";
       }).join(" • ");
       
-      subtitle = Text(activeShifts, style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w500, fontSize: 13));
+      subtitle = Text(activeShifts, style: const TextStyle(color: kTextColor, fontWeight: FontWeight.w500, fontSize: 13));
     }
 
     return Card(
       elevation: 0,
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.grey.shade200),
+        borderRadius: BorderRadius.circular(kBorderRadiusLarge), // Bo tròn 20 hệ thống
+        side: const BorderSide(color: kBorderCyan),
       ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(kBorderRadiusLarge),
         onTap: () => _showEditBottomSheet(context, thu, shifts, viewModel),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -173,7 +168,7 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
                   children: [
                     Row(
                       children: [
-                        Text(_getDayName(thu), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        Text(_getDayName(thu), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: kTextColor)),
                         const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -187,7 +182,7 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
                   ],
                 ),
               ),
-              Icon(Icons.edit_calendar_rounded, color: Colors.teal.shade300),
+              const Icon(Icons.edit_calendar_rounded, color: kPrimaryColor),
             ],
           ),
         ),
@@ -195,9 +190,7 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
     );
   }
 
-  // 3. BOTTOM SHEET CHỈNH SỬA / THÊM MỚI
   void _showEditBottomSheet(BuildContext context, int thu, List<WeeklyScheduleItem> existingShifts, ScheduleConfigViewmodel viewModel) {
-    // Chuẩn bị dữ liệu cục bộ để edit (nếu DB chưa có thì dùng mặc định)
     List<WeeklyScheduleItem> localShifts = [
       _getOrInitShift(existingShifts, thu, 'sang', '08:00', '12:00'),
       _getOrInitShift(existingShifts, thu, 'chieu', '13:00', '17:00'),
@@ -208,59 +201,61 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(kBorderRadiusLarge))),
       builder: (ctx) {
-        return StatefulBuilder(
-          builder: (ctx, setModalState) {
-            return Padding(
-              padding: EdgeInsets.only(top: 20, left: 20, right: 20, bottom: MediaQuery.of(ctx).viewInsets.bottom + 20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(child: Container(width: 40, height: 5, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10)))),
-                  const SizedBox(height: 16),
-                  Text("Cấu hình ${_getDayName(thu)}", style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.teal)),
-                  const Divider(height: 30),
-                  
-                  // ✨ SỬA ĐOẠN NÀY: Dùng List.generate để bắt chính xác index của phần tử cần sửa
-                  ...List.generate(localShifts.length, (index) {
-                    return _buildShiftEditor(
-                      localShifts[index], 
-                      (updatedShift) {
-                        setModalState(() {
-                          localShifts[index] = updatedShift; // Cập nhật trực tiếp vào mảng dữ liệu gốc
-                        });
-                      },
-                    );
-                  }),
+        return _buildBottomSheetWithScroll(ctx, thu, localShifts, viewModel);
+      },
+    );
+  }
 
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.teal,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      onPressed: () async {
-                        Navigator.pop(ctx);
-                        _saveConfigForDay(thu, localShifts, viewModel);
-                      },
-                      child: const Text("Lưu Cấu Hình Ngày Này", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                    ),
-                  )
-                ],
-              ),
-            );
-          },
+  Widget _buildBottomSheetWithScroll(BuildContext ctx, int thu, List<WeeklyScheduleItem> localShifts, ScheduleConfigViewmodel viewModel) {
+    return StatefulBuilder(
+      builder: (ctx, setModalState) {
+        return Padding(
+          padding: EdgeInsets.only(top: 20, left: kDefaultPadding, right: kDefaultPadding, bottom: MediaQuery.of(ctx).viewInsets.bottom + 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(child: Container(width: 40, height: 5, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10)))),
+              const SizedBox(height: 16),
+              Text("Cấu hình ${_getDayName(thu)}", style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: kPrimaryColor)),
+              const Divider(height: 30, color: kBorderCyan),
+              
+              ...List.generate(localShifts.length, (index) {
+                return _buildShiftEditor(
+                  localShifts[index], 
+                  (updatedShift) {
+                    setModalState(() {
+                      localShifts[index] = updatedShift;
+                    });
+                  },
+                );
+              }),
+
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: kPrimaryColor,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusSmall)),
+                  ),
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    _saveConfigForDay(thu, localShifts, viewModel);
+                  },
+                  child: const Text("Lưu Cấu Hình Ngày Này", style: kButtonTextStyle),
+                ),
+              )
+            ],
+          ),
         );
       },
     );
   }
 
-  // 3.2 BOTTOM SHEET CHỈNH SỬA CẤU HÌNH THỜI GIAN CHUNG
   void _showGlobalConfigBottomSheet(BuildContext context, DoctorScheduleConfigModel config, ScheduleConfigViewmodel viewModel) {
     final slotController = TextEditingController(text: config.slotTime.toString());
     final breakController = TextEditingController(text: config.breakTime.toString());
@@ -271,10 +266,10 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(kBorderRadiusLarge))),
       builder: (ctx) {
         return Padding(
-          padding: EdgeInsets.only(top: 20, left: 20, right: 20, bottom: MediaQuery.of(ctx).viewInsets.bottom + 20),
+          padding: EdgeInsets.only(top: 20, left: kDefaultPadding, right: kDefaultPadding, bottom: MediaQuery.of(ctx).viewInsets.bottom + 20),
           child: Form(
             key: formKey,
             child: Column(
@@ -283,15 +278,16 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
               children: [
                 Center(child: Container(width: 40, height: 5, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10)))),
                 const SizedBox(height: 16),
-                const Text("Cấu hình thời gian chung", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.teal)),
-                const Divider(height: 20),
+                const Text("Cấu hình thời gian chung", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: kPrimaryColor)),
+                const Divider(height: 20, color: kBorderCyan),
                 
                 TextFormField(
                   controller: slotController,
                   keyboardType: TextInputType.number,
+                  style: const TextStyle(color: kTextColor),
                   decoration: const InputDecoration(
                     labelText: "Thời gian khám mỗi ca (phút)",
-                    prefixIcon: Icon(Icons.timelapse, color: Colors.teal),
+                    prefixIcon: Icon(Icons.timelapse, color: kPrimaryColor),
                     border: OutlineInputBorder(),
                   ),
                   validator: (val) => (val == null || int.tryParse(val) == null) ? "Vui lòng nhập số phút hợp lệ" : null,
@@ -300,9 +296,10 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
                 TextFormField(
                   controller: breakController,
                   keyboardType: TextInputType.number,
+                  style: const TextStyle(color: kTextColor),
                   decoration: const InputDecoration(
                     labelText: "Thời gian nghỉ giữa các ca (phút)",
-                    prefixIcon: Icon(Icons.coffee, color: Colors.teal),
+                    prefixIcon: Icon(Icons.coffee, color: kPrimaryColor),
                     border: OutlineInputBorder(),
                   ),
                   validator: (val) => (val == null || int.tryParse(val) == null) ? "Vui lòng nhập số phút hợp lệ" : null,
@@ -311,9 +308,10 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
                 TextFormField(
                   controller: maxPatientsController,
                   keyboardType: TextInputType.number,
+                  style: const TextStyle(color: kTextColor),
                   decoration: const InputDecoration(
                     labelText: "Số lượng bệnh nhân tối đa/ngày",
-                    prefixIcon: Icon(Icons.people_alt, color: Colors.teal),
+                    prefixIcon: Icon(Icons.people_alt, color: kPrimaryColor),
                     border: OutlineInputBorder(),
                   ),
                   validator: (val) => (val == null || int.tryParse(val) == null) ? "Vui lòng nhập số lượng hợp lệ" : null,
@@ -324,14 +322,13 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
                   height: 50,
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.teal,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      backgroundColor: kPrimaryColor,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusSmall)),
                     ),
                     onPressed: () async {
                       if (formKey.currentState!.validate()) {
                         Navigator.pop(ctx);
                         
-                        // Tạo model cấu hình mới, giữ nguyên danh sách lịch tuần (weeklySchedule)
                         DoctorScheduleConfigModel newConfig = DoctorScheduleConfigModel(
                           slotTime: int.parse(slotController.text),
                           breakTime: int.parse(breakController.text),
@@ -339,19 +336,18 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
                           weeklySchedule: config.weeklySchedule, 
                         );
 
-                        // Gọi ViewModel để lưu
                         await viewModel.saveScheduleConfig(newConfig);
                         bool success = viewModel.scheduleConfigResult;
                         
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                             content: Text(success ? 'Cập nhật cấu hình chung thành công!' : 'Cập nhật cấu hình thất bại.'),
-                            backgroundColor: success ? Colors.teal : Colors.red,
+                            backgroundColor: success ? kPrimaryColor : Colors.red,
                           ));
                         }
                       }
                     },
-                    child: const Text("Lưu Cấu Hình Chung", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                    child: const Text("Lưu Cấu Hình Chung", style: kButtonTextStyle),
                   ),
                 )
               ],
@@ -379,9 +375,9 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isWorking ? Colors.teal.shade50 : Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isWorking ? Colors.teal.shade200 : Colors.grey.shade300),
+        color: isWorking ? kLightCyanBg1 : kLightCyanBg2,
+        borderRadius: BorderRadius.circular(kBorderRadiusSmall),
+        border: Border.all(color: isWorking ? kPrimaryColor.withOpacity(0.5) : kBorderCyan),
       ),
       child: Column(
         children: [
@@ -390,16 +386,15 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
             children: [
               Row(
                 children: [
-                  Icon(icon, color: isWorking ? Colors.teal : Colors.grey),
+                  Icon(icon, color: isWorking ? kPrimaryColor : kGreyTextColor),
                   const SizedBox(width: 8),
-                  Text(buoiLabel, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: isWorking ? Colors.black87 : Colors.grey)),
+                  Text(buoiLabel, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: isWorking ? kTextColor : kGreyTextColor)),
                 ],
               ),
               Switch(
                 value: isWorking,
-                activeColor: Colors.teal,
+                activeColor: kPrimaryColor,
                 onChanged: (val) {
-                  // ✨ Gửi dữ liệu trạng thái mới qua callback
                   onShiftChanged(WeeklyScheduleItem(
                     thu: shift.thu, 
                     buoi: shift.buoi, 
@@ -416,7 +411,6 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
             Row(
               children: [
                 Expanded(child: _buildTimePicker(context, "Từ", shift.gioBatDau, (newTime) {
-                  // ✨ Gửi dữ liệu giờ bắt đầu mới qua callback
                   onShiftChanged(WeeklyScheduleItem(
                     thu: shift.thu, 
                     buoi: shift.buoi, 
@@ -427,7 +421,6 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
                 })),
                 const SizedBox(width: 12),
                 Expanded(child: _buildTimePicker(context, "Đến", shift.gioKetThuc, (newTime) {
-                  // ✨ Gửi dữ liệu giờ kết thúc mới qua callback
                   onShiftChanged(WeeklyScheduleItem(
                     thu: shift.thu, 
                     buoi: shift.buoi, 
@@ -445,7 +438,6 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
   }
 
   void _showGenerateSlotsPicker(BuildContext context, ScheduleConfigViewmodel viewModel) async {
-    // Nếu bác sĩ chưa có cấu hình (chưa từng lưu), cảnh báo luôn
     if (viewModel.currentConfig == null || viewModel.currentConfig!.weeklySchedule.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
         content: Text('Vui lòng thiết lập và lưu ít nhất 1 lịch làm việc trước!'),
@@ -455,24 +447,21 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
     }
 
     final DateTime today = DateTime.now();
-    
-    // Hiển thị bộ chọn khoảng ngày (từ ngày - đến ngày) của Flutter
     final DateTimeRange? pickedRange = await showDateRangePicker(
       context: context,
       initialDateRange: DateTimeRange(
         start: today, 
-        end: today.add(const Duration(days: 7)) // Mặc định chọn 1 tuần tới
+        end: today.add(const Duration(days: 7))
       ),
-      firstDate: today, // Không cho sinh lịch trong quá khứ
-      lastDate: today.add(const Duration(days: 90)), // Tối đa sinh trước 3 tháng
+      firstDate: today, 
+      lastDate: today.add(const Duration(days: 90)), 
       builder: (context, child) {
-        // Đổi màu bộ chọn ngày sang màu Teal cho đồng bộ giao diện
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
-              primary: Colors.teal, 
+              primary: kPrimaryColor, 
               onPrimary: Colors.white, 
-              onSurface: Colors.black, 
+              onSurface: kTextColor, 
             ),
           ),
           child: child!,
@@ -480,13 +469,10 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
       },
     );
 
-    // Nếu người dùng chọn ngày và bấm "Lưu/OK"
     if (pickedRange != null) {
-      // Format ngày thành chuỗi "YYYY-MM-DD" chuẩn để gửi lên NodeJS
       String startDateStr = "${pickedRange.start.year}-${pickedRange.start.month.toString().padLeft(2, '0')}-${pickedRange.start.day.toString().padLeft(2, '0')}";
       String endDateStr = "${pickedRange.end.year}-${pickedRange.end.month.toString().padLeft(2, '0')}-${pickedRange.end.day.toString().padLeft(2, '0')}";
 
-      // Gọi ViewModel để xử lý
       if (context.mounted) {
         await viewModel.generateSlots(startDateStr, endDateStr, context);
       }
@@ -507,29 +493,26 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey.shade300)),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8), border: Border.all(color: kBorderCyan)),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text("$label: $timeStr", style: const TextStyle(fontSize: 14)),
-            const Icon(Icons.access_time, size: 16, color: Colors.teal),
+            Text("$label: $timeStr", style: const TextStyle(fontSize: 14, color: kTextColor)),
+            const Icon(Icons.access_time, size: 16, color: kPrimaryColor),
           ],
         ),
       ),
     );
   }
 
-  // 4. HÀM LƯU DỮ LIỆU
   void _saveConfigForDay(int thu, List<WeeklyScheduleItem> newShiftsForDay, ScheduleConfigViewmodel viewModel) async {
     final currentConfig = viewModel.currentConfig;
     if (currentConfig == null) return;
 
-    // Lấy list cũ, xóa các ca của ngày đang sửa, sau đó thêm các ca mới vào
     List<WeeklyScheduleItem> newWeekly = List.from(currentConfig.weeklySchedule);
     newWeekly.removeWhere((element) => element.thu == thu);
     newWeekly.addAll(newShiftsForDay);
 
-    // Tạo config tổng để gửi đi
     DoctorScheduleConfigModel newConfig = DoctorScheduleConfigModel(
       slotTime: currentConfig.slotTime,
       breakTime: currentConfig.breakTime,
@@ -537,7 +520,7 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
       weeklySchedule: newWeekly,
     );
 
-    bool success = await viewModel.saveScheduleConfig(newConfig); //
+    bool success = await viewModel.saveScheduleConfig(newConfig);
 
     if (viewModel.scheduleConfigResult) {
       await viewModel.loadScheduleConfig();
@@ -546,7 +529,7 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(success ? 'Lưu cấu hình thành công!' : 'Lưu thất bại. Vui lòng thử lại.'),
-        backgroundColor: success ? Colors.teal : Colors.red,
+        backgroundColor: success ? kPrimaryColor : Colors.red,
       ));
     }
   }
@@ -563,7 +546,7 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusSmall)),
               title: const Row(
                 children: [
                   Icon(Icons.warning, color: Colors.orange),
@@ -581,11 +564,10 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
                       style: TextStyle(color: Colors.red, fontSize: 13),
                     ),
                     const SizedBox(height: 12),
-                    // Chọn ngày nghỉ
                     ListTile(
                       contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.edit_calendar, color: Colors.teal),
-                      title: Text("Ngày nghỉ: ${selectedDate.day}/${selectedDate.month}/${selectedDate.year}"),
+                      leading: const Icon(Icons.edit_calendar, color: kPrimaryColor),
+                      title: Text("Ngày nghỉ: ${selectedDate.day}/${selectedDate.month}/${selectedDate.year}", style: const TextStyle(color: kTextColor)),
                       onTap: () async {
                         final picked = await showDatePicker(
                           context: context,
@@ -598,10 +580,9 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
                         }
                       },
                     ),
-                    // Chọn buổi nghỉ
                     DropdownButtonFormField<String>(
                       value: selectedBuoi,
-                      decoration: const InputDecoration(labelText: 'Khung thời gian nghỉ', prefixIcon: Icon(Icons.timelapse, color: Colors.teal)),
+                      decoration: const InputDecoration(labelText: 'Khung thời gian nghỉ', prefixIcon: Icon(Icons.timelapse, color: kPrimaryColor)),
                       items: const [
                         DropdownMenuItem(value: 'ca_ngay', child: Text('Cả ngày hôm đó')),
                         DropdownMenuItem(value: 'sang', child: Text('Buổi Sáng (Trước 12h)')),
@@ -611,9 +592,9 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
                       onChanged: (v) { if (v != null) setDialogState(() => selectedBuoi = v); },
                     ),
                     const SizedBox(height: 12),
-                    // Nhập lý do nghỉ
                     TextFormField(
                       controller: reasonController,
+                      style: const TextStyle(color: kTextColor),
                       decoration: const InputDecoration(labelText: 'Lý do báo nghỉ', border: OutlineInputBorder()),
                       validator: (value) => (value == null || value.isEmpty) ? 'Vui lòng nhập lý do để báo cho bệnh nhân' : null,
                     ),
@@ -621,15 +602,13 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
                 ),
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Đóng', style: TextStyle(color: Colors.grey))),
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Đóng', style: TextStyle(color: kGreyTextColor))),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
                   onPressed: () async {
                     if (formKey.currentState!.validate()) {
                       Navigator.pop(ctx);
-                      // Định dạng chuỗi ngày YYYY-MM-DD gửi lên server
                       String dateStr = "${selectedDate.year}-${selectedDate.month.toString().padLeft(2, '0')}-${selectedDate.day.toString().padLeft(2, '0')}";
-                      
                       await viewModel.submitDoctorLeave(dateStr, selectedBuoi, reasonController.text, context);
                     }
                   },

@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../viewmodels/auth_viewmodel.dart';
+import '../Constants/ui_constants.dart'; // 🌟 Import đồng bộ UI
 import 'login_screen.dart';
 import 'create_new_password_screen.dart';
 
 class OtpVerificationScreen extends StatefulWidget {
-  final String verificationTarget; // Email nhận mã (VD: 'khoi@gmail.com')
-  final bool isSms; // false: Xác minh Email
-  final bool isForgotPassword; // true: Xác minh cho quên mật khẩu, false: Xác minh cho đăng ký tài khoản mới
+  final String verificationTarget;
+  final bool isSms;
+  final bool isForgotPassword;
 
   const OtpVerificationScreen({
     super.key,
@@ -22,8 +23,6 @@ class OtpVerificationScreen extends StatefulWidget {
 }
 
 class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
-  final Color primaryColor = const Color(0xFF4BCBEB);
-  
   final List<TextEditingController> _otpControllers = List.generate(6, (_) => TextEditingController());
   final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
 
@@ -38,29 +37,27 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     super.dispose();
   }
 
-  // Lấy chuỗi OTP 6 số hoàn chỉnh
   String getOtp() {
     return _otpControllers.map((c) => c.text).join();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Gọi Provider để lấy state (như isLoading)
     final authVM = Provider.of<AuthViewModel>(context);
 
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: Colors.transparent, // Giữ nền trong suốt cho màn này
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios, color: primaryColor),
+          icon: const Icon(Icons.arrow_back_ios, color: kPrimaryColor), // Dùng màu chuẩn
           onPressed: () => Navigator.pop(context),
         ),
       ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          padding: const EdgeInsets.symmetric(horizontal: kDefaultPadding), // Lề chuẩn 20
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -68,9 +65,9 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
               Icon(
                 widget.isSms ? Icons.mark_chat_unread_outlined : Icons.mark_email_unread_outlined,
                 size: 80,
-                color: primaryColor,
+                color: kPrimaryColor, // Màu chuẩn
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: kSpacingLarge),
               const Text(
                 'Xác Thực Tài Khoản',
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
@@ -86,11 +83,11 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
               const SizedBox(height: 8),
               Text(
                 widget.verificationTarget,
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: primaryColor),
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: kPrimaryColor), // Màu chuẩn
               ),
               const SizedBox(height: 40),
               
-              // KHU VỰC NHẬP OTP (6 Ô)
+              // KHU VỰC NHẬP OTP
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: List.generate(6, (index) => _buildOtpBox(index)),
@@ -98,7 +95,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
               
               const SizedBox(height: 40),
 
-              // NÚT XÁC NHẬN GẮN API
+              // NÚT XÁC NHẬN
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -108,12 +105,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                           String otpCode = getOtp();
                           if (otpCode.length == 6) {
                             if (widget.isForgotPassword) {
-                                // 1. BẮT BUỘC KIỂM TRA OTP TRƯỚC
                                 final result = await authVM.verifyResetOTP(widget.verificationTarget, otpCode);
                                 if (!mounted) return;
                                 
                                 if (result['success'] == true) {
-                                  // 2. Nếu ĐÚNG -> Mới cho phép qua màn hình nhập Mật khẩu
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
@@ -124,7 +119,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                                     ),
                                   );
                                 } else {
-                                  // 3. Nếu SAI -> Báo lỗi đỏ ngay tại đây, cấm đi tiếp
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(result['message']),
@@ -153,18 +147,15 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                           }
                         },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryColor,
+                    backgroundColor: kPrimaryColor, // Màu chuẩn
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
+                      borderRadius: BorderRadius.circular(kBorderRadiusLarge), // Bo góc 20
                     ),
                   ),
                   child: authVM.isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text(
-                          'Xác Nhận',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-                        ),
+                      : const Text('Xác Nhận', style: kButtonTextStyle), // Style chuẩn
                 ),
               ),
               const SizedBox(height: 30),
@@ -175,16 +166,15 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     );
   }
 
-  // Hàm tạo từng ô vuông nhập số
   Widget _buildOtpBox(int index) {
     return Container(
       width: 45,
       height: 55,
       decoration: BoxDecoration(
-        color: const Color(0xFFEAF8FB),
-        borderRadius: BorderRadius.circular(10),
+        color: kLightCyanBg1, // Nền chuẩn ô nhập liệu
+        borderRadius: BorderRadius.circular(kBorderRadiusSmall), // Bo góc 12
         border: Border.all(
-          color: _focusNodes[index].hasFocus ? primaryColor : Colors.transparent,
+          color: _focusNodes[index].hasFocus ? kPrimaryColor : Colors.transparent,
           width: 2,
         ),
       ),
@@ -193,22 +183,19 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
         focusNode: _focusNodes[index],
         keyboardType: TextInputType.number,
         textAlign: TextAlign.center,
-        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: primaryColor),
+        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: kPrimaryColor),
         inputFormatters: [
           LengthLimitingTextInputFormatter(1),
           FilteringTextInputFormatter.digitsOnly,
         ],
         decoration: const InputDecoration(
           border: InputBorder.none,
-          contentPadding: EdgeInsets.zero, // Giúp canh giữa số tốt hơn trên ô nhỏ
+          contentPadding: EdgeInsets.zero,
         ),
         onChanged: (value) {
-          // Tự động nhảy sang ô tiếp theo khi nhập xong 1 số (đổi 3 thành 5 vì có 6 ô)
           if (value.isNotEmpty && index < 5) {
             FocusScope.of(context).requestFocus(_focusNodes[index + 1]);
-          } 
-          // Tự động lùi về ô trước đó khi xóa số
-          else if (value.isEmpty && index > 0) {
+          } else if (value.isEmpty && index > 0) {
             FocusScope.of(context).requestFocus(_focusNodes[index - 1]);
           }
         },

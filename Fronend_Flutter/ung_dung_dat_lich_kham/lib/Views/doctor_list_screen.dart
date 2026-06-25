@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import 'package:ung_dung_dat_lich_kham/Views/doctor_detail_screen.dart';
-import '../constants/ui_constants.dart';
+import '../Constants/ui_constants.dart'; // 🌟 Đồng bộ UI Constants
 import '../viewmodels/doctor_viewmodel.dart';
 import '../Models/doctor_model.dart';
 
@@ -38,16 +38,14 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
     bool serviceEnabled;
     LocationPermission permission;
 
-    // Kiểm tra xem dịch vụ vị trí (GPS) đã bật chưa
     serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       return Future.error('Vui lòng bật GPS (Vị trí) trên điện thoại.');
     }
 
-    // Kiểm tra quyền ứng dụng
     permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission(); // Xin quyền
+      permission = await Geolocator.requestPermission(); 
       if (permission == LocationPermission.denied) {
         return Future.error('Bạn đã từ chối cấp quyền vị trí.');
       }
@@ -57,7 +55,6 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
       return Future.error('Quyền vị trí bị từ chối vĩnh viễn, không thể lấy tọa độ.');
     } 
 
-    // Nếu đã có quyền, tiến hành lấy tọa độ hiện tại
     return await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
   }
 
@@ -67,7 +64,7 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
     final doctorVM = context.watch<DoctorViewModel>();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: kLightCyanBg2, // 🌟 Dùng nền xanh siêu nhạt cho chuẩn
       appBar: AppBar(
         backgroundColor: kPrimaryColor,
         elevation: 0,
@@ -78,35 +75,27 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
         ),
         title: Text(
           widget.specialtyName != null ? 'Bác sĩ ${widget.specialtyName}' : 'Danh Sách Bác Sĩ',
-          style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+          style: kHeaderTextStyle, // 🌟 Style chuẩn
         ),
-
-        /*actions: [
-          IconButton(
-            icon: const Icon(Icons.filter_list_rounded, color: Colors.white),
-            onPressed: () => _showFilterBottomSheet(context), // Gọi hàm mở bộ lọc
-          )
-        ],*/
       ),
       body: Column(
         children: [
-          // 🌟 THANH SẮP XẾP & LỌC (Sorting & Filter Toolbar)
+          // 🌟 THANH SẮP XẾP & LỌC 
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: kDefaultPadding, vertical: 10), // Lề 20
             color: Colors.white,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Dropdown Sắp xếp
                 Row(
                   children: [
-                    const Icon(Icons.sort_rounded, color: Colors.grey, size: 20),
+                    const Icon(Icons.sort_rounded, color: kGreyTextColor, size: 20),
                     const SizedBox(width: 8),
                     DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
                         value: selectedSort,
                         icon: const Icon(Icons.keyboard_arrow_down, size: 18),
-                        style: const TextStyle(fontSize: 14, color: Colors.black87, fontWeight: FontWeight.w600),
+                        style: const TextStyle(fontSize: 14, color: kTextColor, fontWeight: FontWeight.w600),
                         items: const [
                           DropdownMenuItem(value: 'default', child: Text('Mới nhất')),
                           DropdownMenuItem(value: 'rating_desc', child: Text('Đánh giá cao nhất')),
@@ -126,25 +115,21 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
 
                             if (value == 'distance_asc') {
                               try {
-                                // Hiện thông báo đang lấy vị trí (tùy chọn cho trải nghiệm người dùng)
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(content: Text('Đang lấy vị trí của bạn...'), duration: Duration(seconds: 1)),
                                 );
 
-                                Position position = await _determinePosition(); // Gọi hàm lấy vị trí
+                                Position position = await _determinePosition(); 
                                 myLat = position.latitude;
                                 myLng = position.longitude;
                               } catch (e) {
-                                // Nếu lỗi (người dùng từ chối cấp quyền, chưa bật GPS...)
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
                                 );
-                                // Chuyển lại trạng thái mặc định vì không lấy được vị trí
                                 setState(() => selectedSort = 'default');
-                                return; // Dừng lại, không gọi API nữa
+                                return; 
                               }
                             }
-                            // Gọi lại API với tham số sortBy mới
                             context.read<DoctorViewModel>().loadDoctors(
                               specialtyId: widget.specialtyId,
                               sortBy: value == 'default' ? null : value,
@@ -163,7 +148,6 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
                   ],
                 ),
                 
-                // Nút mở Bộ Lọc (Filter BottomSheet)
                 TextButton.icon(
                   onPressed: () => _showFilterBottomSheet(context),
                   icon: const Icon(Icons.filter_alt_outlined, size: 18, color: kPrimaryColor),
@@ -173,9 +157,9 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
             ),
           ),
           
-          const Divider(height: 1, thickness: 1, color: Color(0xFFE2E8F0)),
+          const Divider(height: 1, thickness: 1, color: kBorderCyan), // Màu viền chuẩn
 
-          // 🌟 DANH SÁCH BÁC SĨ (Giữ nguyên như cũ)
+          // 🌟 DANH SÁCH BÁC SĨ
           Expanded(
             child: doctorVM.isLoading
                 ? const Center(child: CircularProgressIndicator(color: kPrimaryColor))
@@ -184,7 +168,7 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
                     : doctorVM.listDoctor == null || doctorVM.listDoctor!.isEmpty
                         ? _buildEmptyState()
                         : ListView.builder(
-                            padding: const EdgeInsets.all(16),
+                            padding: const EdgeInsets.all(kDefaultPadding), // Padding 20
                             itemCount: doctorVM.listDoctor!.length,
                             itemBuilder: (context, index) {
                               return _buildDoctorCard(doctorVM.listDoctor![index]);
@@ -202,7 +186,7 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(Icons.person_off_rounded, size: 80, color: Colors.grey.shade300),
-          const SizedBox(height: 16),
+          const SizedBox(height: kSpacingSmall),
           const Text('Chưa có bác sĩ nào trong chuyên khoa này.', style: TextStyle(color: kGreyTextColor)),
         ],
       ),
@@ -218,12 +202,12 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
         );
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
+        margin: const EdgeInsets.only(bottom: kSpacingSmall),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
+          borderRadius: BorderRadius.circular(kBorderRadiusLarge), // Bo góc 20 chuẩn
+          border: Border.all(color: kBorderCyan, width: 1),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.03),
@@ -235,13 +219,12 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. Ảnh đại diện Bác sĩ
             ClipRRect(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(kBorderRadiusSmall), // Bo 12
               child: Container(
                 width: 85,
                 height: 100,
-                color: kPrimaryColor.withOpacity(0.1),
+                color: kLightCyanBg1, // Màu nền xanh nhạt
                 child: doctor.avatar != null && doctor.avatar!.isNotEmpty
                     ? Image.network(doctor.avatar!, fit: BoxFit.cover, errorBuilder: (c, e, s) => const Icon(Icons.person, color: kPrimaryColor, size: 40))
                     : const Icon(Icons.person, color: kPrimaryColor, size: 40),
@@ -249,38 +232,33 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
             ),
             const SizedBox(width: 16),
             
-            // 2. Thông tin chi tiết
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Tên và Học vị (Ví dụ: Thạc sĩ - Bác sĩ Nguyễn Văn A)
                   Text(
                     '${doctor.degree ?? "BS."} ${doctor.name}',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1A202C)),
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: kTextColor),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 6),
                   
-                  // Tên chuyên khoa (Màu chủ đạo)
                   Text(
                     doctor.specialtyName,
                     style: const TextStyle(fontSize: 13, color: kPrimaryColor, fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 8),
                   
-                  // Năm kinh nghiệm
                   Row(
                     children: [
-                      const Icon(Icons.work_history_rounded, color: Colors.grey, size: 16),
+                      const Icon(Icons.work_history_rounded, color: kGreyTextColor, size: 16),
                       const SizedBox(width: 5),
-                      Text('${doctor.experienceYears} năm kinh nghiệm', style: const TextStyle(fontSize: 13, color: Colors.grey)),
+                      Text('${doctor.experienceYears} năm kinh nghiệm', style: const TextStyle(fontSize: 13, color: kGreyTextColor)),
                     ],
                   ),
                   const SizedBox(height: 6),
 
-                  // Tóm tắt đánh giá từ Database
                   if (doctor.ratingSummary != null && doctor.ratingSummary!.isNotEmpty)
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -310,14 +288,14 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(kBorderRadiusLarge))),
       builder: (context) {
-        return StatefulBuilder( // Dùng StatefulBuilder để Update UI riêng trong BottomSheet
+        return StatefulBuilder(
           builder: (BuildContext context, StateSetter setModalState) {
             return Padding(
               padding: EdgeInsets.only(
                 bottom: MediaQuery.of(context).viewInsets.bottom,
-                left: 20, right: 20, top: 20
+                left: kDefaultPadding, right: kDefaultPadding, top: kDefaultPadding
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -326,20 +304,20 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
                   const Text('Lọc Bác Sĩ', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                   const Divider(height: 30),
 
-                  // 1. Lọc theo khu vực
                   const Text('Khu vực', style: TextStyle(fontWeight: FontWeight.bold)),
                   DropdownButtonFormField<String>(
                     value: selectedLocation,
-                    decoration: const InputDecoration(border: OutlineInputBorder()),
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(kBorderRadiusSmall)),
+                    ),
                     items: ['TP. Hồ Chí Minh', 'Hà Nội', 'Đà Nẵng'].map((loc) {
                       return DropdownMenuItem(value: loc, child: Text(loc));
                     }).toList(),
                     onChanged: (val) => setModalState(() => selectedLocation = val),
                     hint: const Text('Chọn khu vực'),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: kSpacingLarge),
 
-                  // 2. Lọc theo giá khám
                   Text('Khoảng giá: ${(minPrice/1000).toStringAsFixed(0)}k - ${(maxPrice/1000).toStringAsFixed(0)}k', style: const TextStyle(fontWeight: FontWeight.bold)),
                   RangeSlider(
                     values: RangeValues(minPrice, maxPrice),
@@ -356,7 +334,6 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
                     },
                   ),
 
-                  // 3. Lọc theo đánh giá
                   const Text('Đánh giá tối thiểu', style: TextStyle(fontWeight: FontWeight.bold)),
                   Wrap(
                     spacing: 10,
@@ -364,15 +341,15 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
                       return ChoiceChip(
                         label: Text('$star+ Sao'),
                         selected: selectedRating == star.toDouble(),
+                        selectedColor: kLightCyanBg1,
                         onSelected: (selected) {
                           setModalState(() => selectedRating = selected ? star.toDouble() : null);
                         },
                       );
                     }).toList(),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: kSpacingLarge),
 
-                  // 4. Lọc theo ngày
                   const Text('Ngày khám', style: TextStyle(fontWeight: FontWeight.bold)),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
@@ -384,39 +361,50 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
                         initialDate: DateTime.now(),
                         firstDate: DateTime.now(),
                         lastDate: DateTime.now().add(const Duration(days: 30)),
+                        builder: (context, child) {
+                          return Theme(
+                            data: Theme.of(context).copyWith(
+                              colorScheme: const ColorScheme.light(primary: kPrimaryColor),
+                            ),
+                            child: child!,
+                          );
+                        },
                       );
                       if (date != null) {
                         setModalState(() => selectedDate = date);
                       }
                     },
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: kSpacingLarge),
 
-                  // Nút Áp dụng & Nút Xóa bộ lọc
                   Row(
                     children: [
                       Expanded(
                         child: OutlinedButton(
                           onPressed: () {
-                            // Reset biến
                             selectedLocation = null;
                             minPrice = 0; maxPrice = 1000000;
                             selectedRating = null; selectedDate = null;
-                            Navigator.pop(context); // Đóng modal
-                            // Load lại toàn bộ không filter
+                            Navigator.pop(context); 
                             context.read<DoctorViewModel>().loadDoctors(specialtyId: widget.specialtyId);
                           },
-                          child: const Text('Xóa lọc', style: TextStyle(color: Colors.grey)),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: kGreyTextColor),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusSmall)),
+                          ),
+                          child: const Text('Xóa lọc', style: TextStyle(color: kGreyTextColor)),
                         ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
                         flex: 2,
                         child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(backgroundColor: kPrimaryColor),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: kPrimaryColor,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusSmall)),
+                          ),
                           onPressed: () {
-                            Navigator.pop(context); // Đóng Modal
-                            // Gọi API kèm thông số lọc
+                            Navigator.pop(context); 
                             String? formattedDate = selectedDate != null 
                                 ? "${selectedDate!.year}-${selectedDate!.month.toString().padLeft(2, '0')}-${selectedDate!.day.toString().padLeft(2, '0')}" 
                                 : null;

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:ung_dung_dat_lich_kham/Constants/ui_constants.dart';
+import '../../Constants/ui_constants.dart'; // 🌟 Đã sửa path chữ viết hoa đồng bộ
 import 'package:ung_dung_dat_lich_kham/Views/doctor/doctor_profile_detail_screen.dart';
 import 'package:ung_dung_dat_lich_kham/Views/doctor/doctor_schedule_screen.dart';
 import 'package:ung_dung_dat_lich_kham/Views/doctor/review_doctor_screen.dart';
@@ -20,10 +20,7 @@ class DoctorMenuScreen extends StatefulWidget {
 
 class DoctorMenuScreenState extends State<DoctorMenuScreen> {
   bool _isLoading = false;
-  int? _userId; // 💡 Đổi thành int? để lưu mã số trực tiếp truyền cho màn hình sau
-
-  // Tạm định nghĩa màu chủ đạo (Bạn có thể dùng kPrimaryColor của bạn)
-  final Color primaryColor = Colors.blueAccent;
+  int? _userId;
 
   @override
   void initState() {
@@ -40,11 +37,10 @@ class DoctorMenuScreenState extends State<DoctorMenuScreen> {
     if (id != null) {
       final parsedId = int.tryParse(id);
       setState(() {
-        _userId = parsedId; // Lưu lại ID dạng số
+        _userId = parsedId;
       });
 
       if (parsedId != null) {
-        // Gọi API lấy thông tin profile
         await context.read<ProfileViewModel>().getUserProfile(parsedId);
         if(!mounted) return;
         await context.read<DoctorViewModel>().fetchDoctorDetailForDoctor();
@@ -64,32 +60,31 @@ class DoctorMenuScreenState extends State<DoctorMenuScreen> {
     final doctorVM = context.watch<DoctorViewModel>();
     final doctor = doctorVM.doctorDetailForDoctor;
     
-    // Kết hợp cả trạng thái loading cục bộ và loading của ViewModel
     final isPageLoading = _isLoading || profileViewModel.isLoading;
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade50, 
+      backgroundColor: kLightCyanBg2, // 🌟 Đồng bộ nền sạch đẹp
       body: isPageLoading || user == null || profileViewModel.isLoading || doctor == null || doctorVM.isLoading
-          ? const Center(child: CircularProgressIndicator(color: Colors.blueAccent))
+          ? const Center(child: CircularProgressIndicator(color: kPrimaryColor))
           : Column(
               children: [
                 // ---------------- 1. PHẦN HEADER DẠNG CONG ----------------
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.only(top: 60, left: 20, right: 20, bottom: 30),
+                  padding: const EdgeInsets.only(top: 60, left: kDefaultPadding, right: kDefaultPadding, bottom: 30),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [primaryColor, Colors.blue.shade400],
+                    gradient: const LinearGradient(
+                      colors: [kPrimaryColor, kDarkCyan], // 🌟 Đồng bộ dải màu gradient chuẩn hệ thống
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                     borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(40),
-                      bottomRight: Radius.circular(40),
+                      bottomLeft: Radius.circular(30), // 🌟 Bo đáy 30 theo quy chuẩn Appbar cong của bạn dặn
+                      bottomRight: Radius.circular(30),
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: primaryColor.withOpacity(0.4),
+                        color: kPrimaryColor.withOpacity(0.3),
                         blurRadius: 15,
                         offset: const Offset(0, 8),
                       ),
@@ -106,7 +101,7 @@ class DoctorMenuScreenState extends State<DoctorMenuScreen> {
                             children: [
                               Text(
                                 'Xin chào, ${user.fullName}!', 
-                                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+                                style: kHeaderTextStyle.copyWith(fontSize: 22),
                               ),
                               const SizedBox(height: 5),
                               const Text(
@@ -115,13 +110,11 @@ class DoctorMenuScreenState extends State<DoctorMenuScreen> {
                               ),
                             ],
                           ),
-                          // Avatar nhỏ góc phải trên cùng
                           CircleAvatar(
                             radius: 25,
                             backgroundColor: Colors.white,
                             child: CircleAvatar(
                               radius: 23,
-                              // 💡 Lấy ảnh avatar thật từ database, nếu không có thì lấy ảnh mặc định
                               backgroundImage: (user.avatar != null && user.avatar!.isNotEmpty)
                                   ? NetworkImage(user.avatar!)
                                   : const NetworkImage('https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'),
@@ -135,22 +128,21 @@ class DoctorMenuScreenState extends State<DoctorMenuScreen> {
 
                 Expanded(
                   child: ListView(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 25),
+                    padding: const EdgeInsets.symmetric(horizontal: kDefaultPadding, vertical: 25),
                     physics: const BouncingScrollPhysics(), 
                     children: [
                       const Text(
                         'Quản lý phòng khám',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: kTextColor),
                       ),
                       const SizedBox(height: 15),
 
-                      // 1. Nút Hồ sơ cá nhân
                       _buildMenuCard(
                         context: context,
                         title: 'Hồ sơ cá nhân',
                         subtitle: 'Xem và cập nhật thông tin của bạn',
                         icon: Icons.person_outline,
-                        iconColor: Colors.blue,
+                        iconColor: kPrimaryColor, // 🌟 Thay màu chuẩn hệ thống
                         onTap: () {
                           if (_userId != null) {
                             Navigator.push(context, MaterialPageRoute(
@@ -164,7 +156,6 @@ class DoctorMenuScreenState extends State<DoctorMenuScreen> {
                         },
                       ),
 
-                      // 2. Nút Thiết lập lịch làm việc
                       _buildMenuCard(
                         context: context,
                         title: 'Thiết lập lịch làm việc',
@@ -176,7 +167,6 @@ class DoctorMenuScreenState extends State<DoctorMenuScreen> {
                         },
                       ),
 
-                      // 3. Nút Khóa lịch & Báo nghỉ đột xuất
                       _buildMenuCard(
                         context: context,
                         title: 'Khóa lịch & Báo nghỉ',
@@ -184,11 +174,10 @@ class DoctorMenuScreenState extends State<DoctorMenuScreen> {
                         icon: Icons.event_busy_outlined,
                         iconColor: Colors.redAccent,
                         onTap: () {
-                          // Navigator.push(context, MaterialPageRoute(builder: (context) => const BlockScheduleScreen()));
+                          // Thêm điều hướng nếu cần thiết
                         },
                       ),
 
-                      // 4. Nút Quản lý đánh giá và nhận xét
                       _buildMenuCard(
                         context: context,
                         title: 'Đánh giá & Nhận xét',
@@ -203,11 +192,10 @@ class DoctorMenuScreenState extends State<DoctorMenuScreen> {
                       const SizedBox(height: 20),
                       const Text(
                         'Khác',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: kTextColor),
                       ),
                       const SizedBox(height: 15),
 
-                      // 5. Nút Thông tin cơ sở y tế
                       _buildMenuCard(
                         context: context,
                         title: 'Cơ sở y tế / Bệnh viện',
@@ -221,7 +209,6 @@ class DoctorMenuScreenState extends State<DoctorMenuScreen> {
                         },
                       ),
 
-                      // 6. Nút Cài đặt tài khoản
                       _buildMenuCard(
                         context: context,
                         title: 'Đổi mật khẩu',
@@ -252,7 +239,6 @@ class DoctorMenuScreenState extends State<DoctorMenuScreen> {
     );
   }
 
-  // ---------------- WIDGET TẠO THẺ MENU CỰC ĐẸP ----------------
   Widget _buildMenuCard({
     required BuildContext context,
     required String title,
@@ -265,20 +251,20 @@ class DoctorMenuScreenState extends State<DoctorMenuScreen> {
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(kBorderRadiusLarge), // Bo góc 20
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.08),
-            spreadRadius: 2,
+            color: Colors.grey.withOpacity(0.05),
             blurRadius: 15,
             offset: const Offset(0, 4), 
           ),
         ],
+        border: Border.all(color: kBorderCyan),
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(kBorderRadiusLarge),
           onTap: onTap, 
           child: Padding(
             padding: const EdgeInsets.all(16.0),
@@ -288,7 +274,7 @@ class DoctorMenuScreenState extends State<DoctorMenuScreen> {
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: iconColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(15),
+                    borderRadius: BorderRadius.circular(kBorderRadiusSmall), // Bo góc 12
                   ),
                   child: Icon(icon, color: iconColor, size: 28),
                 ),
@@ -299,12 +285,12 @@ class DoctorMenuScreenState extends State<DoctorMenuScreen> {
                     children: [
                       Text(
                         title,
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: kTextColor),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         subtitle,
-                        style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                        style: const TextStyle(fontSize: 13, color: kGreyTextColor),
                       ),
                     ],
                   ),
@@ -312,10 +298,10 @@ class DoctorMenuScreenState extends State<DoctorMenuScreen> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade50,
+                    color: kLightCyanBg2,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.arrow_forward_ios, color: Colors.grey, size: 16),
+                  child: const Icon(Icons.arrow_forward_ios, color: kGreyTextColor, size: 16),
                 ),
               ],
             ),
@@ -330,7 +316,7 @@ class DoctorMenuScreenState extends State<DoctorMenuScreen> {
       context: context,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(kBorderRadiusLarge)),
       ),
       builder: (BuildContext ctx) {
         return Padding(
@@ -342,7 +328,7 @@ class DoctorMenuScreenState extends State<DoctorMenuScreen> {
                 isDeleteAccount 
                     ? 'Bạn có chắc chắn muốn xóa tài khoản này không?\nHành động này không thể hoàn tác.' 
                     : 'Bạn có muốn đăng xuất tài khoản này?',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.black),
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: kTextColor),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 30),
@@ -356,32 +342,24 @@ class DoctorMenuScreenState extends State<DoctorMenuScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
                       ),
-                      child: const Text('Hủy', style: TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.w500)),
+                      child: const Text('Hủy', style: TextStyle(color: kTextColor, fontSize: 16, fontWeight: FontWeight.w500)),
                     ),
                   ),
                   const SizedBox(width: 15),
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () async {
-                        Navigator.pop(ctx); // Đóng BottomSheet trước
-
+                        Navigator.pop(ctx);
                         if (isDeleteAccount) {
-                          // LẤY ID RA ĐỂ GỌI HÀM XÓA TÀI KHOẢN
                           final userId = await Provider.of<AuthViewModel>(context, listen: false).getSavedUserId();
-                          
                           if (userId != null) {
                             if (!context.mounted) return;
-                            
-                            // Gọi hàm xóa tài khoản từ ViewModel
                             final result = await Provider.of<AuthViewModel>(context, listen: false).deleteAccount(userId);
-                            
                             if (!context.mounted) return;
-                            
                             if (result['success'] == true) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(content: Text('Tài khoản của bạn đã được vô hiệu hóa thành công!')),
                               );
-                              // Điều hướng về Login và xóa lịch sử màn hình
                               Navigator.pushAndRemoveUntil(
                                 context,
                                 MaterialPageRoute(builder: (context) => const LoginScreen()),
@@ -394,12 +372,8 @@ class DoctorMenuScreenState extends State<DoctorMenuScreen> {
                             }
                           }
                         } else {
-                          // LOGIC ĐĂNG XUẤT 
                           await Provider.of<AuthViewModel>(context, listen: false).logout();
-                          
                           if (!context.mounted) return;
-                          
-                          // Điều hướng đưa người dùng bay thẳng về màn hình Đăng nhập
                           Navigator.pushAndRemoveUntil(
                             context,
                             MaterialPageRoute(builder: (context) => const LoginScreen()),
@@ -408,7 +382,7 @@ class DoctorMenuScreenState extends State<DoctorMenuScreen> {
                         }
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: isDeleteAccount ? Colors.red : kPrimaryColor, // Đổi màu đỏ nếu là nút Xóa cho nguy hiểm
+                        backgroundColor: isDeleteAccount ? Colors.red : kPrimaryColor,
                         elevation: 0,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),

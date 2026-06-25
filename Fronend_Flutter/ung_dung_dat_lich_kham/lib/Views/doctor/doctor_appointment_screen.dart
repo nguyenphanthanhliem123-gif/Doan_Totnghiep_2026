@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../constants/ui_constants.dart';
+import '../../Constants/ui_constants.dart'; // 🌟 Chuẩn hóa đường dẫn
 import '../../viewmodels/doctor_appointment_list_viewmodel.dart';
 import 'doctor_appointment_detail_screen.dart';
 
@@ -12,9 +12,8 @@ class DoctorAppointmentScreen extends StatefulWidget {
 }
 
 class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
-  // Biến lưu trạng thái của bộ lọc
   String _selectedStatus = 'all';
-  DateTime? _selectedDate; // Null tức là 'all'
+  DateTime? _selectedDate; 
 
   @override
   void initState() {
@@ -24,7 +23,6 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
     });
   }
 
-  // Hàm gọi API với bộ lọc hiện tại
   void _fetchData() {
     String dateParam = _selectedDate == null 
         ? 'all' 
@@ -45,17 +43,17 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
     final vm = context.watch<DoctorAppointmentListViewModel>();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
+      backgroundColor: kLightCyanBg2, // 🌟 Đồng bộ nền sáng mịn
       appBar: AppBar(
         backgroundColor: kPrimaryColor,
-        title: const Text('Quản lý Lịch hẹn', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        title: const Text('Quản lý Lịch hẹn', style: kHeaderTextStyle), // 🌟 Text Style chuẩn
         centerTitle: true,
       ),
       body: Column(
         children: [
           // 🌟 THANH CÔNG CỤ LỌC (FILTER BAR)
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: kDefaultPadding, vertical: 12), // 🌟 Lề chuẩn 20
             decoration: BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))]),
             child: Row(
               children: [
@@ -63,13 +61,13 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
                 Expanded(
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(8)),
+                    decoration: BoxDecoration(border: Border.all(color: kBorderCyan), borderRadius: BorderRadius.circular(kBorderRadiusSmall)), // 🌟 Bo 12, viền chuẩn
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
                         value: _selectedStatus,
                         isExpanded: true,
                         icon: const Icon(Icons.arrow_drop_down, color: kPrimaryColor),
-                        style: const TextStyle(fontSize: 14, color: Colors.black87, fontWeight: FontWeight.bold),
+                        style: const TextStyle(fontSize: 14, color: kTextColor, fontWeight: FontWeight.bold),
                         items: const [
                           DropdownMenuItem(value: 'all', child: Text("Tất cả trạng thái")),
                           DropdownMenuItem(value: 'pending', child: Text("Chờ duyệt")),
@@ -100,6 +98,14 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
                         firstDate: DateTime(2020),
                         lastDate: DateTime(2030),
                         helpText: "CHỌN NGÀY LỌC LỊCH",
+                        builder: (context, child) {
+                          return Theme(
+                            data: Theme.of(context).copyWith(
+                              colorScheme: const ColorScheme.light(primary: kPrimaryColor),
+                            ),
+                            child: child!,
+                          );
+                        },
                       );
                       if (picked != null) {
                         setState(() => _selectedDate = picked);
@@ -108,7 +114,7 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
                     },
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
-                      decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(8)),
+                      decoration: BoxDecoration(border: Border.all(color: kBorderCyan), borderRadius: BorderRadius.circular(kBorderRadiusSmall)), // 🌟 Bo 12
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -116,16 +122,15 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
                             _selectedDate == null 
                                 ? "Tất cả các ngày" 
                                 : "${_selectedDate!.day.toString().padLeft(2,'0')}/${_selectedDate!.month.toString().padLeft(2,'0')}/${_selectedDate!.year}",
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: _selectedDate == null ? Colors.black87 : kPrimaryColor),
+                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: _selectedDate == null ? kTextColor : kPrimaryColor),
                           ),
-                          Icon(Icons.calendar_month, color: _selectedDate == null ? Colors.grey : kPrimaryColor, size: 20),
+                          Icon(Icons.calendar_month, color: _selectedDate == null ? kGreyTextColor : kPrimaryColor, size: 20),
                         ],
                       ),
                     ),
                   ),
                 ),
                 
-                // Nút Xóa Ngày (Hiện khi đã chọn ngày)
                 if (_selectedDate != null) ...[
                   const SizedBox(width: 5),
                   InkWell(
@@ -135,7 +140,7 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
                     },
                     child: Container(
                       padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(8)),
+                      decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(kBorderRadiusSmall)),
                       child: const Icon(Icons.close, color: Colors.red, size: 20),
                     ),
                   )
@@ -149,12 +154,12 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
             child: vm.isLoading
                 ? const Center(child: CircularProgressIndicator(color: kPrimaryColor))
                 : vm.appointments.isEmpty
-                    ? const Center(child: Text('Không tìm thấy lịch hẹn nào phù hợp.', style: TextStyle(color: Colors.grey, fontSize: 16)))
+                    ? const Center(child: Text('Không tìm thấy lịch hẹn nào phù hợp.', style: TextStyle(color: kGreyTextColor, fontSize: 16)))
                     : RefreshIndicator(
                         color: kPrimaryColor,
                         onRefresh: () async => _fetchData(),
                         child: ListView.builder(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.all(kDefaultPadding), // 🌟 Lề 20 chuẩn
                           itemCount: vm.appointments.length,
                           itemBuilder: (context, index) {
                             return _buildAppointmentCard(context, vm.appointments[index]);
@@ -179,16 +184,15 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.grey.shade200),
+        borderRadius: BorderRadius.circular(kBorderRadiusLarge), // 🌟 Bo 20
+        border: Border.all(color: kBorderCyan),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(15),
+          borderRadius: BorderRadius.circular(kBorderRadiusLarge), // 🌟 Bo 20
           onTap: () async {
-            // Mở trang chi tiết, chờ khi quay lại thì load lại Data để update trạng thái
             await Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => DoctorAppointmentDetailScreen(appointmentId: appointment['Ma_lich_hen'])),
@@ -205,7 +209,7 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
                   children: [
                     CircleAvatar(
                       radius: 25,
-                      backgroundColor: kPrimaryColor.withOpacity(0.1),
+                      backgroundColor: kLightCyanBg1,
                       backgroundImage: _safeAvatar(appointment['Anh_benh_nhan']),
                     ),
                     const SizedBox(width: 12),
@@ -214,9 +218,9 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(appointment['Ten_benh_nhan'] ?? 'Bệnh nhân', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                          Text(appointment['Ten_benh_nhan'] ?? 'Bệnh nhân', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: kTextColor)),
                           const SizedBox(height: 4),
-                          Text('Mã đặt lịch: ${appointment['Ma_booking']}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                          Text('Mã đặt lịch: ${appointment['Ma_booking']}', style: const TextStyle(fontSize: 12, color: kGreyTextColor)),
                         ],
                       ),
                     ),
@@ -226,17 +230,17 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
                 ),
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 12),
-                  child: Divider(height: 1, color: Colors.black12),
+                  child: Divider(height: 1, color: kBorderCyan),
                 ),
-                Text('Thời gian: $timeStr • $dateStr', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87)),
+                Text('Thời gian: $timeStr • $dateStr', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: kTextColor)),
                 const SizedBox(height: 8),
-                Text('Hình thức: ${appointment['Hinh_thuc'] == "online" ? "Khám trực tuyến (Video Call)" : "Khám trực tiếp tại phòng khám"}', style: const TextStyle(fontSize: 14, color: Colors.black87)),
+                Text('Hình thức: ${appointment['Hinh_thuc'] == "online" ? "Khám trực tuyến (Video Call)" : "Khám trực tiếp tại phòng khám"}', style: const TextStyle(fontSize: 14, color: kTextColor)),
                 const SizedBox(height: 8),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Dịch vụ: ', style: TextStyle(fontSize: 14, color: Colors.black87)),
-                    Expanded(child: Text('${appointment['Ten_dich_vu'] ?? 'Đang cập nhật'}', style: const TextStyle(fontSize: 14, color: Colors.black87, fontWeight: FontWeight.w600))),
+                    const Text('Dịch vụ: ', style: TextStyle(fontSize: 14, color: kTextColor)),
+                    Expanded(child: Text('${appointment['Ten_dich_vu'] ?? 'Đang cập nhật'}', style: const TextStyle(fontSize: 14, color: kTextColor, fontWeight: FontWeight.w600))),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -269,7 +273,6 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
     final vm = context.read<DoctorAppointmentListViewModel>();
     final int appointmentId = appointment['Ma_lich_hen'];
     
-    // Hàm xử lý chung để tái sử dụng
     void handleAction(String action) async {
       final res = await vm.updateStatus(appointmentId, action, status: _selectedStatus, date: _selectedDate == null ? 'all' : "${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}");
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(res['message']), backgroundColor: res['success'] ? Colors.green : Colors.red));
@@ -307,7 +310,7 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
     } else {
       return Row(
         children: [
-          Expanded(child: _buildActionBtn(icon: Icons.visibility, text: 'Xem hồ sơ & Đơn thuốc', color: kPrimaryColor, bgColor: Colors.cyan.shade50, onTap: () {
+          Expanded(child: _buildActionBtn(icon: Icons.visibility, text: 'Xem hồ sơ & Đơn thuốc', color: kPrimaryColor, bgColor: kLightCyanBg1, onTap: () {
             Navigator.push(context, MaterialPageRoute(builder: (context) => DoctorAppointmentDetailScreen(appointmentId: appointmentId))).then((_) => _fetchData());
           })),
         ],
@@ -318,10 +321,10 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
   Widget _buildActionBtn({required IconData icon, required String text, required Color color, required Color bgColor, required VoidCallback? onTap}) {
     return InkWell(
       onTap: onTap, 
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(kBorderRadiusSmall), // 🌟 Bo 12
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
-        decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(8)),
+        decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(kBorderRadiusSmall)),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

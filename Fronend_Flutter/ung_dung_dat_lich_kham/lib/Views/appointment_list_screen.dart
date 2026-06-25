@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ung_dung_dat_lich_kham/Views/review_screen.dart';
-import '../constants/ui_constants.dart';
+import '../Constants/ui_constants.dart'; // 🌟 Đã sửa thành Constants
 import '../viewmodels/appointment_viewmodel.dart';
 import '../models/appointment_model.dart';
 import 'appointment_detail_screen.dart';
@@ -32,10 +32,10 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
     return DefaultTabController(
       length: 3,
       child: Scaffold(
-        backgroundColor: const Color(0xFFF5F5F5),
+        backgroundColor: kLightCyanBg2, // 🌟 Chuẩn hóa nền app sáng mịn
         appBar: AppBar(
           backgroundColor: kPrimaryColor,
-          title: const Text('Lịch hẹn của tôi', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          title: const Text('Lịch hẹn của tôi', style: kHeaderTextStyle), // 🌟 Chuẩn hóa Text style
           centerTitle: true,
           bottom: const TabBar(
             indicatorColor: Colors.white,
@@ -65,7 +65,7 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
   Widget _buildList(List<AppointmentModel> list, String tabType) {
     if (list.isEmpty) {
       return const Center(
-        child: Text('Chưa có lịch hẹn nào.', style: TextStyle(color: Colors.grey, fontSize: 16)),
+        child: Text('Chưa có lịch hẹn nào.', style: TextStyle(color: kGreyTextColor, fontSize: 16)),
       );
     }
     
@@ -73,7 +73,7 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
       color: kPrimaryColor,
       onRefresh: () => context.read<AppointmentViewModel>().loadMyAppointments(),
       child: ListView.builder(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(kDefaultPadding), // 🌟 Lề 20
         itemCount: list.length,
         itemBuilder: (context, index) {
           return _buildAppointmentCard(list[index], tabType);
@@ -87,8 +87,8 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.grey.shade200),
+        borderRadius: BorderRadius.circular(kBorderRadiusLarge), // 🌟 Bo 20
+        border: Border.all(color: kBorderCyan),
         boxShadow: [
           BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
         ],
@@ -96,7 +96,7 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(15),
+          borderRadius: BorderRadius.circular(kBorderRadiusLarge),
           onTap: () {
             Navigator.push(
               context,
@@ -117,18 +117,19 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
                   children: [
                     CircleAvatar(
                       radius: 25,
+                      backgroundColor: kLightCyanBg1,
                       backgroundImage: appointment.doctorAvatar != null 
                           ? NetworkImage(appointment.doctorAvatar!) 
-                          : const NetworkImage('https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'),
+                          : const AssetImage('assets/images/doctor_placeholder.png') as ImageProvider,
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(appointment.doctorName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                          Text(appointment.doctorName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: kTextColor)),
                           const SizedBox(height: 4),
-                          Text('Mã: ${appointment.bookingCode}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                          Text('Mã: ${appointment.bookingCode}', style: const TextStyle(fontSize: 12, color: kGreyTextColor)),
                         ],
                       ),
                     ),
@@ -138,17 +139,17 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
                 
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 12),
-                  child: Divider(height: 1, color: Colors.black12),
+                  child: Divider(height: 1, color: kBorderCyan),
                 ),
 
                 Text(
                   'Thời gian: ${appointment.startTime.hour.toString().padLeft(2, '0')}:${appointment.startTime.minute.toString().padLeft(2, '0')} - ${appointment.endTime.hour.toString().padLeft(2, '0')}:${appointment.endTime.minute.toString().padLeft(2, '0')} • ${appointment.startTime.day.toString().padLeft(2, '0')}/${appointment.startTime.month.toString().padLeft(2, '0')}/${appointment.startTime.year}',
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: kTextColor),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   'Hình thức: ${appointment.type == "online" ? "Khám trực tuyến (Video Call)" : "Khám trực tiếp"}',
-                  style: const TextStyle(fontSize: 14, color: Colors.black87),
+                  style: const TextStyle(fontSize: 14, color: kTextColor),
                 ),
 
                 const SizedBox(height: 16),
@@ -229,7 +230,6 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
   }
 
   Widget _buildFooterButtons(BuildContext context, AppointmentModel appointment, String tabType) {
-    
     void navigateToDoctorDetail() {
       Navigator.push(
         context,
@@ -249,7 +249,6 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
               icon: Icons.refresh, text: 'Đổi lịch hẹn', 
               color: Colors.green, bgColor: Colors.green.shade50, 
               onTap: () {
-                // ✅ LOGIC ĐỔI LỊCH
                 final now = DateTime.now();
                 final difference = appointment.startTime.difference(now);
                 if (difference.inHours < 2) {
@@ -300,7 +299,7 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
           Expanded(
             child: _buildActionBtn(
               icon: Icons.replay, text: 'Đặt lại lịch', 
-              color: kPrimaryColor, bgColor: Colors.cyan.shade50, 
+              color: kPrimaryColor, bgColor: kLightCyanBg1, 
               onTap: navigateToDoctorDetail,
             ),
           ),
@@ -333,10 +332,10 @@ class _AppointmentScreenState extends State<AppointmentScreen> {
   Widget _buildActionBtn({required IconData icon, required String text, required Color color, required Color bgColor, required VoidCallback onTap}) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(kBorderRadiusSmall), // 🌟 Bo 12
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
-        decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(8)),
+        decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(kBorderRadiusSmall)),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [

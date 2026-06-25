@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:google_sign_in/google_sign_in.dart'; // 🌟 Import Google Sign In
+import 'package:google_sign_in/google_sign_in.dart';
 import '../viewmodels/auth_viewmodel.dart';
+import '../Constants/ui_constants.dart'; // 🌟 Đã thêm import đồng bộ UI
 import 'main_screen.dart';
 import 'forgot_password_screen.dart';
 import 'doctor/doctor_main_screen.dart';
@@ -19,17 +20,16 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _passController = TextEditingController();
   bool _obscurePassword = true;
 
-  final Color primaryColor = const Color(0xFF4BCBEB);
-  final Color textFieldBgColor = const Color(0xFFEAF8FB);
+  // Đã xóa các màu hardcode, sử dụng từ ui_constants.dart
 
   @override
   Widget build(BuildContext context) {
     final authVM = Provider.of<AuthViewModel>(context);
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Colors.white, // Đồng bộ nền trắng
       appBar: AppBar(
-        backgroundColor: primaryColor,
+        backgroundColor: kPrimaryColor, // Sử dụng màu chuẩn
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
@@ -38,18 +38,18 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         title: const Text(
           'Đăng Nhập',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: kHeaderTextStyle, // Sử dụng style chuẩn
         ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.all(kDefaultPadding), // Đồng bộ lề 20
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const SizedBox(height: 20),
+            const SizedBox(height: kSpacingLarge),
             
-            Icon(Icons.local_hospital, size: 80, color: primaryColor),
-            const SizedBox(height: 30),
+            const Icon(Icons.local_hospital, size: 80, color: kPrimaryColor),
+            const SizedBox(height: kSpacingLarge),
 
             _buildLabel('Email'),
             _buildTextField(
@@ -57,7 +57,7 @@ class _LoginScreenState extends State<LoginScreen> {
               hintText: 'example@healthcare.com',
               keyboardType: TextInputType.emailAddress,
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: kSpacingSmall),
 
             _buildLabel('Mật khẩu'),
             _buildTextField(
@@ -67,7 +67,7 @@ class _LoginScreenState extends State<LoginScreen> {
               suffixIcon: IconButton(
                 icon: Icon(
                   _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                  color: primaryColor,
+                  color: kPrimaryColor,
                 ),
                 onPressed: () {
                   setState(() {
@@ -86,13 +86,13 @@ class _LoginScreenState extends State<LoginScreen> {
                     MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
                   );
                 },
-                child: Text(
+                child: const Text(
                   'Quên mật khẩu?',
-                  style: TextStyle(color: primaryColor),
+                  style: TextStyle(color: kPrimaryColor),
                 ),
               ),
             ),
-            const SizedBox(height: 15),
+            const SizedBox(height: kSpacingSmall),
 
             ElevatedButton(
               onPressed: authVM.isLoading
@@ -134,32 +134,26 @@ class _LoginScreenState extends State<LoginScreen> {
                       }
                     },
               style: ElevatedButton.styleFrom(
-                backgroundColor: primaryColor,
+                backgroundColor: kPrimaryColor,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
+                  borderRadius: BorderRadius.circular(kBorderRadiusLarge), // Bo góc chuẩn 20
                 ),
                 elevation: 0,
               ),
               child: authVM.isLoading
                   ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : const Text(
-                      'Đăng Nhập',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-                    ),
+                  : const Text('Đăng Nhập', style: kButtonTextStyle), // Sử dụng text style chuẩn
             ),
             
-            // =========================================================
-            // PHẦN UI TỪ COMMIT CŨ ĐƯỢC CHÈN VÀO ĐÂY
-            // =========================================================
-            const SizedBox(height: 30),
+            const SizedBox(height: kSpacingLarge),
             const Center(
               child: Text(
                 'hoặc đăng nhập bằng',
-                style: TextStyle(color: Colors.grey),
+                style: TextStyle(color: kGreyTextColor),
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: kSpacingSmall),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -173,14 +167,14 @@ class _LoginScreenState extends State<LoginScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Text('Chưa có tài khoản? ', style: TextStyle(color: Colors.grey, fontSize: 15)),
+                const Text('Chưa có tài khoản? ', style: TextStyle(color: kGreyTextColor, fontSize: 15)),
                 GestureDetector(
                   onTap: () {
                     Navigator.push(context, MaterialPageRoute(builder: (_) => const SignupScreen()));
                   },
-                  child: Text(
+                  child: const Text(
                     'Đăng ký ngay',
-                    style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 15),
+                    style: TextStyle(color: kPrimaryColor, fontWeight: FontWeight.bold, fontSize: 15),
                   ),
                 ),
               ],
@@ -191,17 +185,10 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // =========================================================
-  // CÁC HÀM TIỆN ÍCH VÀ XỬ LÝ ĐĂNG NHẬP
-  // =========================================================
-
   Widget _buildLabel(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0, left: 4.0),
-      child: Text(
-        text,
-        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-      ),
+      child: Text(text, style: kLabelTextStyle), // Sử dụng style chuẩn
     );
   }
 
@@ -214,17 +201,17 @@ class _LoginScreenState extends State<LoginScreen> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: textFieldBgColor,
-        borderRadius: BorderRadius.circular(15),
+        color: kLightCyanBg1, // Nền ô nhập liệu chuẩn
+        borderRadius: BorderRadius.circular(kBorderRadiusLarge), // Bo góc chuẩn 20
       ),
       child: TextField(
         controller: controller,
         obscureText: obscureText,
         keyboardType: keyboardType,
-        style: TextStyle(color: primaryColor, fontWeight: FontWeight.w500),
+        style: const TextStyle(color: kPrimaryColor, fontWeight: FontWeight.w500),
         decoration: InputDecoration(
           hintText: hintText,
-          hintStyle: TextStyle(color: primaryColor.withOpacity(0.4)),
+          hintStyle: TextStyle(color: kPrimaryColor.withOpacity(0.4)),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           suffixIcon: suffixIcon,
@@ -237,8 +224,8 @@ class _LoginScreenState extends State<LoginScreen> {
     return Container(
       width: 50,
       height: 50,
-      decoration: BoxDecoration(
-        color: primaryColor,
+      decoration: const BoxDecoration(
+        color: kPrimaryColor, // Màu chuẩn
         shape: BoxShape.circle,
       ),
       child: Center(
@@ -252,24 +239,17 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _handleGoogleSignIn(BuildContext context) async {
     try {
-      // 1. Khởi tạo cấu hình rõ ràng: Xin quyền truy cập Email
       final GoogleSignIn googleSignIn = GoogleSignIn(
         clientId: '103197146336-5c1d0231e2327rmp9793808d43i3hhfo.apps.googleusercontent.com',
-        scopes: <String>[
-          'email',
-        ],
+        scopes: <String>['email'],
       );
 
-      // 2. Gọi cửa sổ đăng nhập của Google hiện lên
       final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
-
-      // Nếu người dùng bấm nút "Hủy" hoặc đóng bảng Google
       if (googleUser == null) return; 
 
       if (!context.mounted) return;
       final authVM = Provider.of<AuthViewModel>(context, listen: false);
 
-      // 3. Truyền dữ liệu Google trả về xuống Backend
       final result = await authVM.oauthLogin(
         email: googleUser.email,
         fullName: googleUser.displayName ?? 'Người dùng',
@@ -280,7 +260,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (!context.mounted) return;
 
-      // 4. Xử lý kết quả
       if (result['success'] == true) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Đăng nhập Google thành công!')),
@@ -288,7 +267,6 @@ class _LoginScreenState extends State<LoginScreen> {
         
         final String role = result['role'] ?? 'Benh_nhan';
         
-        // Điều hướng dựa trên quyền truy cập
         if (role == 'Bac_si') {
           Navigator.pushReplacement(
             context,
@@ -306,17 +284,14 @@ class _LoginScreenState extends State<LoginScreen> {
         );
       }
     } catch (error) {
-      // In lỗi màu đỏ ra Terminal của VS Code để bạn đọc được
       debugPrint("LỖI ĐĂNG NHẬP GOOGLE: $error"); 
       
-      // Bỏ qua việc hiển thị lỗi nếu người dùng tự hủy
       final errorString = error.toString().toLowerCase();
       if (errorString.contains('popup_closed') || errorString.contains('sign_in_canceled') || errorString.contains('canceled')) {
-        return; // Thoát hàm trong im lặng, không làm phiền người dùng
+        return; 
       }
 
       if (context.mounted) {
-        // Hiện thẳng cái lỗi thật lên màn hình app luôn
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Lỗi thật sự: $error')), 
         );

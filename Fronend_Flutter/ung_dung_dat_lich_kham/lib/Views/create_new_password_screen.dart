@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../viewmodels/auth_viewmodel.dart';
+import '../Constants/ui_constants.dart'; // 🌟 Import đồng bộ UI
 import 'login_screen.dart';
 
 class CreateNewPasswordScreen extends StatefulWidget {
   final String email;
-  final String otpCode; // Nhận mã OTP từ trang trước truyền qua
+  final String otpCode; 
 
   const CreateNewPasswordScreen({super.key, required this.email, required this.otpCode});
 
@@ -14,9 +15,6 @@ class CreateNewPasswordScreen extends StatefulWidget {
 }
 
 class _CreateNewPasswordScreenState extends State<CreateNewPasswordScreen> {
-  final Color primaryColor = const Color(0xFF4BCBEB);
-  final Color textFieldBgColor = const Color(0xFFEAF8FB);
-
   final TextEditingController _newPassController = TextEditingController();
   final TextEditingController _confirmPassController = TextEditingController();
 
@@ -37,16 +35,16 @@ class _CreateNewPasswordScreenState extends State<CreateNewPasswordScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: Colors.transparent, // AppBar trong suốt theo thiết kế cũ
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios, color: primaryColor),
+          icon: const Icon(Icons.arrow_back_ios, color: kPrimaryColor),
           onPressed: () => Navigator.pop(context),
         ),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          padding: const EdgeInsets.symmetric(horizontal: kDefaultPadding), // Lề 20
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -64,7 +62,8 @@ class _CreateNewPasswordScreenState extends State<CreateNewPasswordScreen> {
               _buildPasswordField(_newPassController, _obscureNewPass, () {
                 setState(() => _obscureNewPass = !_obscureNewPass);
               }),
-              const SizedBox(height: 20),
+              const SizedBox(height: kSpacingSmall),
+              
               _buildLabel('Xác nhận mật khẩu mới'),
               _buildPasswordField(_confirmPassController, _obscureConfirmPass, () {
                 setState(() => _obscureConfirmPass = !_obscureConfirmPass);
@@ -87,10 +86,9 @@ class _CreateNewPasswordScreenState extends State<CreateNewPasswordScreen> {
                           return;
                         }
 
-                        // GỌI API ĐỔI MẬT KHẨU TỪ VIEWMODEL
                         final result = await authVM.resetPasswordWithOTP(
                           email: widget.email,
-                          otp: widget.otpCode, // Lấy OTP từ trang trước
+                          otp: widget.otpCode,
                           newPassword: newPass,
                         );
 
@@ -98,7 +96,6 @@ class _CreateNewPasswordScreenState extends State<CreateNewPasswordScreen> {
                         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['message'])));
 
                         if (result['success'] == true) {
-                          // Đổi pass thành công thì xóa hết lịch sử trang và về Login
                           Navigator.pushAndRemoveUntil(
                             context,
                             MaterialPageRoute(builder: (context) => const LoginScreen()),
@@ -107,13 +104,13 @@ class _CreateNewPasswordScreenState extends State<CreateNewPasswordScreen> {
                         }
                       },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: primaryColor,
+                  backgroundColor: kPrimaryColor,
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusLarge)), // Bo góc 20
                 ),
                 child: authVM.isLoading
                     ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3))
-                    : const Text('Hoàn Tất Đổi Mật Khẩu', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                    : const Text('Hoàn Tất Đổi Mật Khẩu', style: kButtonTextStyle), // Style chuẩn
               ),
             ],
           ),
@@ -125,24 +122,24 @@ class _CreateNewPasswordScreenState extends State<CreateNewPasswordScreen> {
   Widget _buildLabel(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0, left: 4.0),
-      child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF2D2D2D))),
+      child: Text(text, style: kLabelTextStyle),
     );
   }
 
   Widget _buildPasswordField(TextEditingController controller, bool isObscure, VoidCallback toggleObscure) {
     return Container(
-      decoration: BoxDecoration(color: textFieldBgColor, borderRadius: BorderRadius.circular(15)),
+      decoration: BoxDecoration(color: kLightCyanBg1, borderRadius: BorderRadius.circular(kBorderRadiusLarge)), // Nền và góc chuẩn
       child: TextField(
         controller: controller,
         obscureText: isObscure,
-        style: TextStyle(color: primaryColor, fontWeight: FontWeight.w500),
+        style: const TextStyle(color: kPrimaryColor, fontWeight: FontWeight.w500),
         decoration: InputDecoration(
           hintText: 'Nhập mật khẩu',
-          hintStyle: TextStyle(color: primaryColor.withOpacity(0.5)),
+          hintStyle: TextStyle(color: kPrimaryColor.withOpacity(0.5)),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           suffixIcon: IconButton(
-            icon: Icon(isObscure ? Icons.visibility_off : Icons.visibility, color: Colors.grey),
+            icon: Icon(isObscure ? Icons.visibility_off : Icons.visibility, color: kPrimaryColor),
             onPressed: toggleObscure,
           ),
         ),
