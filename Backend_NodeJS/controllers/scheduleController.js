@@ -97,11 +97,12 @@ export default class ScheduleController {
                         // Convert định dạng SQL Datetime sang chuẩn YYYYMMDDHHmmss của VNPay
                         ngayGiaoDich: moment(appt.Ngay_thanh_toan).format('YYYYMMDDHHmmss') 
                     };
-
+                    const io = req.app.get('io');
                     await sendNotification(
                         appt.Ma_nguoi_dung,
                         'Hủy lịch hẹn',
-                        reason
+                        reason,
+                        io
                     );
 
                     if (appt.Email) {

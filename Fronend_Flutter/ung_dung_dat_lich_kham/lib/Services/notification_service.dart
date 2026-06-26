@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ung_dung_dat_lich_kham/Config/BASE_URL.dart';
@@ -50,6 +49,30 @@ class APINotificationService {
         print('Lỗi: ${data['message']}');
       }
       return data['succeeded'];
+    }catch(e){
+      throw Exception('Lỗi server: ${e.toString()}');
+    }
+  }
+
+  Future<int> fecthUnReadCount() async {
+    try{
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      if(token == null ) return 0;
+
+      final res = await http.get(
+        Uri.parse('$BASE_URL/api/notification/count-unread'),
+        headers: {'Authorization': 'Bearer $token'}
+      );
+
+      if(res.statusCode == 200){
+        final data = jsonDecode(res.body);
+        return data['count'];
+      }else{
+        final data = jsonDecode(res.body);
+        print('Lỗi fecthUnReadCount: ${data['message']}');
+        return 0;
+      }
     }catch(e){
       throw Exception('Lỗi server: ${e.toString()}');
     }

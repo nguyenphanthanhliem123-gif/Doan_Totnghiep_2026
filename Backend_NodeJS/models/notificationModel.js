@@ -15,6 +15,22 @@ export default class NotificationModel{
         }
     }
 
+    static async getNotificationsUnRead(userID){
+        try{
+            const sql = `
+                SELECT COUNT(*) AS total
+                FROM thong_bao
+                WHERE Ma_nguoi_dung = ? AND Trang_thai_doc = 0
+            `;
+
+            const [result] = await execute(sql, [userID]);
+
+            return result[0].total;
+        }catch(error){
+            throw new Error("Lỗi NotificationModel.getNotificationsUnRead: " + error.message);
+        }
+    }
+
     static async updateStatus(notificationID, userID){
         try{
 

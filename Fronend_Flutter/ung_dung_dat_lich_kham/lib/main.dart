@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ung_dung_dat_lich_kham/ViewModels/doctor_clinic_viewmodel.dart';
-import 'package:ung_dung_dat_lich_kham/ViewModels/notification_viewmodel.dart';
+import 'package:ung_dung_dat_lich_kham/viewmodels/notification_viewmodel.dart';
 import 'dart:ui';
 import 'package:ung_dung_dat_lich_kham/ViewModels/payment_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/schedule_config_viewmodel.dart';

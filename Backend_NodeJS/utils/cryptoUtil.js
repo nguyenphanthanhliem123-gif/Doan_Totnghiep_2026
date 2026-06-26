@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 
-// 1. Lấy khóa bí mật từ .env (Bây giờ bạn nhập chuỗi dài ngắn bao nhiêu cũng được)
+// 1. Lấy khóa bí mật từ .env
 const SECRET_STRING = process.env.AES_KEY || 'auth_secret_key_bat_ky!!'; 
 
 // 2. Dùng SHA-256 để ép chuỗi trên thành 1 Buffer chính xác 32 bytes

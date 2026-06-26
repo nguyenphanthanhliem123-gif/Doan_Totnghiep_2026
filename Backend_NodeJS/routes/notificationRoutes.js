@@ -7,6 +7,7 @@ const authNotificationRoute = Router();
 authNotificationRoute.use(auth);
 
 authNotificationRoute.get('/', NotificationController.getAllNotification);
+authNotificationRoute.get('/count-unread', NotificationController.getNotificationUnRead);
 authNotificationRoute.put('/read/:notificationID', NotificationController.updateStatus);
 
 notificationRoute.use('/', authNotificationRoute);

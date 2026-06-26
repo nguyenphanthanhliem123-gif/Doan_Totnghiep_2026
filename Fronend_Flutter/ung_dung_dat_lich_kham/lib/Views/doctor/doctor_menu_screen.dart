@@ -169,17 +169,6 @@ class DoctorMenuScreenState extends State<DoctorMenuScreen> {
 
                       _buildMenuCard(
                         context: context,
-                        title: 'Khóa lịch & Báo nghỉ',
-                        subtitle: 'Tạm ngưng nhận bệnh nhân đột xuất',
-                        icon: Icons.event_busy_outlined,
-                        iconColor: Colors.redAccent,
-                        onTap: () {
-                          // Thêm điều hướng nếu cần thiết
-                        },
-                      ),
-
-                      _buildMenuCard(
-                        context: context,
                         title: 'Đánh giá & Nhận xét',
                         subtitle: 'Xem phản hồi từ bệnh nhân',
                         icon: Icons.star_border_rounded,

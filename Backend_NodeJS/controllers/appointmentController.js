@@ -100,11 +100,13 @@ export default class AppointmentController {
             const appointmentDetail = await AppointmentModel.getAppointmentDetails(appointmentID);
 
             // Gửi thông báo báo cho BÁC SĨ (Kiểm tra xem biến Ma_nguoi_dung_bac_si có lấy từ SQL ra chưa)
+            const io = req.app.get('io');
             if (appointmentDetail && appointmentDetail.Ma_nguoi_dung_bac_si) {
                 await sendNotification(
                     appointmentDetail.Ma_nguoi_dung_bac_si,
                     'Hủy lịch hẹn',
-                    'Lịch hẹn mã ' + appointmentDetail.Ma_booking + ' của bạn với bệnh nhân ' + appointmentDetail.Ten_nguoi_kham + ' đã bị hủy.'
+                    'Lịch hẹn mã ' + appointmentDetail.Ma_booking + ' của bạn với bệnh nhân ' + appointmentDetail.Ten_nguoi_kham + ' đã bị hủy.',
+                    io
                 );
             }
 
@@ -130,10 +132,12 @@ export default class AppointmentController {
                 return res.status(400).json({ succeeded: false, message: result.message });
             }
             
+            const io = req.app.get('io');
             await sendNotification(
                 bookingId.Ma_nguoi_dung_bac_si,
                 'Đổi lịch',
-                'Lịch hẹn ' + bookingId.Ma_booking + ' đã được dời sang thời gian khác.'
+                'Lịch hẹn ' + bookingId.Ma_booking + ' đã được dời sang thời gian khác.',
+                io
             );
 
             return res.status(200).json({ succeeded: true, message: result.message });
@@ -211,10 +215,12 @@ export default class AppointmentController {
 
             if (appointmentDetail && appointmentDetail.Ma_nguoi_dung) {
                 if (status === 'confirmed') {
+                    const io = req.app.get('io');
                     await sendNotification(
                         appointmentDetail.Ma_nguoi_dung,
                         'Xác nhận lịch hẹn',
-                        'Lịch hẹn mã ' + appointmentDetail.Ma_booking + ' của bạn với ' + appointmentDetail.Ten_bac_si + ' đã được xác nhận.'
+                        'Lịch hẹn mã ' + appointmentDetail.Ma_booking + ' của bạn với ' + appointmentDetail.Ten_bac_si + ' đã được xác nhận.',
+                        io
                     );
 
                     // Chỉ gửi mail nếu bệnh nhân có cấu hình Email
@@ -230,10 +236,12 @@ export default class AppointmentController {
                         EmailService.sendBookingConfirmationEmail(appointmentDetail.Email, thongTinEmail).catch(err => console.log("Lỗi gửi mail ngầm"));
                     }
                 } else {
+                    const io = req.app.get('io');
                     await sendNotification(
                         appointmentDetail.Ma_nguoi_dung,
                         'Từ chối lịch hẹn',
-                        'Lịch hẹn mã ' + appointmentDetail.Ma_booking + ' của bạn với ' + appointmentDetail.Ten_bac_si + ' đã bị từ chối.'
+                        'Lịch hẹn mã ' + appointmentDetail.Ma_booking + ' của bạn với ' + appointmentDetail.Ten_bac_si + ' đã bị từ chối.',
+                        io
                     );
                 }
             }
@@ -260,10 +268,12 @@ export default class AppointmentController {
             const appointmentDetail = await AppointmentModel.getAppointmentDetails(appointmentID);
             
             if (appointmentDetail && appointmentDetail.Ma_nguoi_dung) {
+                const io = req.app.get('io');
                 await sendNotification(
                     appointmentDetail.Ma_nguoi_dung,
                     'Đánh giá', 
-                    '[Mã lịch hẹn ' + appointmentDetail.Ma_booking + '][ID ' + appointmentID + '] Vui lòng cho biết đánh giá của bạn về bác sĩ ' + appointmentDetail.Ten_bac_si
+                    '[Mã lịch hẹn ' + appointmentDetail.Ma_booking + '][ID ' + appointmentID + '] Vui lòng cho biết đánh giá của bạn về bác sĩ ' + appointmentDetail.Ten_bac_si,
+                    io
                 );
             }
 
@@ -384,10 +394,12 @@ export default class AppointmentController {
             // Gửi thông báo xin đánh giá cho bệnh nhân
             const appointmentDetail = await AppointmentModel.getAppointmentDetails(appointmentID);
             if (appointmentDetail && appointmentDetail.Ma_nguoi_dung) {
+                const io = req.app.get('io');
                 await sendNotification(
                     appointmentDetail.Ma_nguoi_dung,
                     'Đánh giá ca khám', 
-                    '[Mã lịch hẹn ' + appointmentDetail.Ma_booking + '] Vui lòng cho biết đánh giá của bạn về bác sĩ ' + appointmentDetail.Ten_bac_si
+                    '[Mã lịch hẹn ' + appointmentDetail.Ma_booking + '] Vui lòng cho biết đánh giá của bạn về bác sĩ ' + appointmentDetail.Ten_bac_si,
+                    io
                 );
             }
 

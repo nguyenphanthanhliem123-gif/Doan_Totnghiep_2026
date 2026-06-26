@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ung_dung_dat_lich_kham/Models/notification_model.dart';
-import 'package:ung_dung_dat_lich_kham/ViewModels/notification_viewmodel.dart';
+import 'package:ung_dung_dat_lich_kham/viewmodels/notification_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/Views/review_screen.dart';
 
 class NotificationScreen extends StatefulWidget {

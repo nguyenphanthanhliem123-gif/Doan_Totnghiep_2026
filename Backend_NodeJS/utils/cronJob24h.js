@@ -70,8 +70,8 @@ cron.schedule('0 * * * *', async () => {
                         VALUES (?, ?, ?, NOW(), 0)
                     `;
                     await execute(insertNotificationQuery, [Ma_nguoi_dung, loai, noiDung]);*/
-
-                    await sendNotification(Ma_nguoi_dung, loai, noiDung);
+                    const io = req.app.get('io');
+                    await sendNotification(Ma_nguoi_dung, loai, noiDung, io);
                 } 
             }
         }

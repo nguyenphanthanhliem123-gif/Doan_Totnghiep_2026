@@ -14,6 +14,7 @@ import 'package:ung_dung_dat_lich_kham/viewmodels/specialty_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/appointment_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/views/health_record_menu_screen.dart';
 import 'package:ung_dung_dat_lich_kham/views/appointment_list_screen.dart';
+import 'package:ung_dung_dat_lich_kham/viewmodels/notification_viewmodel.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -43,6 +44,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<SpecialtyViewModel>().loadAllSpecialties();
+      context.read<NotificationViewmodel>().initSocket();
       _scrollToSelectedDate(animate: false);
     });
   }
@@ -225,6 +227,14 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildHeaderIcon(IconData icon, VoidCallback onTap) {
+    final notificationVM = context.watch<NotificationViewmodel>();
+    
+    // 1. Kiểm tra xem icon hiện tại có phải là nút thông báo hay không
+    final isNotification = icon == Icons.notifications_none_outlined;
+    
+    // 2. Lấy số lượng thông báo chưa đọc từ ViewModel (thay 'unreadCount' bằng biến thực tế của bạn nếu khác tên)
+    final unreadCount = notificationVM.notiUnRead; 
+
     return Container(
       decoration: BoxDecoration(
         color: const Color(0xFFF0F9FA),
@@ -232,7 +242,17 @@ class _HomeScreenState extends State<HomeScreen> {
         border: Border.all(color: const Color(0xFFE0F2F4), width: 1),
       ),
       child: IconButton(
-        icon: Icon(icon, color: primaryCyan, size: 22),
+        // 3. Nếu là nút thông báo thì bọc Icon trong widget Badge chính chủ của Flutter
+        icon: isNotification
+            ? Badge(
+                isLabelVisible: unreadCount > 0, // Chỉ hiện badge khi có thông báo > 0
+                label: Text(
+                  unreadCount > 99 ? '99+' : unreadCount.toString(),
+                  style: const TextStyle(color: Colors.white, fontSize: 10),
+                ),
+                child: Icon(icon, color: primaryCyan, size: 22),
+              )
+            : Icon(icon, color: primaryCyan, size: 22),
         onPressed: onTap,
         constraints: const BoxConstraints(),
         padding: const EdgeInsets.all(8),

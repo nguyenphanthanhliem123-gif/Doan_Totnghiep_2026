@@ -9,6 +9,7 @@ import '../Backend_NodeJS/utils/cronJob24h.js';
 import fileUpload from 'express-fileupload';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import jwt from 'jsonwebtoken';
 
 //Import Routes
 import userRoutes from './routes/userRoutes.js';
@@ -41,27 +42,47 @@ const io = new Server(server, {
     }
 });
 
+io.use((socket, next) => {
+    // 🌟 LẤY TOKEN từ gói handshake.auth mà Flutter gửi lên
+    const token = socket.handshake.auth?.token;
+
+    if (!token) {
+        return next(new Error("Authentication error: Không tìm thấy Token"));
+    }
+
+    try {
+        // Giải mã token bằng mã bí mật JWT_SECRET của bạn
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        
+        // Gắn trực tiếp userID lấy từ token vào chính đối tượng socket này
+        socket.userId = decoded.id; 
+        
+        next(); // Token hợp lệ, cho phép kết nối tiếp
+    } catch (err) {
+        return next(new Error("Authentication error: Token không hợp lệ hoặc hết hạn"));
+    }
+});
+
 // 4. THÊM ĐOẠN NÀY: Quản lý danh sách người dùng online
-const onlineUsers = new Map(); // Lưu cặp key-value: [Ma_nguoi_dung, socket.id]
+if (!global.onlineUsers) {
+    global.onlineUsers = new Map();
+}
 
 io.on('connection', (socket) => {
+    // Lấy userId an toàn đã được xác thực từ middleware
+    const currentUser = String(socket.userId);
+    
     console.log(`[Socket] Thiết lập kết nối mới: ${socket.id}`);
 
-    // Lắng nghe sự kiện khi Client đăng ký danh tính (sau khi đăng nhập)
-    socket.on('register_user', (maNguoiDung) => {
-        onlineUsers.set(String(maNguoiDung), socket.id);
-        console.log(`[Socket] Người dùng ${maNguoiDung} đang ONLINE với socketID: ${socket.id}`);
-    });
+    // 🌟 ĐĂNG KÝ LUÔN: Không cần đợi client emit 'register_user' nữa!
+    global.onlineUsers.set(currentUser, socket.id);
+    console.log(`[Socket] Người dùng ${currentUser} đang ONLINE với socketID: ${socket.id}`);
 
-    // Lắng nghe khi Client chủ động ngắt kết nối (tắt tab hoặc logout)
+    // Lắng nghe khi Client ngắt kết nối (tắt app, mất mạng hoặc logout)
     socket.on('disconnect', () => {
-        for (let [maNguoiDung, socketId] of onlineUsers.entries()) {
-            if (socketId === socket.id) {
-                onlineUsers.delete(maNguoiDung);
-                console.log(`[Socket] Người dùng ${maNguoiDung} đã OFFLINE`);
-                break;
-            }
-        }
+        // 🌟 XÓA TRỰC TIẾP: Chỉ mất 1 dòng, không cần chạy vòng lặp quét mảng
+        global.onlineUsers.delete(currentUser);
+        console.log(`[Socket] Người dùng ${currentUser} đã OFFLINE`);
     });
 });
 
