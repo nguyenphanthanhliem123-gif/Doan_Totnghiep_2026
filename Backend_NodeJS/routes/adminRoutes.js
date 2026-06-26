@@ -1,15 +1,9 @@
 import { Router } from "express";
+import adminController from "../controllers/adminController.js";
+
 const adminRoutes = Router();
 
-import userController from "../controllers/userController.js";
-import auth from "../middleware/auth.js";
-import admin from "../middleware/admin.js";
-import profileController from "../controllers/profileController.js";
+adminRoutes.post('/login', adminController.login);
+adminRoutes.post('/verify-otp', adminController.verifyOtp);
 
-const adminAuthRoutes = Router();
-adminAuthRoutes.use(auth,admin);
-
-adminAuthRoutes.get('/profiles', profileController.getAll);
-
-adminRoutes.use('/', adminAuthRoutes);
 export default adminRoutes;
