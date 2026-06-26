@@ -20,6 +20,8 @@ import 'package:ung_dung_dat_lich_kham/viewmodels/appointment_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/doctor_appointment_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/doctor_appointment_list_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/doctor_appointment_detail_viewmodel.dart';
+import 'package:ung_dung_dat_lich_kham/viewmodels/admin_viewmodel.dart';
+import 'views/admin/admin_login_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -51,7 +53,9 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => DoctorAppointmentDetailViewModel()),
         ChangeNotifierProvider(create: (_) => DoctorClinicViewmodel()),
         ChangeNotifierProvider(create: (_) => DoctorServiceViewModel()),
-        ChangeNotifierProvider(create: (_) => ScheduleConfigViewmodel())
+        ChangeNotifierProvider(create: (_) => ScheduleConfigViewmodel()),
+        // --- ViewModel của Admin ---
+        ChangeNotifierProvider(create: (_) => AdminViewModel()),
       ],
       child: MaterialApp(
         title: 'Hệ thống đặt lịch khám bệnh',
@@ -62,7 +66,7 @@ class MyApp extends StatelessWidget {
         scrollBehavior: const MaterialScrollBehavior().copyWith(
         dragDevices: {PointerDeviceKind.mouse, PointerDeviceKind.touch},
       ),
-        home: const LoginScreen(),
+        home: const AdminLoginScreen(),
       ),
     );
   }
