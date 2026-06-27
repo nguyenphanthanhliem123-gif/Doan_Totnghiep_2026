@@ -31,10 +31,18 @@ const app = express();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// 2. THÊM DÒNG NÀY: Tạo HTTP Server bọc quanh Express App
+// Tạo HTTP Server bọc quanh Express App
 const server = http.createServer(app); 
 
-// 3. THÊM ĐOẠN NÀY: Khởi tạo Socket.io Server liên kết với HTTP Server
+app.use(cors({ origin: '*' }));
+app.use(bodyParser.json());
+app.use(express.urlencoded({ extended: true })); 
+app.use(fileUpload({
+    limits: { fileSize: 10 * 1024 * 1024 },
+    createParentPath: true,
+}));
+
+// Khởi tạo Socket.io Server liên kết với HTTP Server
 const io = new Server(server, {
     cors: {
         origin: '*', // Cho phép mọi nguồn kết nối (Cấu hình lại theo tên miền Frontend khi deploy)
@@ -73,7 +81,7 @@ io.use((socket, next) => {
     }
 });
 
-// 4. THÊM ĐOẠN NÀY: Quản lý danh sách người dùng online
+// Quản lý danh sách người dùng online
 if (!global.onlineUsers) {
     global.onlineUsers = new Map();
 }
@@ -104,13 +112,6 @@ app.set('onlineUsers', onlineUsers);
 app.use(bodyParser.json());
 // THÊM DÒNG NÀY: Để Node.js đọc được dữ liệu từ Form HTML gửi lên
 app.use(express.urlencoded({ extended: true })); 
-app.use(cors({ origin: '*' }));
-
-app.use(fileUpload({
-    limits: { fileSize: 5 * 1024 * 1024 }, // Giới hạn ảnh tối đa 5MB
-    createParentPath: true, // Tự động tạo thư mục 'uploads' nếu nó chưa tồn tại
-    abortOnLimit: true // Báo lỗi ngay nếu file quá lớn
-}));
 
 //Routes
 app.get('/',(req,res) => {

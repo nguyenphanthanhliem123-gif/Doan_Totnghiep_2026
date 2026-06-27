@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../viewmodels/auth_viewmodel.dart';
-import '../Constants/ui_constants.dart'; // 🌟 Import đồng bộ UI
+import '../Constants/ui_constants.dart'; 
 import 'login_screen.dart';
 import 'create_new_password_screen.dart';
 
@@ -10,12 +10,14 @@ class OtpVerificationScreen extends StatefulWidget {
   final String verificationTarget;
   final bool isSms;
   final bool isForgotPassword;
+  final bool isDoctor; // 🌟 THÊM BIẾN NÀY ĐỂ PHÂN LOẠI LUỒNG BÁC SĨ
 
   const OtpVerificationScreen({
     super.key,
     required this.verificationTarget,
     required this.isSms,
     this.isForgotPassword = false,
+    this.isDoctor = false, // 🌟 Mặc định là false để người dùng cũ ko bị lỗi
   });
 
   @override
@@ -28,12 +30,8 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
   @override
   void dispose() {
-    for (var controller in _otpControllers) {
-      controller.dispose();
-    }
-    for (var node in _focusNodes) {
-      node.dispose();
-    }
+    for (var controller in _otpControllers) { controller.dispose(); }
+    for (var node in _focusNodes) { node.dispose(); }
     super.dispose();
   }
 
@@ -48,16 +46,16 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Colors.transparent, // Giữ nền trong suốt cho màn này
+        backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: kPrimaryColor), // Dùng màu chuẩn
+          icon: const Icon(Icons.arrow_back_ios, color: kPrimaryColor),
           onPressed: () => Navigator.pop(context),
         ),
       ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: kDefaultPadding), // Lề chuẩn 20
+          padding: const EdgeInsets.symmetric(horizontal: kDefaultPadding),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -65,12 +63,12 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
               Icon(
                 widget.isSms ? Icons.mark_chat_unread_outlined : Icons.mark_email_unread_outlined,
                 size: 80,
-                color: kPrimaryColor, // Màu chuẩn
+                color: kPrimaryColor,
               ),
               const SizedBox(height: kSpacingLarge),
-              const Text(
-                'Xác Thực Tài Khoản',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              Text(
+                widget.isDoctor ? 'Xác Thực Hồ Sơ Bác Sĩ' : 'Xác Thực Tài Khoản',
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
               Text(
@@ -83,11 +81,10 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
               const SizedBox(height: 8),
               Text(
                 widget.verificationTarget,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: kPrimaryColor), // Màu chuẩn
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: kPrimaryColor),
               ),
               const SizedBox(height: 40),
               
-              // KHU VỰC NHẬP OTP
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: List.generate(6, (index) => _buildOtpBox(index)),
@@ -95,7 +92,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
               
               const SizedBox(height: 40),
 
-              // NÚT XÁC NHẬN
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -105,40 +101,78 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                           String otpCode = getOtp();
                           if (otpCode.length == 6) {
                             if (widget.isForgotPassword) {
-                                final result = await authVM.verifyResetOTP(widget.verificationTarget, otpCode);
-                                if (!mounted) return;
-                                
-                                if (result['success'] == true) {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => CreateNewPasswordScreen(
-                                        email: widget.verificationTarget, 
-                                        otpCode: otpCode, 
-                                      ),
+                              final result = await authVM.verifyResetOTP(widget.verificationTarget, otpCode);
+                              if (!mounted) return;
+                              
+                              if (result['success'] == true) {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => CreateNewPasswordScreen(
+                                      email: widget.verificationTarget, 
+                                      otpCode: otpCode, 
                                     ),
-                                  );
-                                } else {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(result['message']),
-                                      backgroundColor: Colors.redAccent,
-                                    )
-                                  );
-                                }
+                                  ),
+                                );
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(result['message']), backgroundColor: Colors.redAccent)
+                                );
+                              }
                             }
+                            // LUỒNG ĐĂNG KÝ BÁC SĨ
+                            else if (widget.isDoctor) {
+                              final result = await authVM.verifyDoctorOTP(widget.verificationTarget, otpCode);
+                              if (!mounted) return;
+
+                              if (result['success'] == true) {
+                                // Hiện Dialog thông báo nghiệp vụ chờ duyệt cực chuyên nghiệp
+                                showDialog(
+                                  context: context,
+                                  barrierDismissible: false,
+                                  builder: (context) => AlertDialog(
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusLarge)),
+                                    title: const Row(
+                                      children: [
+                                        Icon(Icons.check_circle, color: Colors.green),
+                                        SizedBox(width: 10),
+                                        Text('Nộp Hồ Sơ Thành Công', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                                      ],
+                                    ),
+                                    content: const Text('Hồ sơ chuyên môn của Bác sĩ đã được xác thực email thành công và đang nằm trong danh sách chờ phê duyệt từ Ban quản trị hệ thống.'),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () {
+                                          Navigator.pushAndRemoveUntil(
+                                            context,
+                                            MaterialPageRoute(builder: (context) => const LoginScreen()),
+                                            (Route<dynamic> route) => false,
+                                          );
+                                        },
+                                        child: const Text('Quay về Đăng nhập', style: TextStyle(color: kPrimaryColor, fontWeight: FontWeight.bold)),
+                                      )
+                                    ],
+                                  ),
+                                );
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(result['message']), backgroundColor: Colors.redAccent)
+                                );
+                              }
+                            }
+                            // LUỒNG ĐĂNG KÝ BỆNH NHÂN MẶC ĐỊNH
                             else {
-                                final result = await authVM.verifyOTP(widget.verificationTarget, otpCode);
-                                if (!mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['message'])));
-                                
-                                if (result['success'] == true) {
-                                    Navigator.pushAndRemoveUntil(
-                                      context,
-                                      MaterialPageRoute(builder: (context) => const LoginScreen()),
-                                      (Route<dynamic> route) => false,
-                                    );
-                                }
+                              final result = await authVM.verifyOTP(widget.verificationTarget, otpCode);
+                              if (!mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['message'])));
+                              
+                              if (result['success'] == true) {
+                                Navigator.pushAndRemoveUntil(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                                  (Route<dynamic> route) => false,
+                                );
+                              }
                             }
                           } else {
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -147,15 +181,13 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                           }
                         },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: kPrimaryColor, // Màu chuẩn
+                    backgroundColor: kPrimaryColor,
                     padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(kBorderRadiusLarge), // Bo góc 20
-                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusLarge)),
                   ),
                   child: authVM.isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('Xác Nhận', style: kButtonTextStyle), // Style chuẩn
+                      : const Text('Xác Nhận', style: kButtonTextStyle),
                 ),
               ),
               const SizedBox(height: 30),
@@ -168,30 +200,21 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
   Widget _buildOtpBox(int index) {
     return Container(
-      width: 45,
-      height: 55,
+      width: 45, height: 55,
       decoration: BoxDecoration(
-        color: kLightCyanBg1, // Nền chuẩn ô nhập liệu
-        borderRadius: BorderRadius.circular(kBorderRadiusSmall), // Bo góc 12
+        color: kLightCyanBg1,
+        borderRadius: BorderRadius.circular(kBorderRadiusSmall),
         border: Border.all(
           color: _focusNodes[index].hasFocus ? kPrimaryColor : Colors.transparent,
           width: 2,
         ),
       ),
       child: TextField(
-        controller: _otpControllers[index],
-        focusNode: _focusNodes[index],
-        keyboardType: TextInputType.number,
-        textAlign: TextAlign.center,
+        controller: _otpControllers[index], focusNode: _focusNodes[index],
+        keyboardType: TextInputType.number, textAlign: TextAlign.center,
         style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: kPrimaryColor),
-        inputFormatters: [
-          LengthLimitingTextInputFormatter(1),
-          FilteringTextInputFormatter.digitsOnly,
-        ],
-        decoration: const InputDecoration(
-          border: InputBorder.none,
-          contentPadding: EdgeInsets.zero,
-        ),
+        inputFormatters: [LengthLimitingTextInputFormatter(1), FilteringTextInputFormatter.digitsOnly],
+        decoration: const InputDecoration(border: InputBorder.none, contentPadding: EdgeInsets.zero),
         onChanged: (value) {
           if (value.isNotEmpty && index < 5) {
             FocusScope.of(context).requestFocus(_focusNodes[index + 1]);

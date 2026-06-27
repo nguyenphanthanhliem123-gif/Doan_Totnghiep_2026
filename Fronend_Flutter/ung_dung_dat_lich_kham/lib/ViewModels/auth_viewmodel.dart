@@ -3,6 +3,8 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ung_dung_dat_lich_kham/Config/BASE_URL.dart';
+import 'dart:io';
+import 'dart:typed_data';
 
 class AuthViewModel extends ChangeNotifier {
   bool _isLoading = false;
@@ -415,6 +417,113 @@ class AuthViewModel extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return {"success": false, "message": "Lỗi kết nối máy chủ!"};
+    }
+  }
+
+  // Hàm đăng ký riêng cho Bác sĩ
+  // Hàm kết nối API Đăng ký Bác sĩ
+  Future<Map<String, dynamic>> registerDoctor({
+    required String fullName, required String email, 
+    required String password, required String confirmPassword,
+    required int maChuyenKhoa, required String hocVi, 
+    required int namKinhNghiem, required String moTa,
+    required Uint8List avatarBytes, // Nhận Bytes
+    required Uint8List certificateBytes, // Nhận Bytes
+  }) async {
+    // 1. Kiểm tra cơ bản giống hàm register
+    if (password != confirmPassword) {
+      return {"success": false, "message": "Mật khẩu xác nhận không khớp!"};
+    }
+    if (fullName.isEmpty || email.isEmpty || password.isEmpty || hocVi.isEmpty) {
+      return {"success": false, "message": "Vui lòng điền đầy đủ thông tin!"};
+    }
+
+    // 2. Bật trạng thái Loading
+    _isLoading = true;
+    notifyListeners();
+
+    // 3. Chuẩn bị Request Multipart
+    final url = Uri.parse('$_baseUrl/register-doctor');
+    
+    try {
+      var request = http.MultipartRequest('POST', url);
+      
+      // Đính kèm các trường thông tin
+      request.fields['fullName'] = fullName;
+      request.fields['email'] = email;
+      request.fields['password'] = password;
+      request.fields['maChuyenKhoa'] = maChuyenKhoa.toString();
+      request.fields['hocVi'] = hocVi;
+      request.fields['namKinhNghiem'] = namKinhNghiem.toString();
+      request.fields['moTa'] = moTa;
+      request.fields['role'] = "Bac_si";
+
+      // Đính kèm File dạng BYTES thay vì Path
+      request.files.add(http.MultipartFile.fromBytes('avatar', avatarBytes, filename: 'avatar.jpg'));
+      request.files.add(http.MultipartFile.fromBytes('certificate', certificateBytes, filename: 'cert.jpg'));
+
+      // 4. Gửi request
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
+      
+      // 5. Giải mã JSON trả về
+      final responseData = jsonDecode(response.body);
+      print("BACKEND TRA VE CUC NAY (DOCTOR): $responseData");
+
+      _isLoading = false;
+      notifyListeners();
+
+      // 6. Kiểm tra kết quả trả về
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {"success": true, "message": "Đã gửi mã OTP, vui lòng xác thực!"};
+      } else {
+        return {
+          "success": false, 
+          "message": responseData['message'] ?? "Đăng ký thất bại"
+        };
+      }
+    } catch (error) {
+      // 7. Xử lý lỗi kết nối
+      _isLoading = false;
+      notifyListeners();
+      return {"success": false, "message": "Lỗi kết nối máy chủ. Vui lòng thử lại!"};
+    }
+  }
+
+  // Hàm kết nối API Xác thực OTP dành riêng cho Bác sĩ
+  Future<Map<String, dynamic>> verifyDoctorOTP(String email, String otp) async {
+    _isLoading = true;
+    notifyListeners();
+
+    // Gọi đúng đến endpoint dành cho bác sĩ mà chúng ta đã cấu hình ở Backend
+    final url = Uri.parse('$_baseUrl/verify-doctor-otp'); 
+
+    try {
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "email": email,
+          "otp": otp
+        }),
+      );
+
+      final responseData = jsonDecode(response.body);
+      _isLoading = false;
+      notifyListeners();
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return {"success": true, "message": responseData['message'] ?? "Xác thực hồ sơ thành công!"};
+      } else {
+        return {
+          "success": false, 
+          "message": responseData['message'] ?? "Xác thực hồ sơ thất bại"
+        };
+      }
+    } catch (error) {
+      _isLoading = false;
+      notifyListeners();
+      return {"success": false, "message": "Lỗi kết nối máy chủ. Vui lòng thử lại!"};
     }
   }
 }

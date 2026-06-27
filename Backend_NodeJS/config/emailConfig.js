@@ -57,3 +57,26 @@ export const sendResetPasswordEmail = async (toEmail, otpCode) => {
 
     return transporter.sendMail(mailOptions);
 };
+
+// Hàm gửi thư chứa mã OTP dành riêng cho luồng Đăng ký Bác sĩ
+export const sendDoctorOTPEmail = async (toEmail, otpCode) => {
+    const mailOptions = {
+        from: `"Hệ Thống Đặt Lịch Khám" <${process.env.EMAIL_USER}>`,
+        to: toEmail,
+        subject: 'Mã Xác Thực Hồ Sơ Đăng Ký Bác Sĩ',
+        html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
+                <h2 style="color: #00C3C9; text-align: center;">XÁC THỰC HỒ SƠ BÁC SĨ</h2>
+                <p>Kính chào Bác sĩ,</p>
+                <p>Hệ thống đã tiếp nhận thông tin khởi tạo hồ sơ đối tác của Quý bác sĩ. Vui lòng nhập mã OTP gồm 6 chữ số dưới đây để hoàn tất bước xác thực Email:</p>
+                <div style="background-color: #EAF8FB; padding: 15px; text-align: center; font-size: 28px; font-weight: bold; letter-spacing: 5px; color: #2D2D2D; border-radius: 5px; margin: 20px 0;">
+                    ${otpCode}
+                </div>
+                <p style="color: #dc3545; font-size: 13px;">* Mã OTP này có hiệu lực trong vòng 5 phút.</p>
+                <p>Sau khi xác thực thành công, hồ sơ của Bác sĩ sẽ được chuyển đến ban quản trị hệ thống để tiến hành duyệt nghiệm thu chi tiết.</p>
+            </div>
+        `
+    };
+
+    return transporter.sendMail(mailOptions);
+};

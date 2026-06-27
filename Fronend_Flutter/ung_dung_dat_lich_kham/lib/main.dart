@@ -66,7 +66,8 @@ class MyApp extends StatelessWidget {
         scrollBehavior: const MaterialScrollBehavior().copyWith(
         dragDevices: {PointerDeviceKind.mouse, PointerDeviceKind.touch},
       ),
-        home: const AdminLoginScreen(),
+        home: const LoginScreen(),
+        //home: const AdminLoginScreen(),
       ),
     );
   }

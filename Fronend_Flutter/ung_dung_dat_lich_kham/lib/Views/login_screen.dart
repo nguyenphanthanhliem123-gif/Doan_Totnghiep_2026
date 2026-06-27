@@ -6,7 +6,8 @@ import '../Constants/ui_constants.dart'; // 🌟 Đã thêm import đồng bộ 
 import 'main_screen.dart';
 import 'forgot_password_screen.dart';
 import 'doctor/doctor_main_screen.dart';
-import 'signup_screen.dart'; 
+import 'signup_screen.dart';
+import 'doctor/doctor_signup_screen.dart'; 
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -179,6 +180,20 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ],
             ),
+            const SizedBox(height: 15),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text('Bạn là chuyên gia y tế? ', style: TextStyle(color: kGreyTextColor, fontSize: 14)),
+                GestureDetector(
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DoctorSignupScreen())),
+                  child: const Text(
+                    'Đăng ký đối tác', 
+                    style: TextStyle(color: kPrimaryColor, fontWeight: FontWeight.bold, fontSize: 15)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
           ],
         ),
       ),

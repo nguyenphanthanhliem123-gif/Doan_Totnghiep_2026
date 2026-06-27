@@ -35,6 +35,10 @@ authUserRoutes.post('/change-password', userController.changePassword);
 // Thêm API Xóa tài khoản vào nhóm cần bảo mật
 authUserRoutes.post('/delete-account', userController.deleteAccount);
 
+// --- KHU VỰC API CỦA BÁC SĨ ---
+userRoutes.post('/register-doctor', userController.registerDoctor);
+userRoutes.post('/verify-doctor-otp', userController.verifyDoctorOTP);
+
 
 userRoutes.use('/', authUserRoutes);
 

@@ -3,7 +3,10 @@ import jwt from 'jsonwebtoken';
 import userModel from '../models/userModel.js';
 import crypto from 'crypto';
 import { generateOTP } from '../utils/otpHelper.js';
-import { sendOTPEmail, sendResetPasswordEmail } from '../config/emailConfig.js';
+import { sendOTPEmail, sendResetPasswordEmail, sendDoctorOTPEmail } from '../config/emailConfig.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { execute } from '../config/db.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || "BiMatCuaNhom1";
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "1d";
@@ -11,6 +14,9 @@ const PASSWORD_HASH_ROUNDS = parseInt(process.env.PASSWORD_HASH_ROUNDS) || 10;
 
 // Biến RAM TẠM THỜI CHỈ DÙNG ĐỂ CHỨA THÔNG TIN ĐĂNG KÝ (Vì chưa có account trong DB)
 const pendingRegistrations = new Map();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 export default class userController {
     // Hàm sinh Token
@@ -55,7 +61,7 @@ export default class userController {
 
             const existingUser = await userModel.findByEmail(email);
             if (existingUser) {
-                return res.status(409).json({ succeeded: false, message: 'Email đã tồn tại trong hệ thống' });
+                return res.status(409).json({ succeeded: false, message: 'Email đã tồn tại' });
             }
 
             // Sinh mã OTP 6 số
@@ -322,6 +328,110 @@ export default class userController {
             } else {
                 return res.status(400).json({ succeeded: false, message: "Lỗi hệ thống: Không thể xóa tài khoản" });
             }
+        } catch (error) {
+            return res.status(500).json({ succeeded: false, message: error.message });
+        }
+    }
+
+    // =====================================================================
+    // CÁC HÀM DÀNH CHO BÁC SĨ (DOCTOR PORTAL)
+    // =====================================================================
+
+    // Hàm đăng kí bác sĩ
+    static async registerDoctor(req, res) {
+        try {
+            const { email, password, fullName, maChuyenKhoa, hocVi, namKinhNghiem, moTa } = req.body;
+
+            if (!email || !password || !fullName || !maChuyenKhoa || !hocVi || !namKinhNghiem) {
+                return res.status(400).json({ succeeded: false, message: 'Vui lòng điền đầy đủ thông tin chuyên môn' });
+            }
+
+            if (!userController.validatePassword(password)) {
+                return res.status(400).json({ succeeded: false, message: 'Mật khẩu yếu: 8-100 ký tự, phải bao gồm A-Z, a-z, 0-9, ký tự đặc biệt' });
+            }
+
+            const existingUser = await userModel.findByEmail(email);
+            if (existingUser) return res.status(409).json({ succeeded: false, message: 'Email đã tồn tại' });
+
+            // Xử lý lưu Ảnh đại diện
+            const avatarFile = req.files.avatar;
+            const avatarName = `avatar_${Date.now()}_${avatarFile.name.replace(/\s+/g, '')}`;
+            await avatarFile.mv(path.join(__dirname, '../../uploads/', avatarName));
+
+            // Xử lý lưu Ảnh chứng chỉ
+            const certFile = req.files.certificate;
+            const certName = `cert_${Date.now()}_${certFile.name.replace(/\s+/g, '')}`;
+            await certFile.mv(path.join(__dirname, '../../uploads/', certName));
+
+            // Sinh OTP
+            const otpCode = generateOTP();
+            const hashedOtp = await hash(otpCode, 5);
+            await userModel.saveOTP(email, hashedOtp, 'REGISTER_DOCTOR');
+
+            // Lưu RAM
+            const hashedPassword = await hash(password, PASSWORD_HASH_ROUNDS);
+            pendingRegistrations.set(email, {
+                email, hashedPassword, fullName, role: 'Bac_si',
+                maChuyenKhoa, hocVi, namKinhNghiem, moTa,
+                anhDaiDien: `/uploads/${avatarName}`,
+                anhChungChi: `/uploads/${certName}` 
+            });
+
+            await sendDoctorOTPEmail(email, otpCode);
+            return res.status(200).json({
+                succeeded: true, 
+                message: 'Đã gửi mã OTP đến Email của bạn. Vui lòng kiểm tra!',
+                target: email 
+            });
+        } catch (error) {
+            return res.status(500).json({ succeeded: false, message: error.message });
+        }
+    }
+
+    // Hàm check mã OTP
+    static async verifyDoctorOTP(req, res) {
+        try {
+            const { email, otp } = req.body;
+            if (!email || !otp) return res.status(400).json({ succeeded: false, message: "Thiếu thông tin xác thực" });
+
+            const otpRecord = await userModel.getValidOTP(email, 'REGISTER_DOCTOR');
+            if (!otpRecord) return res.status(400).json({ succeeded: false, message: "Mã OTP không hợp lệ hoặc hết hạn." });
+
+            if (otpRecord.So_lan_thu >= 5) {
+                await userModel.markOTPAsUsed(otpRecord.Ma_otp);
+                return res.status(400).json({ succeeded: false, message: "Nhập sai quá nhiều lần. Vui lòng gửi lại mã mới!" });
+            }
+
+            const isMatch = await compare(otp, otpRecord.Otp_hash);
+            if (!isMatch) {
+                await userModel.incrementOTPTries(otpRecord.Ma_otp);
+                return res.status(400).json({ succeeded: false, message: "Mã OTP không chính xác!" });
+            }
+
+            await userModel.markOTPAsUsed(otpRecord.Ma_otp);
+            const userData = pendingRegistrations.get(email);
+            if (!userData) return res.status(400).json({ succeeded: false, message: "Phiên đăng ký hết hạn." });
+
+            // 1. Lưu vào bảng nguoi_dung KÈM THEO CỘT Anh_dai_dien
+            const [userResult] = await execute(
+                'INSERT INTO nguoi_dung (Ten_nguoi_dung, Email, Mat_khau, Phan_quyen, Anh_dai_dien, Trang_thai) VALUES (?, ?, ?, ?, ?, 1)',
+                [userData.fullName, userData.email, userData.hashedPassword, 'Bac_si', userData.anhDaiDien]
+            );
+            const newUserId = userResult.insertId;
+
+            // 2. Lưu vào bảng bac_si kèm cột Anh_chung_chi
+            await execute(
+                'INSERT INTO bac_si (Ma_nguoi_dung, Ma_chuyen_khoa, Mo_ta_ban_than, Hoc_vi, Nam_kinh_nghiem, Anh_chung_chi, Trang_thai_hoat_dong) VALUES (?, ?, ?, ?, ?, ?, "pending")',
+                [newUserId, userData.maChuyenKhoa, userData.moTa || '', userData.hocVi, userData.namKinhNghiem, userData.anhChungChi]
+            );
+
+            pendingRegistrations.delete(email);
+
+            // Bắn tín hiệu socket real-time cho Admin Dashboard
+            const io = req.app.get('io');
+            if (io) io.to('admin_room').emit('admin_dashboard_update');
+
+            return res.status(201).json({ succeeded: true, message: 'Đăng ký hồ sơ thành công! Vui lòng chờ Admin phê duyệt.' });
         } catch (error) {
             return res.status(500).json({ succeeded: false, message: error.message });
         }
