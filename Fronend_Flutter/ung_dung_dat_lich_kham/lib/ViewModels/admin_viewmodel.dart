@@ -43,6 +43,8 @@ class AdminViewModel extends ChangeNotifier {
     'todayAppointments': 0,
   };
 
+  List<dynamic> pendingDoctors = [];
+
   // Endpoint Backend cho Admin (Sử dụng BASE_URL chung của dự án)
   final String _baseUrl = "$BASE_URL/api/admin";
 
@@ -226,12 +228,11 @@ class AdminViewModel extends ChangeNotifier {
     _isLoading = true;
     _errorMessage = '';
     notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('admin_token');
 
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('admin_token');
-
-      if (token == null) {
+    try{
+    if (token == null) {
         print("Lỗi: Không tìm thấy token đăng nhập");
         return;
       }
@@ -265,18 +266,17 @@ class AdminViewModel extends ChangeNotifier {
     }
   }
 
-  // Hàm gọi API lấy chi tiết lịch hẹn dựa trên Ma_lich_hen (appointmentId)
   Future<void> fetchAppointmentDetail(int appointmentId) async {
     _isLoading = true;
     _errorMessage = '';
     _appointmentDetail = null;
     notifyListeners();
 
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('admin_token');
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('admin_token');
 
-      if (token == null) {
+    try{
+    if (token == null) {
         _errorMessage = 'Vui lòng đăng nhập lại.';
         return;
       }
@@ -306,6 +306,97 @@ class AdminViewModel extends ChangeNotifier {
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  // Lấy danh sách bác sĩ đang chờ duyệt
+  Future<void> fetchPendingDoctors() async {
+    _setLoading(true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('admin_token');
+
+      final response = await http.get(
+        Uri.parse('$_baseUrl/pending-doctors'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      final data = jsonDecode(response.body);
+      if (data['success'] == true) {
+        pendingDoctors = data['doctors'] ?? [];
+      }
+    } catch (e) {
+      debugPrint("Lỗi tải danh sách bác sĩ chờ duyệt: $e");
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Duyệt hồ sơ bác sĩ
+  Future<Map<String, dynamic>> approveDoctor(int maBacSi) async {
+    _setLoading(true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('admin_token');
+
+      final response = await http.post(
+        Uri.parse('$_baseUrl/approve-doctor'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'maBacSi': maBacSi}),
+      );
+
+      debugPrint("🔥 LỖI TỪ BACKEND: ${response.body}");
+
+      final data = jsonDecode(response.body);
+      _setLoading(false);
+      
+      // Nếu thành công thì tải lại danh sách mới
+      if (data['success'] == true) {
+        await fetchPendingDoctors();
+        fetchDashboardStats(); // Cập nhật lại số liệu trang chủ ngầm
+      }
+      return data;
+    } catch (e) {
+      _setLoading(false);
+      return {'success': false, 'message': 'Lỗi kết nối máy chủ'};
+    }
+  }
+
+  // Từ chối hồ sơ bác sĩ (kèm lý do)
+  Future<Map<String, dynamic>> rejectDoctor(int maBacSi, String reason) async {
+    _setLoading(true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('admin_token');
+
+      final response = await http.post(
+        Uri.parse('$_baseUrl/reject-doctor'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'maBacSi': maBacSi, 'reason': reason}),
+      );
+
+      debugPrint("🔥 LỖI TỪ BACKEND: ${response.body}");
+
+      final data = jsonDecode(response.body);
+      _setLoading(false);
+
+      if (data['success'] == true) {
+        await fetchPendingDoctors();
+        fetchDashboardStats(); 
+      }
+      return data;
+    } catch (e) {
+      _setLoading(false);
+      return {'success': false, 'message': 'Lỗi kết nối máy chủ'};
     }
   }
 

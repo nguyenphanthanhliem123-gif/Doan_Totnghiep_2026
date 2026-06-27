@@ -360,15 +360,22 @@ export default class userController {
             const existingUser = await userModel.findByEmail(email);
             if (existingUser) return res.status(409).json({ succeeded: false, message: 'Email đã tồn tại' });
 
+            // Lấy chính xác thư mục gốc đang chạy Node.js và nối với chữ 'uploads'
+            const uploadDir = path.join(process.cwd(), 'uploads');
+
             // Xử lý lưu Ảnh đại diện
             const avatarFile = req.files.avatar;
             const avatarName = `avatar_${Date.now()}_${avatarFile.name.replace(/\s+/g, '')}`;
-            await avatarFile.mv(path.join(__dirname, '../../uploads/', avatarName));
+            const avatarPath = path.join(uploadDir, avatarName);
+            await avatarFile.mv(avatarPath);
+            console.log("✅ Đã lưu Avatar thành công tại:", avatarPath);
 
             // Xử lý lưu Ảnh chứng chỉ
             const certFile = req.files.certificate;
             const certName = `cert_${Date.now()}_${certFile.name.replace(/\s+/g, '')}`;
-            await certFile.mv(path.join(__dirname, '../../uploads/', certName));
+            const certPath = path.join(uploadDir, certName);
+            await certFile.mv(certPath);
+            console.log("✅ Đã lưu Chứng chỉ thành công tại:", certPath);
 
             // Sinh OTP
             const otpCode = generateOTP();

@@ -133,10 +133,95 @@ const sendReminderEmail24h = async (emailNguoiNhan, thongTin) => {
     }
 };
 
+// Các hàm cho admin
+
+const sendDoctorApprovalEmail = async (emailNguoiNhan, tenBacSi) => {
+    try {
+        const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_PASS
+            }
+        });
+
+        const htmlContent = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+                <div style="background-color: #28a745; color: white; padding: 20px; text-align: center;">
+                    <h2 style="margin: 0;">Hồ sơ đăng ký đã được phê duyệt!</h2>
+                </div>
+                <div style="padding: 20px;">
+                    <p>Chào Bác sĩ <strong>${tenBacSi}</strong>,</p>
+                    <p>Chúc mừng bác sĩ! Hồ sơ đăng ký hành nghề trên hệ thống ứng dụng đặt lịch khám của bác sĩ đã được phê duyệt thành công.</p>
+                    <div style="background-color: #f4fbf7; padding: 15px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #28a745;">
+                        <p style="margin: 5px 0;"><strong>Trạng thái tài khoản:</strong> Đã kích hoạt</p>
+                        <p style="margin: 5px 0;"><strong>Quyền truy cập:</strong> Bác sĩ chuyên khoa</p>
+                    </div>
+                    <p>Bây giờ bác sĩ đã có thể đăng nhập vào ứng dụng bằng tài khoản email đã đăng ký để thiết lập lịch khám.</p>
+                    <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
+                    <p style="font-size: 12px; color: #999; text-align: center;">Đây là email tự động từ Ban Quản Trị, vui lòng không trả lời thư này.</p>
+                </div>
+            </div>
+        `;
+
+        await transporter.sendMail({
+            from: `"Hệ thống Đặt lịch khám" <${process.env.EMAIL_USER}>`,
+            to: emailNguoiNhan,
+            subject: `[Thông báo] Hồ sơ đăng ký Bác sĩ đã được PHÊ DUYỆT`,
+            html: htmlContent
+        });
+        console.log('✅ Đã gửi email phê duyệt thành công tới bác sĩ:', emailNguoiNhan);
+    } catch (error) {
+        console.error('❌ Lỗi gửi email phê duyệt bác sĩ:', error);
+    }
+};
+
+const sendDoctorRejectionEmail = async (emailNguoiNhan, tenBacSi, lyDo) => {
+    try {
+        const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_PASS
+            }
+        });
+
+        const htmlContent = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+                <div style="background-color: #dc3545; color: white; padding: 20px; text-align: center;">
+                    <h2 style="margin: 0;">Thông báo kết quả duyệt hồ sơ</h2>
+                </div>
+                <div style="padding: 20px;">
+                    <p>Chào Bác sĩ <strong>${tenBacSi}</strong>,</p>
+                    <p>Cảm ơn bác sĩ đã gửi yêu cầu gia nhập hệ thống của chúng tôi. Tuy nhiên, sau khi kiểm tra thông tin và chứng chỉ hành nghề, ban quản trị rất tiếc phải thông báo hồ sơ của bác sĩ <strong>chưa được thông qua</strong>.</p>
+                    <div style="background-color: #fff5f5; padding: 15px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #dc3545;">
+                        <p style="margin: 5px 0; color: #dc3545;"><strong>Lý do từ chối từ Ban Quản Trị:</strong></p>
+                        <p style="margin: 5px 0; font-style: italic; color: #333;">"${lyDo}"</p>
+                    </div>
+                    <p>Bác sĩ vui lòng chuẩn bị lại thông tin chính xác hoặc chụp ảnh chứng chỉ rõ nét hơn để tiến hành đăng ký lại.</p>
+                    <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
+                    <p style="font-size: 12px; color: #999; text-align: center;">Đây là email tự động từ Ban Quản Trị, vui lòng không trả lời thư này.</p>
+                </div>
+            </div>
+        `;
+
+        await transporter.sendMail({
+            from: `"Hệ thống Đặt lịch khám" <${process.env.EMAIL_USER}>`,
+            to: emailNguoiNhan,
+            subject: `[Thông báo] Kết quả xét duyệt hồ sơ đăng ký Bác sĩ`,
+            html: htmlContent
+        });
+        console.log('✅ Đã gửi email từ chối thành công tới bác sĩ:', emailNguoiNhan);
+    } catch (error) {
+        console.error('❌ Lỗi gửi email từ chối bác sĩ:', error);
+    }
+};
+
 const EmailService = {
     generateQRCodeBase64,
     sendBookingConfirmationEmail,
-    sendReminderEmail24h
+    sendReminderEmail24h,
+    sendDoctorApprovalEmail,
+    sendDoctorRejectionEmail
 };
-
 export default EmailService;

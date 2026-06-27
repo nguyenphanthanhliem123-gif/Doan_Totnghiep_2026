@@ -5,6 +5,7 @@ import userModel from '../models/userModel.js'; // Tận dụng các hàm saveOT
 import { generateOTP } from '../utils/otpHelper.js';
 import { sendOTPEmail } from '../config/emailConfig.js';
 import appointmentModel from '../models/AppointmentModel.js';
+import EmailService from "../services/emailService.js";
 
 const ADMIN_JWT_SECRET = process.env.ADMIN_JWT_SECRET || "AdminSecretKey123";
 
@@ -221,6 +222,74 @@ export default class adminController {
 
         } catch (error) {
             return res.status(500).json({ succeeded: false, message: "Lỗi server: " + error.message });
+        }
+    }
+    // Lấy danh sách hồ sơ đang đợi duyệt
+    static async getPendingDoctorsList(req, res) {
+        try {
+            const doctors = await adminModel.getPendingDoctors();
+            return res.status(200).json({
+                success: true,
+                doctors: doctors
+            });
+        } catch (error) {
+            return res.status(500).json({ success: false, message: error.message });
+        }
+    }
+
+    // Chấp thuận duyệt kích hoạt tài khoản bác sĩ
+    static async approveDoctor(req, res) {
+        try {
+            const { maBacSi } = req.body;
+            const adminId = req.adminId;
+
+            if (!maBacSi) {
+                return res.status(400).json({ success: false, message: "Thiếu mã bác sĩ" });
+            }
+
+            // Truyền trạng thái chuỗi 'active' khớp với ENUM trong database
+            const doctorInfo = await adminModel.updateDoctorStatus(maBacSi, 'active', adminId, "Hồ sơ hợp lệ");
+
+            if (doctorInfo) {
+                // Gửi thư chúc mừng bác sĩ
+                EmailService.sendDoctorApprovalEmail(doctorInfo.Email, doctorInfo.Ten_nguoi_dung);
+            }
+
+            return res.status(200).json({
+                success: true,
+                message: `Đã duyệt thành công bác sĩ ${doctorInfo?.Ten_nguoi_dung || ''}`
+            });
+        } catch (error) {
+            console.error("❌ LỖI:", error.message); // In đậm lỗi ra terminal Node
+            return res.status(500).json({ success: false, message: error.message });
+        }
+    }
+
+    // Từ chối hồ sơ kèm lý do cụ thể
+    static async rejectDoctor(req, res) {
+        try {
+            const { maBacSi, reason } = req.body;
+            const adminId = req.adminId;
+
+            if (!maBacSi || !reason) {
+                return res.status(400).json({ success: false, message: "Vui lòng cung cấp mã bác sĩ và lý do từ chối" });
+            }
+
+            // Truyền trạng thái chuỗi 'suspended' khi từ chối kích hoạt hồ sơ
+            const doctorInfo = await adminModel.updateDoctorStatus(maBacSi, 'suspended', adminId, reason);
+
+            if (doctorInfo) {
+                // Gửi thư thông báo kèm lý do bác sĩ bị loại
+                EmailService.sendDoctorRejectionEmail(doctorInfo.Email, doctorInfo.Ten_nguoi_dung, reason);
+            }
+
+            return res.status(200).json({
+                success: true,
+                message: `Đã từ chối hồ sơ của bác sĩ ${doctorInfo?.Ten_nguoi_dung || ''}`
+            });
+        } catch (error) {
+            console.error("❌ LỖI:", error.message); // In đậm lỗi ra terminal Node
+            return res.status(500).json({ success: false, message: error.message });
         }
     }
 }
