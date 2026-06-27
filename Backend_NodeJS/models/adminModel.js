@@ -1,4 +1,4 @@
-import { execute } from "../config/db.js";
+import { beginTransaction, commitTransaction, execute, rollbackTransaction } from "../config/db.js";
 
 export default class adminModel {
     static async findByEmail(email) {
@@ -96,6 +96,63 @@ export default class adminModel {
             };
         } catch (error) {
             throw new Error("Lỗi truy vấn dữ liệu Dashboard Admin: " + error.message);
+        }
+    }
+
+    static async lockAccount(userId, adminId, admin_log){
+        let conn = await beginTransaction();
+        try{
+            const [lockingUser] = await conn.execute(`
+                    UPDATE nguoi_dung
+                    SET Trang_thai = 2
+                    WHERE Ma_nguoi_dung = ?
+                `,[userId]);
+
+            const [createAdminLog] = await conn.execute(`
+                    INSERT INTO admin_logs (admin_id, action, target_type, target_id, reason, created_at) 
+                    VALUES (?, ?, ?, ?, ?, NOW())
+                `,[adminId, admin_log.action, admin_log.target_type, userId, admin_log.reason]);
+
+            await commitTransaction(conn);
+            return createAdminLog.insertId;
+        }catch(error){
+            await rollbackTransaction(conn);
+            throw new Error('Lỗi khóa tài khoản: ' + error.message);
+        }
+    }
+
+    static async unLockAccount(userId, adminId, admin_log){
+        let conn = await beginTransaction();
+        try{
+            const [lockingUser] = await conn.execute(`
+                    UPDATE nguoi_dung
+                    SET Trang_thai = 1
+                    WHERE Ma_nguoi_dung = ?
+                `,[userId]);
+
+            const [createAdminLog] = await conn.execute(`
+                    INSERT INTO admin_logs (admin_id, action, target_type, target_id, reason, created_at) 
+                    VALUES (?, ?, ?, ?, ?, NOW())
+                `,[adminId, admin_log.action, admin_log.target_type, userId, admin_log.reason]);
+
+            await commitTransaction(conn);
+            return createAdminLog.insertId;
+        }catch(error){
+            await rollbackTransaction(conn);
+            throw new Error('Lỗi khóa tài khoản: ' + error.message);
+        }
+    }
+
+    static async getAllUser(){
+        try{
+            const [rows] = await execute(`
+                    SELECT *
+                    FROM nguoi_dung
+                `);
+
+            return rows;
+        }catch(error){
+            throw new Error("Lỗi lấy tất cả người dùng: " + error.message);
         }
     }
 }

@@ -3,15 +3,36 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO; // Đã thêm thư viện socket_io_client
-import 'package:ung_dung_dat_lich_kham/Config/BASE_URL.dart'; 
+import 'package:ung_dung_dat_lich_kham/Config/BASE_URL.dart';
+import 'package:ung_dung_dat_lich_kham/Models/appointment_detail_model.dart';
+import 'package:ung_dung_dat_lich_kham/Models/appointment_model.dart';
+import 'package:ung_dung_dat_lich_kham/Models/user_model.dart';
+import 'package:ung_dung_dat_lich_kham/Services/admin_service.dart'; 
 
 class AdminViewModel extends ChangeNotifier {
+  final AdminService _adminService = AdminService();
+
   bool _isLoading = false;
   bool get isLoading => _isLoading;
+
+  String _errorMessage = '';
+  String get errorMessage => _errorMessage;
 
   // Khai báo biến quản lý Socket.IO cho Admin
   IO.Socket? _socket;
   bool get isConnected => _socket?.connected ?? false;
+
+  List<UserModel>? _accountList = [];
+  List<UserModel>? get accountList => _accountList;
+
+  List<AppointmentModel> _allAppointments = [];
+  List<AppointmentModel> get allAppointments => _allAppointments;
+
+  // ✅ Thêm biến lưu dữ liệu Chi tiết lịch hẹn
+  AppointmentDetailModel? _appointmentDetail;
+  AppointmentDetailModel? get appointmentDetail => _appointmentDetail;
+
+
 
   // Các biến lưu trữ State Dashboard
   Map<String, dynamic> dashboardData = {
@@ -154,6 +175,137 @@ class AdminViewModel extends ChangeNotifier {
       debugPrint("Lỗi tải Dashboard: $e");
     } finally {
       if (!isRefresh) _setLoading(false);
+    }
+  }
+
+  // Lấy danh sách tài khoản từ API
+  Future<void> fetchAccounts() async {
+    _isLoading = true;
+    notifyListeners();
+    
+    try {
+      _accountList = await _adminService.fetchAllUsers();
+    } catch (e) {
+      debugPrint("Lỗi tải danh sách: $e");
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Hàm khóa tài khoản
+  Future<bool> lockUserAccount({required int userId, required String reason}) async {
+    final success = await _adminService.lockAccount(userId, reason);
+    if (success) {
+      // Cập nhật giao diện lập tức (giả sử status = 0 là khóa)
+      final index = _accountList?.indexWhere((u) => u.id == userId);
+      if (index != null && index != -1) {
+        _accountList![index].status = 2; 
+        notifyListeners();
+      }
+    }
+    return success;
+  }
+
+  // Hàm mở khóa tài khoản
+  Future<bool> unlockUserAccount({required int userId, String reason = "Mở khóa định kỳ"}) async {
+    final success = await _adminService.unlockAccount(userId, reason);
+    if (success) {
+      // Cập nhật giao diện lập tức (giả sử status = 1 là hoạt động)
+      final index = _accountList?.indexWhere((u) => u.id == userId);
+      if (index != null && index != -1) {
+        _accountList![index].status = 1;
+        notifyListeners();
+      }
+    }
+    return success;
+  }
+
+  // Hàm gọi API lấy danh sách lịch hẹn của bệnh nhân
+  Future<void> loadAppointmentsByUserId(userId) async {
+    _isLoading = true;
+    _errorMessage = '';
+    notifyListeners();
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('admin_token');
+
+      if (token == null) {
+        print("Lỗi: Không tìm thấy token đăng nhập");
+        return;
+      }
+
+      final url = Uri.parse('$_baseUrl/user-appointment/$userId');
+      final response = await http.get(
+        url,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token",
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        if (responseData['succeeded'] == true) {
+          final List<dynamic> listJson = responseData['data'];
+          _allAppointments = listJson.map((json) => AppointmentModel.fromJson(json)).toList();
+        } else {
+          _allAppointments = [];
+        }
+      } else {
+        final responseData = jsonDecode(response.body);
+        print("Lỗi từ server: ${response.body}, ${responseData['message']}");
+      }
+    } catch (e) {
+      print("Lỗi tải danh sách lịch hẹn: $e");
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Hàm gọi API lấy chi tiết lịch hẹn dựa trên Ma_lich_hen (appointmentId)
+  Future<void> fetchAppointmentDetail(int appointmentId) async {
+    _isLoading = true;
+    _errorMessage = '';
+    _appointmentDetail = null;
+    notifyListeners();
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('admin_token');
+
+      if (token == null) {
+        _errorMessage = 'Vui lòng đăng nhập lại.';
+        return;
+      }
+
+      final url = Uri.parse('$_baseUrl/user-appointment-detail/$appointmentId');
+      final response = await http.get(
+        url,
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token",
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['succeeded'] == true) {
+          _appointmentDetail = AppointmentDetailModel.fromJson(data['data']);
+        } else {
+          _errorMessage = data['message'] ?? 'Lỗi tải dữ liệu';
+        }
+      } else {
+        final data = jsonDecode(response.body);
+        _errorMessage = data['message'] ?? 'Lỗi kết nối máy chủ';
+      }
+    } catch (e) {
+      _errorMessage = "Không thể tải chi tiết lịch hẹn: ${e.toString().replaceAll('Exception: ', '')}";
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 

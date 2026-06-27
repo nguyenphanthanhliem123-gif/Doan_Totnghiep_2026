@@ -4,6 +4,7 @@ import adminModel from '../models/adminModel.js';
 import userModel from '../models/userModel.js'; // Tận dụng các hàm saveOTP/getValidOTP của bạn
 import { generateOTP } from '../utils/otpHelper.js';
 import { sendOTPEmail } from '../config/emailConfig.js';
+import appointmentModel from '../models/AppointmentModel.js';
 
 const ADMIN_JWT_SECRET = process.env.ADMIN_JWT_SECRET || "AdminSecretKey123";
 
@@ -95,6 +96,131 @@ export default class adminController {
                 success: false, 
                 message: error.message 
             });
+        }
+    }
+
+    static async lockAccount(req,res){
+        try{
+            const adminId = req.adminId;
+            const {action, target_type, target_id, reason} = req.body;
+
+            if(!action || !target_id || !target_type || !reason) return res.status(400).json({
+                success: false,
+                message: 'Không được bỏ trống các thông tin cần thiết.'
+            });
+
+            const adminLogs = {
+                action,
+                target_type,
+                reason
+            };
+
+            const resultId = await adminModel.lockAccount(target_id, adminId, adminLogs);
+            
+            return res.status(200).json({
+                success: true,
+            });
+        }catch(error){
+            return res.status(500).json({
+                success: false,
+                message: error.message
+            });
+        }
+    }
+
+    static async unLockAccount(req,res){
+        try{
+            const adminId = req.adminId;
+            const {action, target_type, target_id, reason} = req.body;
+
+            if(!action || !target_id || !target_type || !reason) return res.status(400).json({
+                success: false,
+                message: 'Không được bỏ trống các thông tin cần thiết.'
+            });
+
+            const adminLogs = {
+                action,
+                target_type,
+                reason
+            };
+
+            const resultId = await adminModel.unLockAccount(target_id, adminId, adminLogs);
+            
+            return res.status(200).json({
+                success: true,
+            });
+        }catch(error){
+            return res.status(500).json({
+                success: false,
+                message: error.message
+            });
+        }
+    }
+
+    static async getAllUser(req,res){
+        try{
+            const users = await adminModel.getAllUser();
+
+            if(users.length > 0){
+                return res.status(200).json({
+                    success: true,
+                    users: users
+                });
+            }else{
+                return res.status(204).json({
+                    success: false,
+                    message: "Không tìm thấy bất kì người dùng nào"
+                });
+            }
+        }catch(error){
+            return res.status(500).json({
+                success: false,
+                message: error.message
+            });
+        }
+    }
+
+    static async getDetails(req, res) {
+        try {
+            const appointmentID = req.params.id;
+
+            if (!appointmentID) return res.status(400).json({ succeeded: false, message: "Thiếu mã lịch hẹn." });
+
+            const detail = await appointmentModel.getAppointmentDetails(appointmentID);
+
+            if (!detail) return res.status(404).json({ succeeded: false, message: "Không tìm thấy lịch hẹn này." });
+
+            console.log(detail);
+
+            return res.status(200).json({
+                succeeded: true,
+                message: "Lấy chi tiết lịch hẹn thành công",
+                data: detail
+            });
+
+        } catch (error) {
+            return res.status(500).json({ succeeded: false, message: "Lỗi server: " + error.message });
+        }
+    }
+
+    static async getAppointmentListByUserId(req, res) {
+        try {
+            const userID = req.params.id; 
+
+            if (!userID) {
+                return res.status(400).json({ succeeded: false, message: "Không tìm thấy thông tin người dùng." });
+            }
+
+            const appointments = await appointmentModel.getAllPatienAppointment(userID);
+
+            return res.status(200).json({
+                succeeded: true,
+                message: "Lấy danh sách lịch hẹn thành công",
+                data: appointments
+            });
+
+        } catch (error) {
+            return res.status(500).json({ succeeded: false, message: "Lỗi server: " + error.message });
         }
     }
 }
