@@ -51,14 +51,24 @@ io.use((socket, next) => {
     }
 
     try {
-        // Giải mã token bằng mã bí mật JWT_SECRET của bạn
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        let decoded;
+        try {
+            // Thử giải mã bằng khóa của Bệnh nhân / Bác sĩ
+            decoded = jwt.verify(token, process.env.JWT_SECRET);
+            socket.role = 'user'; // Đánh dấu đây là user thường
+        } catch (err1) {
+            // Nếu lỗi, thử giải mã bằng khóa của Admin
+            decoded = jwt.verify(token, process.env.ADMIN_JWT_SECRET || "AdminSecretKey123");
+            socket.role = 'admin'; // Đánh dấu đây là admin
+            
+            // Cập nhật room đặc biệt cho admin để sau này dễ gửi thông báo tập thể
+            socket.join('admin_room'); 
+        }
         
-        // Gắn trực tiếp userID lấy từ token vào chính đối tượng socket này
         socket.userId = decoded.id; 
-        
-        next(); // Token hợp lệ, cho phép kết nối tiếp
-    } catch (err) {
+        next(); 
+    } catch (err2) {
+        // Nếu cả 2 key đều giải mã thất bại
         return next(new Error("Authentication error: Token không hợp lệ hoặc hết hạn"));
     }
 });

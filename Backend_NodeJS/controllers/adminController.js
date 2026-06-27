@@ -41,29 +41,60 @@ export default class adminController {
             const { email, otp } = req.body;
             const otpRecord = await userModel.getValidOTP(email, 'ADMIN_LOGIN');
             
-            // --- BẮT ĐẦU ĐOẠN CODE DEBUG ---
-            console.log("OTP nhận từ Frontend:", otp);
-            console.log("OTP hash lấy từ DB:", otpRecord ? otpRecord.Otp_hash : "Không tìm thấy record");
-            
-            if (otpRecord) {
-                const isMatch = await compare(otp, otpRecord.Otp_hash);
-                console.log("Kết quả so sánh compare():", isMatch);
-            }
-            // --- KẾT THÚC ĐOẠN CODE DEBUG ---
-
-            if (!otpRecord || !(await compare(otp, otpRecord.Otp_hash))) {
-                return res.status(400).json({ success: false, message: 'Mã OTP không hợp lệ' });
+            // 1. Nếu không tìm thấy mã OTP hợp lệ/hết hạn
+            if (!otpRecord) {
+                return res.status(400).json({ success: false, message: 'Mã OTP không tồn tại hoặc đã hết hạn' });
             }
 
+            // 2. So sánh mã OTP người dùng nhập vào
+            const isMatch = await compare(otp, otpRecord.Otp_hash);
+
+            if (!isMatch) {
+                // Tăng số lần thử sai trong bảng ma_otp lên 1
+                await userModel.incrementOTPTries(otpRecord.Ma_otp);
+                
+                // Lấy lại dữ liệu mới nhất để kiểm tra số lần thử
+                const currentTries = otpRecord.So_lan_thu + 1; 
+                
+                if (currentTries >= 5) {
+                    // Vô hiệu hóa mã OTP này ngay lập tức nếu sai quá 5 lần
+                    await userModel.markOTPAsUsed(otpRecord.Ma_otp);
+                    return res.status(400).json({ success: false, message: 'Mã OTP đã bị vô hiệu hóa do nhập sai quá 5 lần. Vui lòng đăng nhập lại để lấy mã mới.' });
+                }
+
+                return res.status(400).json({ success: false, message: `Mã OTP không hợp lệ. Bạn còn ${5 - currentTries} lần thử.` });
+            }
+
+            // 3. Nếu đúng OTP -> Tiến hành xử lý đăng nhập thành công
             await userModel.markOTPAsUsed(otpRecord.Ma_otp);
             await adminModel.resetFailedAttempts(email);
 
             const admin = await adminModel.findByEmail(email);
-            const token = jwt.sign({ id: admin.id, role: 'admin' }, process.env.ADMIN_JWT_SECRET || "AdminSecretKey123", { expiresIn: '8h' });
+            const token = jwt.sign(
+                { id: admin.id, role: 'admin' }, 
+                process.env.ADMIN_JWT_SECRET || "AdminSecretKey123", 
+                { expiresIn: '8h' }
+            );
 
             return res.status(200).json({ success: true, token, message: 'Đăng nhập thành công' });
         } catch (e) {
             return res.status(500).json({ success: false, message: e.message });
+        }
+    }
+    
+    static async getDashboard(req, res) {
+        try {
+            const stats = await adminModel.getDashboardStats();
+            return res.status(200).json({
+                success: true,
+                message: 'Lấy dữ liệu tổng quan thành công',
+                data: stats
+            });
+        } catch (error) {
+            return res.status(500).json({ 
+                success: false, 
+                message: error.message 
+            });
         }
     }
 }

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../Constants/ui_constants.dart';
 import '../../viewmodels/admin_viewmodel.dart';
+import 'admin_dashboard_screen.dart';
 
 class AdminOtpScreen extends StatefulWidget {
   final String email;
@@ -31,7 +32,14 @@ class _AdminOtpScreenState extends State<AdminOtpScreen> {
 
     return Scaffold(
       backgroundColor: kLightCyanBg2,
-      appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0, leading: IconButton(icon: const Icon(Icons.arrow_back_ios, color: kPrimaryColor), onPressed: () => Navigator.pop(context))),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent, 
+        elevation: 0, 
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios, color: kPrimaryColor), 
+          onPressed: () => Navigator.pop(context)
+        )
+      ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 450),
@@ -64,7 +72,7 @@ class _AdminOtpScreenState extends State<AdminOtpScreen> {
                         
                         if (result['success'] == true) {
                           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đăng nhập Admin thành công!')));
-                          // Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const AdminDashboardScreen()), (route) => false);
+                          Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const AdminDashboardScreen()), (route) => false);
                         } else {
                           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['message']), backgroundColor: Colors.redAccent));
                         }
@@ -77,7 +85,9 @@ class _AdminOtpScreenState extends State<AdminOtpScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusSmall)),
                     ),
-                    child: authVM.isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text('Xác Nhận', style: kButtonTextStyle),
+                    child: authVM.isLoading 
+                        ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) 
+                        : const Text('Xác Nhận', style: kButtonTextStyle),
                   ),
                 ),
               ],
@@ -92,7 +102,8 @@ class _AdminOtpScreenState extends State<AdminOtpScreen> {
     return Container(
       width: 45, height: 55,
       decoration: BoxDecoration(
-        color: Colors.white, borderRadius: BorderRadius.circular(kBorderRadiusSmall),
+        color: Colors.white, 
+        borderRadius: BorderRadius.circular(kBorderRadiusSmall),
         border: Border.all(color: _focusNodes[index].hasFocus ? kPrimaryColor : kBorderCyan, width: 2),
       ),
       child: TextField(
