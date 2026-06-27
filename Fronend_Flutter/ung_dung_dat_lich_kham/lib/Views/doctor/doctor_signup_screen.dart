@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../../Constants/ui_constants.dart';
 import '../otp_verification_screen.dart';
+import '../../viewmodels/specialty_viewmodel.dart';
 import 'dart:typed_data';
 
 class DoctorSignupScreen extends StatefulWidget {
@@ -29,7 +30,16 @@ class _DoctorSignupScreenState extends State<DoctorSignupScreen> {
   // Thêm 2 biến byte này để hiển thị trên Web
   Uint8List? _avatarBytes;
   Uint8List? _certBytes;
-  int _selectedChuyenKhoa = 1;
+  int? _selectedChuyenKhoa;
+
+  @override
+  void initState() {
+    super.initState();
+    // Gọi API lấy danh sách chuyên khoa ngay khi mở màn hình
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<SpecialtyViewModel>(context, listen: false).loadAllSpecialties();
+    });
+  }
 
   Future<void> _pickImage(bool isAvatar) async {
   final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
@@ -52,6 +62,7 @@ class _DoctorSignupScreenState extends State<DoctorSignupScreen> {
   @override
   Widget build(BuildContext context) {
     final authVM = Provider.of<AuthViewModel>(context);
+    final specialtyVM = Provider.of<SpecialtyViewModel>(context);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -66,7 +77,7 @@ class _DoctorSignupScreenState extends State<DoctorSignupScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('Hồ sơ của bạn sẽ được Quản trị viên duyệt trước khi kích hoạt.', style: TextStyle(color: Colors.orange, fontStyle: FontStyle.italic)),
+            const Text('Hồ sơ của bạn sẽ được Quản trị viên duyệt trước khi kích hoạt.', style: TextStyle(color: kPrimaryColor, fontStyle: FontStyle.italic)),
             const SizedBox(height: 25),
 
             // 1. CHỌN ẢNH ĐẠI DIỆN (TRÒN)
@@ -98,6 +109,40 @@ class _DoctorSignupScreenState extends State<DoctorSignupScreen> {
             _buildLabel('Email'),
             _buildTextField(controller: _emailController, hintText: 'example@example.com'),
             
+            const SizedBox(height: kSpacingSmall),
+            _buildLabel('Chuyên khoa'),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+              decoration: BoxDecoration(
+                color: kLightCyanBg1,
+                borderRadius: BorderRadius.circular(kBorderRadiusLarge),
+              ),
+              child: specialtyVM.isLoading 
+                  ? const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12.0),
+                      child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))),
+                    )
+                  : DropdownButtonHideUnderline(
+                      child: DropdownButton<int>(
+                        isExpanded: true,
+                        value: _selectedChuyenKhoa,
+                        hint: Text('Chọn chuyên khoa của bạn', style: TextStyle(color: kPrimaryColor.withOpacity(0.4), fontWeight: FontWeight.w500)),
+                        icon: const Icon(Icons.arrow_drop_down, color: kPrimaryColor),
+                        style: const TextStyle(color: kPrimaryColor, fontWeight: FontWeight.w500, fontSize: 16),
+                        items: specialtyVM.listSpecialty?.map((ck) {
+                          return DropdownMenuItem<int>(
+                            value: ck.id, 
+                            child: Text(ck.name),
+                          );
+                        }).toList() ?? [], // Trả về list rỗng nếu null
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedChuyenKhoa = value;
+                          });
+                        },
+                      ),
+                    ),
+            ),
             const SizedBox(height: kSpacingSmall),
             Row(
               children: [
@@ -138,15 +183,14 @@ class _DoctorSignupScreenState extends State<DoctorSignupScreen> {
             const SizedBox(height: 30),
             ElevatedButton(
               onPressed: authVM.isLoading ? null : () async {
-                if (_avatarImage == null || _certImage == null) {
-                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Vui lòng chọn cả ảnh đại diện và chứng chỉ!')));
-                  return;
-                }
 
                 final result = await authVM.registerDoctor(
-                  fullName: _nameController.text.trim(), email: _emailController.text.trim(),
-                  password: _passController.text, confirmPassword: _confirmPassController.text,
-                  maChuyenKhoa: _selectedChuyenKhoa, hocVi: _hocViController.text.trim(),
+                  fullName: _nameController.text.trim(), 
+                  email: _emailController.text.trim(),
+                  password: _passController.text, 
+                  confirmPassword: _confirmPassController.text,
+                  maChuyenKhoa: _selectedChuyenKhoa!, 
+                  hocVi: _hocViController.text.trim(),
                   namKinhNghiem: int.tryParse(_kinhNghiemController.text.trim()) ?? 0, moTa: '', 
                   avatarBytes: _avatarBytes!, 
                   certificateBytes: _certBytes!,

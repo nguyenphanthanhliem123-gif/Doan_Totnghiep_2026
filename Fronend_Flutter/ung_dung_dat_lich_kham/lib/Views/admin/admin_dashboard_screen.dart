@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../Constants/ui_constants.dart';
 import '../../viewmodels/admin_viewmodel.dart';
 import 'admin_login_screen.dart';
+import 'admin_pending_doctors_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -60,8 +61,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             icon: Icons.pending_actions,
                             color: Colors.orange,
                             onTap: () {
-                              // Chuyển sang màn hình Duyệt Bác Sĩ (Chưa tạo)
-                              // Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminApproveDoctorScreen()));
+                              Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminPendingDoctorsScreen()));
                             }
                           ),
                           const SizedBox(width: 15),
@@ -153,7 +153,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             ),
             _buildDrawerItem(icon: Icons.dashboard, title: 'Dashboard', onTap: () => Navigator.pop(context)),
             const Divider(),
-            _buildDrawerItem(icon: Icons.fact_check_outlined, title: 'Duyệt Đăng Ký Bác Sĩ', onTap: () {}),
+            _buildDrawerItem(icon: Icons.fact_check_outlined, title: 'Duyệt Đăng Ký Bác Sĩ', onTap: () {
+              Navigator.pop(context);
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminPendingDoctorsScreen()));
+            }),
             _buildDrawerItem(icon: Icons.manage_accounts_outlined, title: 'Quản Lý Tài Khoản', onTap: () {}),
             const Divider(),
             _buildDrawerItem(icon: Icons.category_outlined, title: 'Danh Mục Chuyên Khoa', onTap: () {}),

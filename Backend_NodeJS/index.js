@@ -131,7 +131,12 @@ app.use('/api/payment', paymentRoute);
 app.use('/api/appointments', appointmentRoutes);
 app.use('/api/notification', notificationRoute);
 app.use('/api/services', serviceRoutes);
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', (req, res, next) => {
+    res.header("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    res.header("Cross-Origin-Resource-Policy", "cross-origin"); // Quan trọng cho ảnh
+    next();
+}, express.static(path.join(__dirname, 'uploads')));
 
 app.use((req,res,next)=>{
     res.status(404).json({message: 'Endpoint not found'});

@@ -98,4 +98,59 @@ export default class adminModel {
             throw new Error("Lỗi truy vấn dữ liệu Dashboard Admin: " + error.message);
         }
     }
+
+    // Lấy danh sách toàn bộ hồ sơ bác sĩ Đang chờ duyệt (Trang_thai_hoat_dong = 'pending')
+    static async getPendingDoctors() {
+        try {
+            const [rows] = await execute(`
+                SELECT 
+                    b.Ma_bac_si, 
+                    n.Ten_nguoi_dung, 
+                    n.Email, 
+                    n.Anh_dai_dien, 
+                    b.Hoc_vi, 
+                    b.Nam_kinh_nghiem, 
+                    b.Anh_chung_chi,
+                    ck.Ten_chuyen_khoa
+                FROM bac_si b
+                JOIN nguoi_dung n ON b.Ma_nguoi_dung = n.Ma_nguoi_dung
+                JOIN chuyen_khoa ck ON b.Ma_chuyen_khoa = ck.Ma_chuyen_khoa
+                WHERE b.Trang_thai_hoat_dong = 'pending'
+                ORDER BY n.Ma_nguoi_dung DESC
+            `);
+            return rows;
+        } catch (error) {
+            throw new Error("Lỗi lấy danh sách bác sĩ chờ duyệt: " + error.message);
+        }
+    }
+
+    // Xử lý Duyệt ('active') hoặc Từ chối ('suspended') kèm ghi nhận nhật ký log hệ thống
+    static async updateDoctorStatus(maBacSi, status, adminId, reason = null) {
+        try {
+            // 1. Cập nhật cột Trang_thai_hoat_dong trong bảng bác sĩ
+            await execute(
+                `UPDATE bac_si SET Trang_thai_hoat_dong = ? WHERE Ma_bac_si = ?`,
+                [status, maBacSi]
+            );
+
+            // 2. Ghi lịch sử hành động vào bảng admin_logs
+            await execute(
+                `INSERT INTO admin_logs (Admin_id, Target_type, Target_id, Action, Reason) 
+                 VALUES (?, 'BAC_SI', ?, ?, ?)`,
+                [adminId, maBacSi, status === 'active' ? 'APPROVE' : 'REJECT', reason]
+            );
+
+            // 3. Lấy ra thông tin email và tên bác sĩ phục vụ gửi thư thông báo
+            const [info] = await execute(`
+                SELECT n.Ten_nguoi_dung, n.Email 
+                FROM bac_si b 
+                JOIN nguoi_dung n ON b.Ma_nguoi_dung = n.Ma_nguoi_dung 
+                WHERE b.Ma_bac_si = ?
+            `, [maBacSi]);
+
+            return info[0];
+        } catch (error) {
+            throw new Error("Lỗi cập nhật trạng thái hồ sơ: " + error.message);
+        }
+    }
 }

@@ -14,8 +14,16 @@ adminRoutes.post('/verify-otp', adminController.verifyOtp);
 // 2. CÁC ROUTE BẢO MẬT (Bắt buộc có Token Admin)
 // ==========================================
 
-// Gắn adminAuth vào trước hàm xử lý để bảo vệ route
 // Gọi trực tiếp hàm getDashboard từ adminController
 adminRoutes.get('/dashboard', adminAuth, adminController.getDashboard);
+
+// Lấy toàn bộ danh sách bác sĩ đợi duyệt
+adminRoutes.get('/pending-doctors', adminAuth, adminController.getPendingDoctorsList);
+
+// Duyệt kích hoạt bác sĩ
+adminRoutes.post('/approve-doctor', adminAuth, adminController.approveDoctor);
+
+// Từ chối bác sĩ kèm lý do
+adminRoutes.post('/reject-doctor', adminAuth, adminController.rejectDoctor);
 
 export default adminRoutes;
