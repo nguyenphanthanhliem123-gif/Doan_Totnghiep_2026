@@ -7,12 +7,14 @@ export default class doctorModel {
             const query = `
                 SELECT 
                     bs.Ma_bac_si,
+                    bs.Ma_nguoi_dung,
                     nd.Ten_nguoi_dung AS Ho_ten,
                     nd.Anh_dai_dien,
                     bs.Hoc_vi,
                     bs.Nam_kinh_nghiem,
                     bs.Mo_ta_ban_than,
                     ck.Ten_chuyen_khoa,
+                    ck.Ma_chuyen_khoa,
                     pk.Ten_phong_kham,
                     pk.Vi_tri AS Dia_chi
                 FROM bac_si bs

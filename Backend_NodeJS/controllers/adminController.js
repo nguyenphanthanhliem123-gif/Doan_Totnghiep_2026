@@ -7,6 +7,8 @@ import { generateOTP } from '../utils/otpHelper.js';
 import { sendOTPEmail } from '../config/emailConfig.js';
 import appointmentModel from '../models/AppointmentModel.js';
 import EmailService from "../services/emailService.js";
+import ReportModel from '../models/reportModel.js';
+import ServiceModel from '../models/serviceModel.js';
 
 const ADMIN_JWT_SECRET = process.env.ADMIN_JWT_SECRET || "AdminSecretKey123";
 
@@ -378,6 +380,88 @@ export default class adminController {
             await adminModel.toggleSpecialtyStatus(id, status);
             return res.status(200).json({ success: true, message: 'Cập nhật trạng thái thành công!' });
         } catch (error) {
+            return res.status(500).json({ success: false, message: error.message });
+        }
+    }
+
+    static async getReports(req, res) {
+        try {
+            const reports = await ReportModel.getAllReports();
+            return res.status(200).json({ success: true, reports });
+        } catch (error) {
+            return res.status(500).json({ success: false, message: error.message });
+        }
+    }
+
+    // Xử lý khiếu nại
+    static async handleReport(req, res) {
+        try {
+            const adminId = req.adminId;
+            const { reportId } = req.params;
+            const { action, adminNote, targetUserId } = req.body; 
+            // action: 'canh_cao', 'khoa', 'bo_qua'
+
+            if (!action || !targetUserId) {
+                return res.status(400).json({ success: false, message: 'Thiếu thông tin xử lý' });
+            }
+            const io = req.app.get('io');
+            await ReportModel.resolveReport(reportId, action, adminNote, targetUserId, adminId, io);
+
+            return res.status(200).json({ success: true, message: 'Đã đóng Case khiếu nại thành công' });
+        } catch (error) {
+            return res.status(500).json({ success: false, message: error.message });
+        }
+    }
+
+    static async adminCreate(req, res) {
+        try {
+            const { name, specId, defaultPrice } = req.body;
+            if (!name || !specId || !defaultPrice) {
+                return res.status(400).json({ success: false, message: "Thiếu thông tin" });
+            }
+            await ServiceModel.createMasterService(name, specId, defaultPrice);
+            return res.status(200).json({ success: true, message: "Thêm thành công!" });
+        } catch (error) {
+            return res.status(500).json({ success: false, message: error.message });
+        }
+    }
+
+    static async adminGetServices(req, res) {
+        try {
+            const { search, specId } = req.query;
+            const services = await ServiceModel.getMasterServices(search, specId);
+            return res.status(200).json({ success: true, data: services });
+        } catch (error) {
+            return res.status(500).json({ success: false, message: error.message });
+        }
+    }
+
+    static async adminUpdateService(req, res) {
+        try {
+            const { id } = req.params;
+            const { name, specId, defaultPrice } = req.body;
+            
+            if (!name || !specId || defaultPrice === undefined) {
+                return res.status(400).json({ success: false, message: "Vui lòng điền đủ thông tin" });
+            }
+
+            await ServiceModel.updateMasterService(id, name, specId, defaultPrice);
+            return res.status(200).json({ success: true, message: "Cập nhật dịch vụ thành công!" });
+        } catch (error) {
+            return res.status(500).json({ success: false, message: error.message });
+        }
+    }
+
+    static async adminDeleteService(req, res) {
+        try {
+            const { id } = req.params;
+            await ServiceModel.deleteMasterService(id);
+            return res.status(200).json({ success: true, message: "Đã xóa dịch vụ!" });
+        } catch (error) {
+            // Xử lý lỗi nếu bị vướng khóa ngoại (Foreign Key)
+            if(error.message.includes('foreign key constraint')) {
+                return res.status(400).json({ success: false, message: "Không thể xóa vì đã có bác sĩ đăng ký dịch vụ này."});
+            }
             return res.status(500).json({ success: false, message: error.message });
         }
     }

@@ -108,7 +108,7 @@ export default class appointmentModel {
                     lh.Trang_thai_lich_hen,
                     lh.Trieu_chung AS Ghi_chu,
                     lh.Link_video_call,
-                    bn.Ma_nguoi_dung AS Ma_nguoi_dung,
+                    bn.Ma_nguoi_dung,
                     bn.Ma_benh_nhan,
                     kg.Thoi_gian_Bdau,
                     kg.Thoi_gian_Kthuc,
@@ -637,6 +637,8 @@ export default class appointmentModel {
                     lh.Link_video_call AS linkVideoCall,
                     kg.Thoi_gian_Bdau AS startTime,
                     kg.Thoi_gian_Kthuc AS endTime,
+                    nd_bn.Ma_nguoi_dung,
+                    nd_bn.Ten_nguoi_dung,
                     
                     -- Thông tin Bệnh nhân (Người trực tiếp khám)
                     CASE 

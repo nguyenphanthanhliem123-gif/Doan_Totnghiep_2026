@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ung_dung_dat_lich_kham/Views/admin/admin_account_menu_screen.dart';
+import 'package:ung_dung_dat_lich_kham/Views/admin/admin_doctor_list_screen.dart';
+import 'package:ung_dung_dat_lich_kham/Views/admin/admin_patient_list_screen.dart';
+import 'package:ung_dung_dat_lich_kham/Views/admin/admin_report_screen.dart';
+import 'package:ung_dung_dat_lich_kham/Views/admin/admin_service_screen.dart';
 import '../../Constants/ui_constants.dart';
 import '../../viewmodels/admin_viewmodel.dart';
 import 'admin_login_screen.dart';
@@ -73,7 +77,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             icon: Icons.report_problem_outlined,
                             color: Colors.redAccent,
                             onTap: () {
-                              // Chuyển sang màn hình Xử lý khiếu nại (Chưa tạo)
+                              Navigator.of(context).push(
+                                MaterialPageRoute(builder: (context) => AdminReportScreen())
+                              );
                             }
                           ),
                         ],
@@ -100,7 +106,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             icon: Icons.medical_services_outlined, 
                             color: Colors.blue,
                             onTap: () {
-                              // Chuyển sang màn Quản lý Bác Sĩ (Khóa/Mở khóa)
+                              Navigator.of(context).push(
+                                MaterialPageRoute(builder: (context) => AdminDoctorListScreen())
+                              );
                             }
                           ),
                           const SizedBox(width: 15),
@@ -110,7 +118,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             icon: Icons.people_outline, 
                             color: Colors.teal,
                             onTap: () {
-                              // Chuyển sang màn Quản lý Bệnh nhân (Khóa/Mở khóa)
+                              Navigator.of(context).push(
+                                MaterialPageRoute(builder: (context) => AdminPatientListScreen())
+                              );
                             }
                           ),
                         ],
@@ -173,9 +183,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               Navigator.pop(context);
               Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminSpecialtyScreen()));
             }),
-            _buildDrawerItem(icon: Icons.local_hospital_outlined, title: 'Danh Mục Dịch Vụ & Phí', onTap: () {}),
+            _buildDrawerItem(icon: Icons.local_hospital_outlined, title: 'Danh Mục Dịch Vụ & Phí', onTap: () {
+              Navigator.pop(context);
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminServiceScreen()));
+            }),
             const Divider(),
-            _buildDrawerItem(icon: Icons.gavel, title: 'Xử Lý Khiếu Nại', onTap: () {}),
+            _buildDrawerItem(icon: Icons.gavel, title: 'Xử Lý Khiếu Nại', onTap: () {
+              Navigator.pop(context);
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminReportScreen()));
+            }),
           ],
         ),
       ),

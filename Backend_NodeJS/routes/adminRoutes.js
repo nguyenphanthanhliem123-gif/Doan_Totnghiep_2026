@@ -21,6 +21,8 @@ adminRoutes.post('/lock-account', adminAuth, adminController.lockAccount);
 adminRoutes.post('/unlock-account', adminAuth, adminController.unLockAccount);
 adminRoutes.get('/user-appointment/:id', adminAuth, adminController.getAppointmentListByUserId);
 adminRoutes.get('/user-appointment-detail/:id', adminAuth, adminController.getDetails);
+adminRoutes.get('/reports', adminAuth, adminController.getReports);
+adminRoutes.post('/reports/:reportId/handle', adminAuth, adminController.handleReport);
 
 // Lấy toàn bộ danh sách bác sĩ đợi duyệt
 adminRoutes.get('/pending-doctors', adminAuth, adminController.getPendingDoctorsList);

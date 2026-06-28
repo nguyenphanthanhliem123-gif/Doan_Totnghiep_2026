@@ -56,7 +56,7 @@ class _DoctorMainScreenState extends State<DoctorMainScreen> {
   List<Widget> get _pages => [
     DoctorDashboardScreen(onNavigate: _onItemTapped), 
     const DoctorAppointmentScreen(),
-    const DoctorServicesScreen(),
+    const DoctorServiceManagementScreen(),
     const DoctorMenuScreen(),
   ];
 

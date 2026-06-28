@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:ung_dung_dat_lich_kham/Views/report_bottom_sheet.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../viewmodels/doctor_viewmodel.dart';
 import '../viewmodels/clinic_viewmodel.dart';
@@ -63,6 +64,34 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
 
     return Scaffold(
       backgroundColor: Colors.white,
+      appBar: AppBar(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black, size: 20),
+        onPressed: () => Navigator.pop(context),
+      ),
+      actions:
+       [
+        if (doctor != null)
+          IconButton(
+            icon: const Icon(Icons.report_problem_outlined, color: Colors.redAccent),
+            tooltip: 'Báo cáo bác sĩ',
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (context) => ReportBottomSheet(
+                  targetId: doctor.id,
+                  targetName: doctor.fullName,
+                  targetType: 'Doctor',
+                ),
+              );
+            },
+          ),
+      ],
+    ),
       body: doctorVM.isLoading || clinicVM.isLoading
           ? const Center(child: CircularProgressIndicator(color: kPrimaryColor))
           : doctor == null

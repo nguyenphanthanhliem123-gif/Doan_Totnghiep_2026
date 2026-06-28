@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ung_dung_dat_lich_kham/Services/jitsi_service.dart';
+import 'package:ung_dung_dat_lich_kham/Views/report_bottom_sheet.dart';
 import '../../Constants/ui_constants.dart'; // 🌟 Chuẩn hóa đường dẫn
 import '../../viewmodels/doctor_appointment_detail_viewmodel.dart';
 
@@ -479,7 +480,6 @@ class _DoctorAppointmentDetailScreenState extends State<DoctorAppointmentDetailS
   Widget build(BuildContext context) {
     final vm = context.watch<DoctorAppointmentDetailViewModel>();
     final appointment = vm.appointmentDetail;
-
     return Scaffold(
       backgroundColor: kLightCyanBg2, // 🌟 Đồng bộ màu nền
       body: vm.isLoading
@@ -538,7 +538,27 @@ class _DoctorAppointmentDetailScreenState extends State<DoctorAppointmentDetailS
                                           Text("${appointment['patientAge'] ?? 0} tuổi • ${appointment['patientGender'] ?? 'Chưa rõ'}", style: const TextStyle(color: Colors.white70)),
                                         ],
                                       ),
-                                    )
+                                    ),
+
+                                    Spacer(),
+                                    
+                                    IconButton(
+                                      icon: const Icon(Icons.report_problem_outlined, color: Colors.redAccent),
+                                      tooltip: 'Báo cáo bác sĩ',
+                                      onPressed: () {
+                                        showModalBottomSheet(
+                                          context: context,
+                                          isScrollControlled: true,
+                                          backgroundColor: Colors.transparent,
+                                          builder: (context) => ReportBottomSheet(
+                                            targetId: appointment['Ma_nguoi_dung'],
+                                            targetName: appointment['Ten_nguoi_dung'],
+                                            targetType: 'Patient',
+                                          ),
+                                        );
+                                      },
+                                    ),
+
                                   ],
                                 ),
                               ),

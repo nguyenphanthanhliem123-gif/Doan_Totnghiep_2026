@@ -73,4 +73,51 @@ export default class ServiceController{
             });
         }
     }
+
+    // Bác sĩ lấy danh sách dịch vụ mẫu theo chuyên khoa để chọn
+    static async doctorGetMasterList(req, res) {
+        try {
+            const { specId, doctorId } = req.query; // Hoặc lấy doctorId từ token giải mã mã hóa
+            const services = await ServiceModel.getAvailableMasterServices(specId, doctorId);
+            return res.status(200).json({ success: true, services });
+        } catch (error) {
+            return res.status(500).json({ success: false, message: error.message });
+        }
+    }
+
+    // Bác sĩ đăng ký dịch vụ khám kèm giá tùy chỉnh
+    static async doctorChooseService(req, res) {
+        try {
+            const { doctorId, masterServiceId, customPrice } = req.body;
+            if (!doctorId || !masterServiceId || !customPrice) {
+                return res.status(400).json({ success: false, message: "Thiếu thông tin đăng ký" });
+            }
+            await ServiceModel.addDoctorService(doctorId, masterServiceId, customPrice);
+            return res.status(200).json({ success: true, message: "Cấu hình dịch vụ thành công!" });
+        } catch (error) {
+            return res.status(500).json({ success: false, message: error.message });
+        }
+    }
+
+    // Xem các dịch vụ bác sĩ đang làm
+    static async doctorGetMyServices(req, res) {
+        try {
+            const { doctorId } = req.params;
+            const myServices = await ServiceModel.getDoctorServices(doctorId);
+            return res.status(200).json({ success: true, data: myServices });
+        } catch (error) {
+            return res.status(500).json({ success: false, message: error.message });
+        }
+    }
+
+    // Bác sĩ hủy chọn dịch vụ
+    static async doctorDeleteService(req, res) {
+        try {
+            const { serviceId, doctorId } = req.body;
+            await ServiceModel.deleteDoctorService(serviceId, doctorId);
+            return res.status(200).json({ success: true, message: "Đã gỡ dịch vụ thành công!" });
+        } catch (error) {
+            return res.status(500).json({ success: false, message: error.message });
+        }
+    }
 }

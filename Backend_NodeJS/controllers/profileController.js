@@ -2,6 +2,7 @@ import profileModel from "../models/ProfileModel.js";
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { execute } from "../config/db.js";
+import ReportModel from "../models/reportModel.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -106,6 +107,25 @@ export default class profileController{
 
         } catch (error) {
             return res.status(500).json({ succeeded: false, message: error.message });
+        }
+    }
+
+    static async createReport(req,res) {
+        try {
+            const userId = req.Ma_nguoi_dung;
+            const { reportedId, reportedType, reason } = req.body;
+
+            if (!reportedId || !reason) {
+                return res.status(400).json({ success: false, message: 'Vui lòng cung cấp đủ thông tin.' });
+            }
+
+            await ReportModel.createReport(userId, reportedId, reportedType, reason);
+
+            return res.status(200).json({ success: true, message: 'Đã gửi báo cáo thành công' });
+        }catch(error)
+        {
+            console.error('Lỗi khi gửi report:', error);
+            return res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
         }
     }
 }

@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ung_dung_dat_lich_kham/ViewModels/doctor_clinic_viewmodel.dart';
+import 'package:ung_dung_dat_lich_kham/viewmodels/admin_report_viewmodel.dart';
+import 'package:ung_dung_dat_lich_kham/viewmodels/admin_service_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/notification_viewmodel.dart';
 import 'dart:ui';
 import 'package:ung_dung_dat_lich_kham/ViewModels/payment_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/schedule_config_viewmodel.dart';
-import 'package:ung_dung_dat_lich_kham/viewModels/doctor_service_viewmodel.dart';
+import 'package:ung_dung_dat_lich_kham/viewmodels/doctor_service_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/search_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/health_record_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/profile_viewmodel.dart';
@@ -54,8 +56,11 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => DoctorClinicViewmodel()),
         ChangeNotifierProvider(create: (_) => DoctorServiceViewModel()),
         ChangeNotifierProvider(create: (_) => ScheduleConfigViewmodel()),
+        ChangeNotifierProvider(create: (_) => DoctorServiceViewModel()),
         // --- ViewModel của Admin ---
         ChangeNotifierProvider(create: (_) => AdminViewModel()),
+        ChangeNotifierProvider(create: (_) => AdminReportViewModel()),
+        ChangeNotifierProvider(create: (_) => AdminServiceViewModel()),
       ],
       child: MaterialApp(
         title: 'Hệ thống đặt lịch khám bệnh',
@@ -66,8 +71,8 @@ class MyApp extends StatelessWidget {
         scrollBehavior: const MaterialScrollBehavior().copyWith(
         dragDevices: {PointerDeviceKind.mouse, PointerDeviceKind.touch},
       ),
-        home: const LoginScreen(),
-        //home: const AdminLoginScreen(),
+        //home: const LoginScreen(),
+        home: const AdminLoginScreen(),
       ),
     );
   }

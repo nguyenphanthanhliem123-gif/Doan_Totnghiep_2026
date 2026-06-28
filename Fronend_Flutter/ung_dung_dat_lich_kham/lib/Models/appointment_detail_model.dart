@@ -8,6 +8,7 @@ class AppointmentDetailModel {
   final DateTime startTime;
   final DateTime endTime;
   final String jitsiLink;
+  final int doctorUserId;
   
   final String doctorName;
   final String? doctorAvatar;
@@ -32,6 +33,7 @@ class AppointmentDetailModel {
     required this.doctorId,
     required this.type,
     required this.status,
+    required this.doctorUserId,
     this.note,
     required this.startTime,
     required this.endTime,
@@ -72,6 +74,7 @@ class AppointmentDetailModel {
       paymentStatus: json['Trang_thai_thanh_toan'] ?? 'pending',
       patientName: json['Ten_nguoi_kham'] ?? '',
       relation: json['Moi_quan_he'] ?? 'Bản thân',
+      doctorUserId: json['Ma_nguoi_dung_bac_si'] ?? 0,
     );
   }
 }

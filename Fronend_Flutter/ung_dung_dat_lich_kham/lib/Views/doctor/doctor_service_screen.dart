@@ -1,289 +1,183 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:ung_dung_dat_lich_kham/Constants/ui_constants.dart';
-import 'package:ung_dung_dat_lich_kham/Models/specialtyModel.dart';
-import 'package:ung_dung_dat_lich_kham/viewModels/doctor_service_viewmodel.dart';
+import 'package:ung_dung_dat_lich_kham/Models/serviceModel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/auth_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/doctor_viewmodel.dart';
-import 'package:ung_dung_dat_lich_kham/models/doctor_detail_model.dart';
-import 'package:ung_dung_dat_lich_kham/viewmodels/specialty_viewmodel.dart';
+import '../../Constants/ui_constants.dart';
+import 'package:ung_dung_dat_lich_kham/viewmodels/doctor_service_viewmodel.dart';
 
-// --- GIAO DIỆN CHÍNH ---
-class DoctorServicesScreen extends StatefulWidget {
-  const DoctorServicesScreen({super.key});
+class DoctorServiceManagementScreen extends StatefulWidget {
+
+  const DoctorServiceManagementScreen({super.key});
 
   @override
-  State<DoctorServicesScreen> createState() => _DoctorServicesScreenState();
+  State<DoctorServiceManagementScreen> createState() => _DoctorServiceManagementScreenState();
 }
 
-class _DoctorServicesScreenState extends State<DoctorServicesScreen> {
-  bool _isLoading = false;
+class _DoctorServiceManagementScreenState extends State<DoctorServiceManagementScreen> {
+  bool isLoading = false;
+  int? _doctorId;
 
   @override
   void initState() {
+    fetchDoctorId();
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      loadDoctorDetail();
+  }
+
+  Future<void> fetchDoctorId() async {
+    setState(() {
+      isLoading = true;
+    });
+    final doctorId = await context.read<AuthViewModel>().getSavedDoctorId();
+
+    if(doctorId == null){
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Lỗi lấy mã bác sĩ'))
+      );
+    }else{
+      _doctorId = doctorId;
+      context.read<DoctorServiceViewModel>().fetchMyServices(doctorId);
+      context.read<DoctorViewModel>().fetchDoctorDetail(doctorId);
+    }
+
+    setState(() {
+      isLoading = false;
     });
   }
 
-  Future<void> loadDoctorDetail() async {
-    try {
-      setState(() {
-        _isLoading = true;
-      });
-      int? doctorId = await context.read<AuthViewModel>().getSavedDoctorId();
+  String formatCurrency(double amount) {
+    String result = amount.toStringAsFixed(0);
+    result = result.replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.');
+    return '$result vnđ';
+  }
 
-      print('==== doctorId: $doctorId');
+  // Mở Dialog chọn dịch vụ mẫu của chuyên khoa
+  void _showAddServiceDialog() {
+    final docVM = context.read<DoctorViewModel>();
+    final doctor = docVM.doctorDetail;
 
-      if (doctorId != null) {
-        if (!mounted) return;
-        // Tải chi tiết bác sĩ (bao gồm danh sách dịch vụ)
-        await context.read<DoctorViewModel>().fetchDoctorDetail(doctorId);
-        if (!mounted) return;
-        // Tải danh sách chuyên khoa để phục vụ Dropdown chọn lựa
-        await context.read<SpecialtyViewModel>().loadAllSpecialties();
-      }
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi tải dữ liệu: ${e.toString()}'), backgroundColor: Colors.red),
-        );
-      }
+    // 1. Kiểm tra an toàn: Nếu chưa tải xong thông tin bác sĩ thì báo lỗi chứ không để Crash app
+    if (doctor == null || doctor.specialtyId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đang tải thông tin chuyên khoa, vui lòng thử lại sau giây lát!'))
+      );
+      return;
     }
-  }
 
-  // Hàm định dạng tiền tệ VND
-  String _formatCurrency(double amount) {
-    return "${amount.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')} đ";
-  }
-
-  // --- HÀM HIỂN THỊ POPUP THÊM / SỬA DỊCH VỤ (MODAL BOTTOM SHEET) ---
-  void _openServiceForm({DoctorServiceModel? existingService, List<SpecialtyModel>? spec}) {
-    final formKey = GlobalKey<FormState>();
-    final nameController = TextEditingController(text: existingService?.name ?? '');
-    final priceController = TextEditingController(text: existingService?.price.toStringAsFixed(0) ?? '');
-    int? selectedSpecId = existingService?.specId;
-
+    final viewModel = context.read<DoctorServiceViewModel>();
+    
+    // 2. Gọi API lấy danh sách dịch vụ gốc
+    viewModel.fetchAvailableMaster(doctor.specialtyId!, _doctorId ?? 0);
+    
     showModalBottomSheet(
       context: context,
-      isScrollControlled: true, // Đẩy giao diện lên khi bàn phím xuất hiện
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (context) {
-        return spec == null || spec.isEmpty
-            ? const SizedBox(
-                height: 150,
-                child: Center(child: Text("Không tìm thấy dữ liệu chuyên khoa")),
-              )
-            : Padding(
-                padding: EdgeInsets.only(
-                  top: 24,
-                  left: 24,
-                  right: 24,
-                  bottom: MediaQuery.of(context).viewInsets.bottom + 24, // Tránh đè bàn phím
-                ),
-                child: Form(
-                  key: formKey,
-                  child: SingleChildScrollView(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              existingService == null ? 'Thêm dịch vụ mới' : 'Chỉnh sửa dịch vụ',
-                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                            ),
-                            IconButton(
-                              onPressed: () => Navigator.pop(context),
-                              icon: const Icon(Icons.close, color: Colors.grey),
-                            )
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Tên dịch vụ
-                        const Text('Tên dịch vụ chuyên sâu', style: TextStyle(fontWeight: FontWeight.w500)),
-                        const SizedBox(height: 8),
-                        TextFormField(
-                          controller: nameController,
-                          decoration: InputDecoration(
-                            hintText: 'VD: Siêu âm tim mạch bọc màu, nội soi...',
-                            filled: true,
-                            fillColor: Colors.grey.shade100,
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                          ),
-                          validator: (val) => val == null || val.trim().isEmpty ? 'Vui lòng nhập tên dịch vụ' : null,
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Dropdown Chọn Chuyên khoa
-                        const Text('Thuộc chuyên khoa', style: TextStyle(fontWeight: FontWeight.w500)),
-                        const SizedBox(height: 8),
-                        DropdownButtonFormField<int>(
-                          value: selectedSpecId,
-                          items: spec.map((cat) {
-                            return DropdownMenuItem<int>(value: cat.id, child: Text(cat.name));
-                          }).toList(),
-                          onChanged: (val) => selectedSpecId = val,
-                          decoration: InputDecoration(
-                            filled: true,
-                            fillColor: Colors.grey.shade100,
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                          ),
-                          validator: (val) => val == null ? 'Vui lòng chọn chuyên khoa' : null,
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Giá dịch vụ
-                        const Text('Giá dịch vụ (VND)', style: TextStyle(fontWeight: FontWeight.w500)),
-                        const SizedBox(height: 8),
-                        TextFormField(
-                          controller: priceController,
-                          keyboardType: TextInputType.number,
-                          inputFormatters: [FilteringTextInputFormatter.digitsOnly], // Chỉ cho nhập số
-                          decoration: InputDecoration(
-                            hintText: 'VD: 200000',
-                            filled: true,
-                            fillColor: Colors.grey.shade100,
-                            suffixText: 'đ',
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                          ),
-                          validator: (val) {
-                            if (val == null || val.trim().isEmpty) return 'Vui lòng nhập giá tiền';
-                            if (double.tryParse(val) == null || double.parse(val) <= 0) return 'Giá tiền không hợp lệ';
-                            return null;
-                          },
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Nút hành động (Xác nhận gửi dữ liệu lên Server)
-                        ElevatedButton(
-                          onPressed: () async {
-                            if (formKey.currentState!.validate()) {
-                              final price = double.parse(priceController.text);
-
-                              // Đóng bottom sheet trước khi chạy tác vụ bất đồng bộ
-                              Navigator.pop(context);
-                              
-                              setState(() => _isLoading = true);
-                              bool isSuccess = false;
-                              // 💡 ĐÃ KÍCH HOẠT THÀNH CÔNG: Gọi API thông qua ViewModel để cập nhật Database công khai
-                              try {
-                                if (existingService == null) {
-                                  // KÍCH HOẠT LOGIC TẠO MỚI DỊCH VỤ
-                                  isSuccess = await context.read<DoctorServiceViewModel>().addService(
-                                    nameController.text.trim(), 
-                                    selectedSpecId!, 
-                                    price
-                                  );
-                                } else {
-                                  // KÍCH HOẠT LOGIC CHỈNH SỬA DỊCH VỤ
-                                  isSuccess = await context.read<DoctorServiceViewModel>().editService(
-                                    existingService.id,
-                                    name: nameController.text.trim(),
-                                    specId: selectedSpecId!,
-                                    price: price,
-                                  );
-                                }
-
-                                // 💡 Dựa vào kết quả thật để hiển thị thông báo phù hợp
-                                if (isSuccess) {
-                                  await loadDoctorDetail(); // Reload lại giao diện
-
-                                  if (!mounted) return;
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(existingService == null ? 'Thêm thành công!' : 'Đã cập nhật dịch vụ'),
-                                      backgroundColor: Colors.green,
-                                    ),
-                                  );
-                                } else {
-                                  // Nếu trả về false, tức là có lỗi từ Backend hoặc dữ liệu không đổi
-                                  if (!mounted) return;
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Không thể lưu thay đổi. Vui lòng kiểm tra lại dữ liệu hoặc ID dịch vụ!'),
-                                      backgroundColor: Colors.orange,
-                                    ),
-                                  );
-                                }
-                              } catch (e) {
-                                if (!mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Không thể lưu thay đổi: $e'), backgroundColor: Colors.red),
-                                );
-                              } finally {
-                                if (mounted) setState(() => _isLoading = false);
-                              }
-                            }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blueAccent,
-                            minimumSize: const Size(double.infinity, 52),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                          child: Text(
-                            existingService == null ? 'Thêm mới dịch vụ' : 'Lưu thay đổi',
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+        return Consumer<DoctorServiceViewModel>(
+          builder: (context, vm, child) {
+            
+            // 3. Hiển thị vòng xoay Loading trong lúc đợi API trả dữ liệu về
+            if (vm.isLoading) {
+              return const SizedBox(
+                height: 200,
+                child: Center(child: CircularProgressIndicator(color: kPrimaryColor)),
               );
+            }
+
+            if (vm.availableMasterServices.isEmpty) {
+              return const Padding(
+                padding: EdgeInsets.all(30.0),
+                child: Text('Không có dịch vụ mẫu nào mới để chọn.', textAlign: TextAlign.center),
+              );
+            }
+            
+            return Container(
+              padding: EdgeInsets.only(
+                top: 20, left: 20, right: 20,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Chọn dịch vụ đăng ký khám', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 15),
+                  Flexible(
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: vm.availableMasterServices.length,
+                      itemBuilder: (context, index) {
+                        final item = vm.availableMasterServices[index];
+                        return ListTile(
+                          title: Text(item.serviceName, style: const TextStyle(fontWeight: FontWeight.w600)),
+                          subtitle: Text('Giá gốc: ${formatCurrency(item.price)}'),
+                          trailing: const Icon(Icons.add_circle_outline, color: kPrimaryColor),
+                          onTap: () {
+                            Navigator.pop(context);
+                            // Pass the correct properties
+                            _showPriceConfigDialog(item.id, item.serviceName, item.price);
+                          },
+                        );
+                      },
+                    ),
+                  )
+                ],
+              ),
+            );
+          },
+        );
       },
     );
   }
 
-  // --- HÀM XÓA DỊCH VỤ ---
-  void _deleteService(int id) {
+  // Dialog nhập giá tùy chỉnh của Bác sĩ
+  void _showPriceConfigDialog(int masterId, String serviceName, double defaultPrice) {
+    final priceController = TextEditingController(text: defaultPrice.toStringAsFixed(0));
+    
     showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Xóa dịch vụ?'),
-        content: const Text('Bệnh nhân sẽ không thể chọn ca khám ứng với dịch vụ này nữa.'),
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusSmall)),
+        title: Text(serviceName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Nhập mức giá bạn muốn áp dụng cho dịch vụ này:', style: TextStyle(fontSize: 13, color: kTextColor)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: priceController,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: 'Giá tiền dịch vụ (vnđ)',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                suffixText: 'đ',
+              ),
+            ),
+          ],
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Hủy')),
-          TextButton(
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Hủy', style: TextStyle(color: Colors.grey))),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: kPrimaryColor, elevation: 0),
             onPressed: () async {
-              Navigator.pop(dialogContext); // Đóng hộp thoại alert trước
-              setState(() => _isLoading = true);
-
-              try {
-                // 💡 ĐÃ KÍCH HOẠT THÀNH CÔNG: Gọi hàm xóa của DoctorViewModel lên API Server Realtime
-                await context.read<DoctorServiceViewModel>().removeService(id);
-                
-                // Tải lại danh sách mới nhất từ Database sau khi xóa thành công
-                await loadDoctorDetail();
-
-                if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Đã xóa dịch vụ thành công'), backgroundColor: Colors.redAccent),
-                );
-              } catch (e) {
-                if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Lỗi xóa dịch vụ: $e'), backgroundColor: Colors.red),
-                );
-              } finally {
-                if (mounted) setState(() => _isLoading = false);
+              double? inputPrice = double.tryParse(priceController.text);
+              if (inputPrice == null || inputPrice <= 0) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Vui lòng nhập giá hợp lệ')));
+                return;
+              }
+              Navigator.pop(context);
+              
+              bool success = await context.read<DoctorServiceViewModel>().chooseService(_doctorId!, masterId, inputPrice);
+              if (success) {
+                context.read<DoctorServiceViewModel>().fetchMyServices(_doctorId!);
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đã thêm dịch vụ thành công!')));
               }
             },
-            child: const Text('Xóa ngay', style: TextStyle(color: Colors.redAccent)),
-          ),
+            child: const Text('Áp dụng', style: TextStyle(color: Colors.white)),
+          )
         ],
       ),
     );
@@ -291,97 +185,61 @@ class _DoctorServicesScreenState extends State<DoctorServicesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final doctorVM = context.watch<DoctorViewModel>();
-    final specialtyVM = context.watch<SpecialtyViewModel>();
-
-    final doctor = doctorVM.doctorDetail;
-    final List<SpecialtyModel>? specList = specialtyVM.listSpecialty; 
-
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        backgroundColor: kPrimaryColor,
-        title: const Text('Dịch vụ & Giá khám', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        centerTitle: true,
+        title: const Text('Cấu hình dịch vụ & phí', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add, color: kPrimaryColor, size: 28),
+            onPressed: _showAddServiceDialog,
+          )
+        ],
       ),
-      body: doctorVM.isLoading || _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : doctor == null || doctor.services.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.medical_services_outlined, size: 64, color: Colors.grey.shade400),
-                      const SizedBox(height: 12),
-                      Text('Chưa có dịch vụ nào', style: TextStyle(color: Colors.grey.shade600, fontSize: 16)),
-                    ],
+      backgroundColor: Colors.grey.shade100,
+      body: Consumer<DoctorServiceViewModel>(
+        builder: (context, vm, child) {
+          if (vm.isLoading) return const Center(child: CircularProgressIndicator(color: kPrimaryColor));
+          if (vm.myServices.isEmpty) {
+            return const Center(child: Text('Bạn chưa chọn dịch vụ nào. Hãy ấn dấu (+) để thêm.'));
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(12),
+            itemCount: vm.myServices.length,
+            itemBuilder: (context, index) {
+              final MyServiceModel service = vm.myServices[index];
+              return Card(
+                margin: const EdgeInsets.symmetric(vertical: 6),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusSmall)),
+                elevation: 1,
+                child: ListTile(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  title: Text(service.serviceName, style: const TextStyle(fontWeight: FontWeight.bold, color: kTextColor)),
+                  subtitle: Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: Text(
+                      formatCurrency(service.price),
+                      style: const TextStyle(color: kPrimaryColor, fontWeight: FontWeight.bold, fontSize: 15),
+                    ),
                   ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: doctor.services.length,
-                  itemBuilder: (context, index) {
-                    final service = doctor.services[index]; 
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.grey.shade200),
-                        boxShadow: [
-                          BoxShadow(color: Colors.black.withOpacity(0.01), blurRadius: 10, offset: const Offset(0, 4))
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(color: Colors.blue.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
-                                  child: Text(
-                                    service.specName,
-                                    style: const TextStyle(fontSize: 11, color: Colors.blueAccent, fontWeight: FontWeight.bold),
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  service.name,
-                                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black87),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  _formatCurrency(service.price),
-                                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.orange),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Column(
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.edit_outlined, color: Colors.blue, size: 22),
-                                onPressed: () => _openServiceForm(existingService: service, spec: specList),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 22),
-                                onPressed: () => _deleteService(service.id),
-                              ),
-                            ],
-                          )
-                        ],
-                      ),
-                    );
-                  },
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                    onPressed: () async {
+                      bool success = await vm.removeService(service.id, _doctorId!);
+                      if (success) {
+                        vm.fetchMyServices(_doctorId!);
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đã xóa dịch vụ khỏi hồ sơ khám.')));
+                      }
+                    },
+                  ),
                 ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _openServiceForm(spec: specList),
-        backgroundColor: Colors.blueAccent,
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('Thêm dịch vụ', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+              );
+            },
+          );
+        },
       ),
     );
   }

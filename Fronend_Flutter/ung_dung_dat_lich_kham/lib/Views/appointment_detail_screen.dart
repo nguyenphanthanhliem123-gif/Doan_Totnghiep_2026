@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ung_dung_dat_lich_kham/Services/jitsi_service.dart';
+import 'package:ung_dung_dat_lich_kham/Views/report_bottom_sheet.dart';
 import 'package:ung_dung_dat_lich_kham/Views/review_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../Constants/ui_constants.dart'; // 🌟 Đã sửa thành Constants
@@ -455,6 +456,7 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                 }
               }
             },
+
             child: const Text('Đồng ý hủy', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
           ),
         ],
