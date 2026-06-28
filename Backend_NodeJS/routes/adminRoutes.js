@@ -16,6 +16,11 @@ adminRoutes.post('/verify-otp', adminController.verifyOtp);
 
 // Gọi trực tiếp hàm getDashboard từ adminController
 adminRoutes.get('/dashboard', adminAuth, adminController.getDashboard);
+adminRoutes.get('/users', adminAuth, adminController.getAllUser);
+adminRoutes.post('/lock-account', adminAuth, adminController.lockAccount);
+adminRoutes.post('/unlock-account', adminAuth, adminController.unLockAccount);
+adminRoutes.get('/user-appointment/:id', adminAuth, adminController.getAppointmentListByUserId);
+adminRoutes.get('/user-appointment-detail/:id', adminAuth, adminController.getDetails);
 
 // Lấy toàn bộ danh sách bác sĩ đợi duyệt
 adminRoutes.get('/pending-doctors', adminAuth, adminController.getPendingDoctorsList);

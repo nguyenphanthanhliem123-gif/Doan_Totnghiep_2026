@@ -148,12 +148,19 @@ export default class userController {
             const user = await userModel.findByEmail(email);
             if (!user) return res.status(401).json({ succeeded: false, message: 'Email hoặc mật khẩu không đúng' });
 
-            if (user.Trang_thai === 0) {
-                return res.status(403).json({ succeeded: false, message: "Tài khoản đã bị vô hiệu hóa." });
-            }
+            if(user.Trang_thai == 2) return res.status(401).json({
+                succeeded: false,
+                message: 'Tài khoản của bạn hiện đang bị khóa.'
+            });
+
+            if(user.Trang_thai == 0) return res.status(401).json({
+                succeeded: false,
+                message: "Tài khoản này đã bị xóa trước đó."
+            });
 
             const isMatch = await compare(password, user.Mat_khau);
             if (!isMatch) return res.status(401).json({ succeeded: false, message: "Email hoặc mật khẩu không đúng" });
+
 
             const token = await userController.generateToken(user);
             

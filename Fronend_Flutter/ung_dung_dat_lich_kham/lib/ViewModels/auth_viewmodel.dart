@@ -37,7 +37,6 @@ class AuthViewModel extends ChangeNotifier {
       // 3. Giải mã dữ liệu JSON trả về từ Node.js
       final responseData = jsonDecode(response.body);
 
-      print("BACKEND TRA VE CUC NAY: $responseData");
 
       _isLoading = false;
       notifyListeners();

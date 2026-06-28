@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:ung_dung_dat_lich_kham/Views/admin/admin_account_menu_screen.dart';
 import '../../Constants/ui_constants.dart';
 import '../../viewmodels/admin_viewmodel.dart';
 import 'admin_login_screen.dart';
@@ -154,6 +155,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             ),
             _buildDrawerItem(icon: Icons.dashboard, title: 'Dashboard', onTap: () => Navigator.pop(context)),
             const Divider(),
+            _buildDrawerItem(icon: Icons.fact_check_outlined, title: 'Duyệt Đăng Ký Bác Sĩ', onTap: () {}),
+            _buildDrawerItem(icon: Icons.manage_accounts_outlined, title: 'Quản Lý Tài Khoản', onTap: () {
+              Navigator.pop(context); // Đóng drawer trước
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AdminAccountMenuScreen()),
+              );
+            }),
             _buildDrawerItem(icon: Icons.fact_check_outlined, title: 'Duyệt Đăng Ký Bác Sĩ', onTap: () {
               Navigator.pop(context);
               Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminPendingDoctorsScreen()));

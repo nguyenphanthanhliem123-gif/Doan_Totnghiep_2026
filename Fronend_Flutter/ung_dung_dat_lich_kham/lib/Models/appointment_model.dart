@@ -8,6 +8,9 @@ class AppointmentModel {
   final DateTime endTime;
   final String doctorName;
   final String? doctorAvatar;
+  final int? specialtyId;
+  final String? specialtyName;
+  final String totalPrice;
 
   AppointmentModel({
     required this.id,
@@ -19,6 +22,9 @@ class AppointmentModel {
     required this.endTime,
     required this.doctorName,
     this.doctorAvatar,
+    this.specialtyId,
+    this.specialtyName,
+    required this.totalPrice,
   });
 
   factory AppointmentModel.fromJson(Map<String, dynamic> json) {
@@ -33,6 +39,9 @@ class AppointmentModel {
       endTime: DateTime.parse(json['Thoi_gian_Kthuc']).toLocal(),
       doctorName: json['Ten_bac_si'],
       doctorAvatar: json['Anh_bac_si'],
+      specialtyId: json['Ma_chuyen_khoa'] ?? 0,
+      specialtyName: json['Ten_chuyen_khoa'] ?? '',
+      totalPrice: json['Tong_tien'] ?? '0',
     );
   }
 }

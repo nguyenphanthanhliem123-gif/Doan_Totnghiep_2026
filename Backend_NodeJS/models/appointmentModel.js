@@ -62,6 +62,39 @@ export default class appointmentModel {
         }
     }
 
+    static async getAllPatienAppointment(userID){
+        try{
+            const sql = `
+                SELECT 
+                    lh.Ma_lich_hen,
+                    lh.Ma_booking,
+                    lh.Ma_bac_si,
+                    lh.Trang_thai_lich_hen,
+                    lh.Hinh_thuc,
+                    lh.Tong_tien,
+                    kg.Thoi_gian_Bdau,
+                    kg.Thoi_gian_Kthuc,
+                    nd.Ten_nguoi_dung AS Ten_bac_si,
+                    nd.Anh_dai_dien AS Anh_bac_si,
+                    ck.Ma_chuyen_khoa,
+                    ck.Ten_chuyen_khoa
+                FROM lich_hen lh
+                JOIN khung_gio_kham kg ON lh.Ma_khung_gio = kg.Ma_khung_gio
+                JOIN bac_si bs ON lh.Ma_bac_si = bs.Ma_bac_si
+                JOIN nguoi_dung nd ON bs.Ma_nguoi_dung = nd.Ma_nguoi_dung
+                JOIN benh_nhan bn ON lh.Ma_benh_nhan = bn.Ma_benh_nhan
+                JOIN chuyen_khoa ck ON ck.Ma_chuyen_khoa = bs.Ma_chuyen_khoa
+                WHERE bn.Ma_nguoi_dung = ?
+                ORDER BY kg.Thoi_gian_Bdau DESC
+            `;
+            
+            const [appointments] = await execute(sql, [userID]);
+            return appointments;
+        }catch (error) {
+            throw new Error('Lỗi truy vấn lịch hẹn: ' + error.message);
+        }
+    }
+
     // Lấy chi tiết lịch hẹn dựa trên Ma_lich_hen
     static async getAppointmentDetails(appointmentID) {
         try {
@@ -85,7 +118,7 @@ export default class appointmentModel {
                     nd_bs.Ma_nguoi_dung AS Ma_nguoi_dung_bac_si,
                     pk.Ten_phong_kham,
                     pk.Vi_tri AS Dia_chi_phong_kham,
-                    tt.Tong_tien,
+                    lh.Tong_tien,
                     tt.Phuong_thuc AS Phuong_thuc_thanh_toan,
                     tt.Trang_thai_thanh_toan,
                     -- Logic thông minh để lấy đúng Tên người đi khám
@@ -105,7 +138,7 @@ export default class appointmentModel {
                 JOIN benh_nhan bn ON lh.Ma_benh_nhan = bn.Ma_benh_nhan
                 JOIN nguoi_dung nd_bn ON bn.Ma_nguoi_dung = nd_bn.Ma_nguoi_dung
                 LEFT JOIN nguoi_than nt ON lh.Ma_nguoi_than = nt.Ma_nguoi_than
-                LEFT JOIN thanh_toan tt ON lh.Ma_lich_hen = tt.Ma_lich_hen
+                LEFT JOIN thanh_toan tt ON tt.Ma_lich_hen = lh.Ma_lich_hen
                 WHERE lh.Ma_lich_hen = ?
             `;
             
