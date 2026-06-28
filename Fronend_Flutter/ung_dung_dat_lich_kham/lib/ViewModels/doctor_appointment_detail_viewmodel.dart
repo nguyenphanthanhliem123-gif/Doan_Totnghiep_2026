@@ -157,4 +157,77 @@ class DoctorAppointmentDetailViewModel extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  // 1. Cập nhật trạng thái thông thường (Ví dụ: Tiếp nhận, Đang khám, Hủy...)
+  Future<Map<String, dynamic>> updateStatus(int appointmentId, String action) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      final url = Uri.parse('$_baseUrl/doctor/status/$appointmentId');
+
+      final response = await http.put(
+        url, 
+        headers: {
+          "Content-Type": "application/json", 
+          "Authorization": "Bearer $token"
+        }, 
+        body: jsonEncode({"action": action})
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && data['succeeded'] == true) {
+        // Tự động kéo lại chi tiết mới nhất của ca khám để UI cập nhật ngay lập tức
+        await fetchAppointmentDetail(appointmentId);
+        return {"success": true, "message": data['message']};
+      }
+      
+      _isLoading = false;
+      notifyListeners();
+      return {"success": false, "message": data['message'] ?? "Thao tác thất bại"};
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      return {"success": false, "message": "Lỗi kết nối Server"};
+    }
+  }
+
+  // 2. Cập nhật trạng thái Bệnh nhân vắng mặt
+  Future<Map<String, dynamic>> updateStatusAbsent(int appointmentId) async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      final url = Uri.parse('$_baseUrl/doctor/status/absent/$appointmentId');
+
+      final response = await http.put(
+        url, 
+        headers: {
+          "Content-Type": "application/json", 
+          "Authorization": "Bearer $token"
+        }
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && data['succeeded'] == true) {
+        // Tự động kéo lại chi tiết mới để UI cập nhật nút bấm hoặc nhãn trạng thái
+        await fetchAppointmentDetail(appointmentId);
+        return {"success": true, "message": data['message']};
+      }
+      
+      _isLoading = false;
+      notifyListeners();
+      return {"success": false, "message": data['message'] ?? "Thao tác thất bại"};
+    } catch (e) {
+      _isLoading = false;
+      notifyListeners();
+      return {"success": false, "message": "Lỗi kết nối Server"};
+    }
+  }
 }

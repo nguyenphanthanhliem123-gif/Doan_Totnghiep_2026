@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:socket_io_client/socket_io_client.dart' as IO; // Đã thêm thư viện socket_io_client
-import 'package:ung_dung_dat_lich_kham/Config/BASE_URL.dart'; 
+import 'package:ung_dung_dat_lich_kham/Config/BASE_URL.dart';
+import 'dart:typed_data';
 
 class AdminViewModel extends ChangeNotifier {
   bool _isLoading = false;
@@ -23,6 +24,7 @@ class AdminViewModel extends ChangeNotifier {
   };
 
   List<dynamic> pendingDoctors = [];
+  List<dynamic> specialties = [];
 
   // Endpoint Backend cho Admin (Sử dụng BASE_URL chung của dự án)
   final String _baseUrl = "$BASE_URL/api/admin";
@@ -242,6 +244,124 @@ class AdminViewModel extends ChangeNotifier {
       if (data['success'] == true) {
         await fetchPendingDoctors();
         fetchDashboardStats(); 
+      }
+      return data;
+    } catch (e) {
+      _setLoading(false);
+      return {'success': false, 'message': 'Lỗi kết nối máy chủ'};
+    }
+  }
+
+  // 1. Lấy danh sách chuyên khoa
+  Future<void> fetchSpecialties() async {
+    _setLoading(true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('admin_token');
+
+      final response = await http.get(
+        Uri.parse('$_baseUrl/specialties'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      final data = jsonDecode(response.body);
+      if (data['success'] == true) {
+        specialties = data['data'] ?? [];
+      }
+    } catch (e) {
+      debugPrint("Lỗi tải danh sách chuyên khoa: $e");
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // 2. Thêm mới chuyên khoa (Có upload ảnh)
+
+  Future<Map<String, dynamic>> createSpecialty(String name, String description, Uint8List? iconBytes) async {
+    _setLoading(true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('admin_token');
+
+      var request = http.MultipartRequest('POST', Uri.parse('$_baseUrl/specialties'));
+      request.headers['Authorization'] = 'Bearer $token';
+      request.fields['tenChuyenKhoa'] = name;
+      request.fields['moTa'] = description;
+
+      if (iconBytes != null) {
+        request.files.add(http.MultipartFile.fromBytes('icon', iconBytes, filename: 'icon.png'));
+      }
+
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
+      final data = jsonDecode(response.body);
+
+      _setLoading(false);
+      if (data['success'] == true) {
+        await fetchSpecialties(); // Tải lại danh sách
+      }
+      return data;
+    } catch (e) {
+      _setLoading(false);
+      return {'success': false, 'message': 'Lỗi kết nối máy chủ'};
+    }
+  }
+
+  // 3. Cập nhật chuyên khoa
+  Future<Map<String, dynamic>> updateSpecialty(int id, String name, String description, Uint8List? iconBytes) async {
+    _setLoading(true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('admin_token');
+
+      var request = http.MultipartRequest('PUT', Uri.parse('$_baseUrl/specialties/$id'));
+      request.headers['Authorization'] = 'Bearer $token';
+      request.fields['tenChuyenKhoa'] = name;
+      request.fields['moTa'] = description;
+
+      if (iconBytes != null) {
+        request.files.add(http.MultipartFile.fromBytes('icon', iconBytes, filename: 'icon_update.png'));
+      }
+
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
+      final data = jsonDecode(response.body);
+
+      _setLoading(false);
+      if (data['success'] == true) {
+        await fetchSpecialties(); 
+      }
+      return data;
+    } catch (e) {
+      _setLoading(false);
+      return {'success': false, 'message': 'Lỗi kết nối máy chủ'};
+    }
+  }
+
+  // 4. Đổi trạng thái Ẩn/Hiện
+  Future<Map<String, dynamic>> toggleSpecialtyStatus(int id, int status) async {
+    _setLoading(true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('admin_token');
+
+      final response = await http.patch(
+        Uri.parse('$_baseUrl/specialties/$id/toggle'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'status': status}),
+      );
+
+      final data = jsonDecode(response.body);
+      _setLoading(false);
+      
+      if (data['success'] == true) {
+        await fetchSpecialties(); 
       }
       return data;
     } catch (e) {

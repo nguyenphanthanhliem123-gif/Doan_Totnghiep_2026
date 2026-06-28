@@ -18,6 +18,7 @@ class DoctorSignupScreen extends StatefulWidget {
 class _DoctorSignupScreenState extends State<DoctorSignupScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
   final _passController = TextEditingController();
   final _confirmPassController = TextEditingController();
   final _hocViController = TextEditingController();
@@ -108,6 +109,10 @@ class _DoctorSignupScreenState extends State<DoctorSignupScreen> {
             const SizedBox(height: kSpacingSmall),
             _buildLabel('Email'),
             _buildTextField(controller: _emailController, hintText: 'example@example.com'),
+
+            const SizedBox(height: kSpacingSmall),
+            _buildLabel('Số điện thoại'),
+            _buildTextField(controller: _phoneController, hintText: 'VD: 0912345678', keyboardType: TextInputType.phone),
             
             const SizedBox(height: kSpacingSmall),
             _buildLabel('Chuyên khoa'),
@@ -187,6 +192,7 @@ class _DoctorSignupScreenState extends State<DoctorSignupScreen> {
                 final result = await authVM.registerDoctor(
                   fullName: _nameController.text.trim(), 
                   email: _emailController.text.trim(),
+                  phone: _phoneController.text.trim(),
                   password: _passController.text, 
                   confirmPassword: _confirmPassController.text,
                   maChuyenKhoa: _selectedChuyenKhoa!, 

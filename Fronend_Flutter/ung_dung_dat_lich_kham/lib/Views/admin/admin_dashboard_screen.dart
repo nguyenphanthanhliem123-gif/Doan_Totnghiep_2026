@@ -4,6 +4,7 @@ import '../../Constants/ui_constants.dart';
 import '../../viewmodels/admin_viewmodel.dart';
 import 'admin_login_screen.dart';
 import 'admin_pending_doctors_screen.dart';
+import 'admin_specialty_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -159,7 +160,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             }),
             _buildDrawerItem(icon: Icons.manage_accounts_outlined, title: 'Quản Lý Tài Khoản', onTap: () {}),
             const Divider(),
-            _buildDrawerItem(icon: Icons.category_outlined, title: 'Danh Mục Chuyên Khoa', onTap: () {}),
+            _buildDrawerItem(icon: Icons.category_outlined, title: 'Danh Mục Chuyên Khoa', onTap: () {
+              Navigator.pop(context);
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminSpecialtyScreen()));
+            }),
             _buildDrawerItem(icon: Icons.local_hospital_outlined, title: 'Danh Mục Dịch Vụ & Phí', onTap: () {}),
             const Divider(),
             _buildDrawerItem(icon: Icons.gavel, title: 'Xử Lý Khiếu Nại', onTap: () {}),

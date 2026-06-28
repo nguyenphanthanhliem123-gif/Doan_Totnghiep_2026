@@ -700,13 +700,29 @@ class _DoctorAppointmentDetailScreenState extends State<DoctorAppointmentDetailS
 
   Widget _buildDoctorBottomActions(BuildContext context, Map<String, dynamic> appointment) {
     String status = appointment['status'] ?? 'pending';
+    final vm = context.read<DoctorAppointmentDetailViewModel>();
+
+    // 🌟 HÀM XỬ LÝ CHUNG CHO NÚT DUYỆT/TỪ CHỐI
+    void handleUpdateStatus(String action) async {
+      final res = await vm.updateStatus(widget.appointmentId, action);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(res['message']),
+          backgroundColor: res['success'] ? Colors.green : Colors.red,
+        ));
+      }
+    }
 
     if (status == 'pending') {
       return Row(
         children: [
-          Expanded(child: _buildOutlinedButton('Từ chối', Colors.red, () {})),
+          Expanded(
+            child: _buildOutlinedButton('Từ chối', Colors.red, () => handleUpdateStatus('reject')),
+          ),
           const SizedBox(width: 15),
-          Expanded(child: _buildSolidButton('Xác nhận', Icons.check_circle, Colors.green, () {})),
+          Expanded(
+            child: _buildSolidButton('Xác nhận', Icons.check_circle, Colors.green, () => handleUpdateStatus('confirm')),
+          ),
         ],
       );
     } 
@@ -724,11 +740,38 @@ class _DoctorAppointmentDetailScreenState extends State<DoctorAppointmentDetailS
             ),
             const SizedBox(height: 10),
           ],
-          SizedBox(
-            width: double.infinity,
-            child: _buildSolidButton('Khám xong & Kê đơn', Icons.edit_document, kPrimaryColor, () {
-              _showPrescriptionBottomSheet(context);
-            })
+          // 🌟 CHIA ĐÔI HÀNG NÚT: BÁO VẮNG VÀ KÊ ĐƠN
+          Row(
+            children: [
+              Expanded(
+                child: _buildOutlinedButton('Báo vắng', Colors.orange, () async {
+                  final startTime = DateTime.parse(appointment['startTime']).toLocal();
+                  // Kiểm tra thời gian: Chỉ được báo vắng sau khi giờ khám đã qua 15 phút
+                  if (DateTime.now().isAfter(startTime.add(const Duration(minutes: 15)))) {
+                    final res = await vm.updateStatusAbsent(widget.appointmentId);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        content: Text(res['message']),
+                        backgroundColor: res['success'] ? Colors.green : Colors.red,
+                      ));
+                    }
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Chỉ báo vắng khi giờ khám qua tối thiểu 15 phút!'),
+                        backgroundColor: Colors.orange,
+                      )
+                    );
+                  }
+                }),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildSolidButton('Kê đơn', Icons.edit_document, kPrimaryColor, () {
+                  _showPrescriptionBottomSheet(context);
+                }),
+              ),
+            ],
           ),
         ],
       );

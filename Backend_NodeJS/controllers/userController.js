@@ -340,10 +340,10 @@ export default class userController {
     // Hàm đăng kí bác sĩ
     static async registerDoctor(req, res) {
         try {
-            const { email, password, fullName, maChuyenKhoa, hocVi, namKinhNghiem, moTa } = req.body;
+            const { email, password, fullName, dienThoai, maChuyenKhoa, hocVi, namKinhNghiem, moTa } = req.body;
 
-            if (!email || !password || !fullName || !maChuyenKhoa || !hocVi || !namKinhNghiem) {
-                return res.status(400).json({ succeeded: false, message: 'Vui lòng điền đầy đủ thông tin chuyên môn' });
+            if (!email || !password || !fullName || !dienThoai || !maChuyenKhoa || !hocVi || !namKinhNghiem) {
+                return res.status(400).json({ succeeded: false, message: 'Vui lòng điền đầy đủ thông tin chuyên môn và liên hệ' });
             }
 
             if (!userController.validatePassword(password)) {
@@ -353,7 +353,6 @@ export default class userController {
             const existingUser = await userModel.findByEmail(email);
             if (existingUser) return res.status(409).json({ succeeded: false, message: 'Email đã tồn tại' });
 
-            // Lấy chính xác thư mục gốc đang chạy Node.js và nối với chữ 'uploads'
             const uploadDir = path.join(process.cwd(), 'uploads');
 
             // Xử lý lưu Ảnh đại diện
@@ -378,7 +377,7 @@ export default class userController {
             // Lưu RAM
             const hashedPassword = await hash(password, PASSWORD_HASH_ROUNDS);
             pendingRegistrations.set(email, {
-                email, hashedPassword, fullName, role: 'Bac_si',
+                email, hashedPassword, fullName, dienThoai, role: 'Bac_si',
                 maChuyenKhoa, hocVi, namKinhNghiem, moTa,
                 anhDaiDien: `/uploads/${avatarName}`,
                 anhChungChi: `/uploads/${certName}` 
@@ -421,8 +420,8 @@ export default class userController {
 
             // 1. Lưu vào bảng nguoi_dung KÈM THEO CỘT Anh_dai_dien
             const [userResult] = await execute(
-                'INSERT INTO nguoi_dung (Ten_nguoi_dung, Email, Mat_khau, Phan_quyen, Anh_dai_dien, Trang_thai) VALUES (?, ?, ?, ?, ?, 1)',
-                [userData.fullName, userData.email, userData.hashedPassword, 'Bac_si', userData.anhDaiDien]
+                'INSERT INTO nguoi_dung (Ten_nguoi_dung, Email, Dien_thoai, Mat_khau, Phan_quyen, Anh_dai_dien, Trang_thai) VALUES (?, ?, ?, ?, ?, 1)',
+                [userData.fullName, userData.email, userData.dienThoai, userData.hashedPassword, 'Bac_si', userData.anhDaiDien]
             );
             const newUserId = userResult.insertId;
 

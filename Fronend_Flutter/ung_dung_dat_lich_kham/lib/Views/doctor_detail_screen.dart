@@ -394,6 +394,9 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
   }
 
   // CẬP NHẬT: HIỂN THỊ CỐ ĐỊNH 7 NGÀY TIẾP THEO
+  // =====================================================================
+  // CẬP NHẬT: LUỒNG ĐỌC VÀ PHÂN LOẠI 3 CA KHÁM (SÁNG - CHIỀU - TỐI)
+  // =====================================================================
   Widget _buildExpandableSchedule(List<DoctorScheduleModel> schedules) {
     final DateTime now = DateTime.now();
     final List<DateTime> next7Days = List.generate(7, (index) => now.add(Duration(days: index)));
@@ -416,29 +419,34 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
             
         String dateDisplay = "$weekdayStr (${currentDate.day.toString().padLeft(2, '0')}/${currentDate.month.toString().padLeft(2, '0')})";
 
+        // Khai báo 3 danh sách ca khám
         List<DoctorTimeSlotModel> morningSlots = [];
         List<DoctorTimeSlotModel> afternoonSlots = [];
+        List<DoctorTimeSlotModel> eveningSlots = []; // 🌟 Thêm ca tối
 
         if (dailySchedule != null) {
           for (var slot in dailySchedule.slots) {
             if (slot.status != 'locked') {
               int hour = int.tryParse(slot.time.split(':')[0]) ?? 0;
+              
               if (hour < 12) {
-                morningSlots.add(slot);
-              } else {
-                afternoonSlots.add(slot);
+                morningSlots.add(slot); // Trước 12h: Ca sáng
+              } else if (hour >= 12 && hour < 18) {
+                afternoonSlots.add(slot); // Từ 12h đến trước 18h: Ca chiều
+              } else if (hour >= 18 && hour <= 21) {
+                eveningSlots.add(slot); // 🌟 Từ 18h đến 21h: Ca tối ngoài giờ
               }
             }
           }
         }
 
-        bool hasSlots = morningSlots.isNotEmpty || afternoonSlots.isNotEmpty;
+        bool hasSlots = morningSlots.isNotEmpty || afternoonSlots.isNotEmpty || eveningSlots.isNotEmpty;
 
         return Container(
           margin: const EdgeInsets.only(bottom: 10),
           decoration: BoxDecoration(
-            border: Border.all(color: kBorderCyan), // Viền chuẩn
-            borderRadius: BorderRadius.circular(kBorderRadiusSmall), // Bo 12
+            border: Border.all(color: kBorderCyan), 
+            borderRadius: BorderRadius.circular(kBorderRadiusSmall), 
           ),
           child: Theme(
             data: Theme.of(context).copyWith(dividerColor: Colors.transparent), 
@@ -459,44 +467,35 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
                 if (!hasSlots)
                   const Text("Bác sĩ không có ca khám nào trong ngày này.", style: TextStyle(color: kGreyTextColor, fontStyle: FontStyle.italic)),
 
+                // 1. HIỂN THỊ CA SÁNG (8h - 12h)
                 if (morningSlots.isNotEmpty) ...[
                   const Text("☀️ Ca Sáng", style: TextStyle(fontWeight: FontWeight.bold, color: kPrimaryColor, fontSize: 13)),
                   const SizedBox(height: 8),
                   Wrap(
-                    spacing: 12,
-                    runSpacing: 8,
-                    children: morningSlots.map((slot) {
-                      bool isBooked = slot.status == 'booked';
-                      return Text(
-                        "${slot.time}${isBooked ? ' (Đã đặt)' : ''}", 
-                        style: TextStyle(
-                          color: isBooked ? Colors.grey.shade400 : Colors.black87,
-                          decoration: isBooked ? TextDecoration.lineThrough : null,
-                          fontSize: 13,
-                        )
-                      );
-                    }).toList(),
+                    spacing: 12, runSpacing: 8,
+                    children: morningSlots.map((slot) => _buildTimeSlotText(slot)).toList(),
                   ),
-                  if (afternoonSlots.isNotEmpty) const SizedBox(height: 15),
+                  if (afternoonSlots.isNotEmpty || eveningSlots.isNotEmpty) const SizedBox(height: 15),
                 ],
                 
+                // 2. HIỂN THỊ CA CHIỀU (13h - 17h)
                 if (afternoonSlots.isNotEmpty) ...[
                   const Text("🌙 Ca Chiều", style: TextStyle(fontWeight: FontWeight.bold, color: kPrimaryColor, fontSize: 13)),
                   const SizedBox(height: 8),
                   Wrap(
-                    spacing: 12,
-                    runSpacing: 8,
-                    children: afternoonSlots.map((slot) {
-                      bool isBooked = slot.status == 'booked';
-                      return Text(
-                        "${slot.time}${isBooked ? ' (Đã đặt)' : ''}", 
-                        style: TextStyle(
-                          color: isBooked ? Colors.grey.shade400 : Colors.black87,
-                          decoration: isBooked ? TextDecoration.lineThrough : null,
-                          fontSize: 13,
-                        )
-                      );
-                    }).toList(),
+                    spacing: 12, runSpacing: 8,
+                    children: afternoonSlots.map((slot) => _buildTimeSlotText(slot)).toList(),
+                  ),
+                  if (eveningSlots.isNotEmpty) const SizedBox(height: 15),
+                ],
+
+                // 3. HIỂN THỊ CA TỐI (18h - 21h)
+                if (eveningSlots.isNotEmpty) ...[
+                  const Text("🌆 Ca Tối", style: TextStyle(fontWeight: FontWeight.bold, color: kPrimaryColor, fontSize: 13)),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 12, runSpacing: 8,
+                    children: eveningSlots.map((slot) => _buildTimeSlotText(slot)).toList(),
                   ),
                 ],
               ],
@@ -504,6 +503,19 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
           ),
         );
       }).toList(),
+    );
+  }
+
+  // Hàm helper xử lý chuỗi chữ gạch ngang khi slot đã bị đặt lịch
+  Widget _buildTimeSlotText(DoctorTimeSlotModel slot) {
+    bool isBooked = slot.status == 'booked';
+    return Text(
+      "${slot.time}${isBooked ? ' (Đã đặt)' : ''}", 
+      style: TextStyle(
+        color: isBooked ? Colors.grey.shade400 : Colors.black87,
+        decoration: isBooked ? TextDecoration.lineThrough : null,
+        fontSize: 13,
+      )
     );
   }
 

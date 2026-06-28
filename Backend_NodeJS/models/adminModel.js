@@ -153,4 +153,61 @@ export default class adminModel {
             throw new Error("Lỗi cập nhật trạng thái hồ sơ: " + error.message);
         }
     }
+
+    // ==========================================
+    // QUẢN LÝ CHUYÊN KHOA
+    // ==========================================
+
+    // Lấy danh sách chuyên khoa (Dành cho Admin: Lấy tất cả)
+    static async getAllSpecialtiesAdmin() {
+        try {
+            const [rows] = await execute(`SELECT * FROM chuyen_khoa ORDER BY Ma_chuyen_khoa DESC`);
+            return rows;
+        } catch (error) {
+            throw new Error("Lỗi lấy danh sách chuyên khoa: " + error.message);
+        }
+    }
+
+    // Thêm chuyên khoa mới
+    static async createSpecialty(ten, moTa, iconPath) {
+        try {
+            const query = `INSERT INTO chuyen_khoa (Ten_chuyen_khoa, Mo_ta, Icon, Trang_thai) VALUES (?, ?, ?, 1)`;
+            const [result] = await execute(query, [ten, moTa, iconPath]);
+            return result.insertId;
+        } catch (error) {
+            throw new Error("Lỗi thêm chuyên khoa: " + error.message);
+        }
+    }
+
+    // Cập nhật chuyên khoa
+    static async updateSpecialty(id, ten, moTa, iconPath) {
+        try {
+            let query = `UPDATE chuyen_khoa SET Ten_chuyen_khoa = ?, Mo_ta = ?`;
+            let params = [ten, moTa];
+
+            if (iconPath) {
+                query += `, Icon = ?`;
+                params.push(iconPath);
+            }
+
+            query += ` WHERE Ma_chuyen_khoa = ?`;
+            params.push(id);
+
+            const [result] = await execute(query, params);
+            return result.affectedRows;
+        } catch (error) {
+            throw new Error("Lỗi cập nhật chuyên khoa: " + error.message);
+        }
+    }
+
+    // Ẩn / Hiện chuyên khoa
+    static async toggleSpecialtyStatus(id, status) {
+        try {
+            const query = `UPDATE chuyen_khoa SET Trang_thai = ? WHERE Ma_chuyen_khoa = ?`;
+            const [result] = await execute(query, [status, id]);
+            return result.affectedRows;
+        } catch (error) {
+            throw new Error("Lỗi cập nhật trạng thái chuyên khoa: " + error.message);
+        }
+    }
 }

@@ -45,7 +45,7 @@ class DoctorAppointmentListViewModel extends ChangeNotifier {
     }
   }
 
-  // Các hàm updateStatus và updateStatusAbsent giữ nguyên logic cũ...
+  // Cập nhật trạng thái thông thường (Ví dụ: Tiếp nhận, Đang khám, Hủy...)
   Future<Map<String, dynamic>> updateStatus(int appointmentId, String action, {String status = 'all', String date = 'all'}) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -64,6 +64,7 @@ class DoctorAppointmentListViewModel extends ChangeNotifier {
     }
   }
 
+  // Cập nhật trạng thái Bệnh nhân vắng mặt
   Future<Map<String, dynamic>> updateStatusAbsent(int appointmentId, {String status = 'all', String date = 'all'}) async {
     try {
       final prefs = await SharedPreferences.getInstance();

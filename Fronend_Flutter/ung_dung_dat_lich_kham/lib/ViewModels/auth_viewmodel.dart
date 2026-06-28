@@ -423,34 +423,32 @@ class AuthViewModel extends ChangeNotifier {
   // Hàm đăng ký riêng cho Bác sĩ
   // Hàm kết nối API Đăng ký Bác sĩ
   Future<Map<String, dynamic>> registerDoctor({
-    required String fullName, required String email, 
+    required String fullName, required String email, required String phone, // 🌟 THÊM phone
     required String password, required String confirmPassword,
     required int maChuyenKhoa, required String hocVi, 
     required int namKinhNghiem, required String moTa,
-    required Uint8List avatarBytes, // Nhận Bytes
-    required Uint8List certificateBytes, // Nhận Bytes
+    required Uint8List avatarBytes, 
+    required Uint8List certificateBytes, 
   }) async {
-    // 1. Kiểm tra cơ bản giống hàm register
+    // Thêm kiểm tra rỗng cho phone
     if (password != confirmPassword) {
       return {"success": false, "message": "Mật khẩu xác nhận không khớp!"};
     }
-    if (fullName.isEmpty || email.isEmpty || password.isEmpty || hocVi.isEmpty) {
+    if (fullName.isEmpty || email.isEmpty || phone.isEmpty || password.isEmpty || hocVi.isEmpty) {
       return {"success": false, "message": "Vui lòng điền đầy đủ thông tin!"};
     }
 
-    // 2. Bật trạng thái Loading
     _isLoading = true;
     notifyListeners();
 
-    // 3. Chuẩn bị Request Multipart
     final url = Uri.parse('$_baseUrl/register-doctor');
     
     try {
       var request = http.MultipartRequest('POST', url);
       
-      // Đính kèm các trường thông tin
       request.fields['fullName'] = fullName;
       request.fields['email'] = email;
+      request.fields['dienThoai'] = phone; // 🌟 THÊM DÒNG NÀY ĐỂ GỬI LÊN BACKEND
       request.fields['password'] = password;
       request.fields['maChuyenKhoa'] = maChuyenKhoa.toString();
       request.fields['hocVi'] = hocVi;

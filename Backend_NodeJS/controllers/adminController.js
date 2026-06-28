@@ -1,5 +1,6 @@
 import { hash, compare } from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import path from 'path'; // CẦN THIẾT ĐỂ XỬ LÝ LƯU ẢNH ICON
 import adminModel from '../models/adminModel.js';
 import userModel from '../models/userModel.js'; // Tận dụng các hàm saveOTP/getValidOTP của bạn
 import { generateOTP } from '../utils/otpHelper.js';
@@ -164,6 +165,94 @@ export default class adminController {
             });
         } catch (error) {
             console.error("❌ LỖI:", error.message); // In đậm lỗi ra terminal Node
+            return res.status(500).json({ success: false, message: error.message });
+        }
+    }
+
+    // ==========================================
+    // QUẢN LÝ CHUYÊN KHOA
+    // ==========================================
+
+    // API: Lấy toàn bộ chuyên khoa
+    static async getAllSpecialties(req, res) {
+        try {
+            const specialties = await adminModel.getAllSpecialtiesAdmin();
+            return res.status(200).json({ success: true, data: specialties });
+        } catch (error) {
+            return res.status(500).json({ success: false, message: error.message });
+        }
+    }
+
+    // API: Tạo chuyên khoa mới (Có upload ảnh Icon)
+    static async createSpecialty(req, res) {
+        try {
+            const { tenChuyenKhoa, moTa } = req.body;
+
+            if (!tenChuyenKhoa) {
+                return res.status(400).json({ success: false, message: 'Vui lòng nhập tên chuyên khoa' });
+            }
+
+            let iconPath = null;
+            // Xử lý lưu ảnh nếu có file gửi lên
+            if (req.files && req.files.icon) {
+                const uploadDir = path.join(process.cwd(), 'uploads');
+                const iconFile = req.files.icon;
+                const iconName = `ck_${Date.now()}_${iconFile.name.replace(/\s+/g, '')}`;
+                const savePath = path.join(uploadDir, iconName);
+                
+                await iconFile.mv(savePath);
+                iconPath = `/uploads/${iconName}`;
+            }
+
+            await adminModel.createSpecialty(tenChuyenKhoa, moTa || '', iconPath);
+            return res.status(201).json({ success: true, message: 'Thêm chuyên khoa thành công!' });
+        } catch (error) {
+            return res.status(500).json({ success: false, message: error.message });
+        }
+    }
+
+    // API: Cập nhật thông tin chuyên khoa
+    static async updateSpecialty(req, res) {
+        try {
+            const { id } = req.params;
+            const { tenChuyenKhoa, moTa } = req.body;
+
+            if (!tenChuyenKhoa) {
+                return res.status(400).json({ success: false, message: 'Vui lòng nhập tên chuyên khoa' });
+            }
+
+            let iconPath = null;
+            // Xử lý lưu ảnh mới nếu có ghi đè
+            if (req.files && req.files.icon) {
+                const uploadDir = path.join(process.cwd(), 'uploads');
+                const iconFile = req.files.icon;
+                const iconName = `ck_${Date.now()}_${iconFile.name.replace(/\s+/g, '')}`;
+                const savePath = path.join(uploadDir, iconName);
+                
+                await iconFile.mv(savePath);
+                iconPath = `/uploads/${iconName}`;
+            }
+
+            await adminModel.updateSpecialty(id, tenChuyenKhoa, moTa || '', iconPath);
+            return res.status(200).json({ success: true, message: 'Cập nhật chuyên khoa thành công!' });
+        } catch (error) {
+            return res.status(500).json({ success: false, message: error.message });
+        }
+    }
+
+    // API: Ẩn/Hiện chuyên khoa
+    static async toggleSpecialtyStatus(req, res) {
+        try {
+            const { id } = req.params;
+            const { status } = req.body; // Truyền 1 (Hiện) hoặc 0 (Ẩn)
+
+            if (status === undefined) {
+                return res.status(400).json({ success: false, message: 'Thiếu thông tin trạng thái cập nhật' });
+            }
+
+            await adminModel.toggleSpecialtyStatus(id, status);
+            return res.status(200).json({ success: true, message: 'Cập nhật trạng thái thành công!' });
+        } catch (error) {
             return res.status(500).json({ success: false, message: error.message });
         }
     }

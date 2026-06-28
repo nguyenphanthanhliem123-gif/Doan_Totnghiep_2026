@@ -26,4 +26,12 @@ adminRoutes.post('/approve-doctor', adminAuth, adminController.approveDoctor);
 // Từ chối bác sĩ kèm lý do
 adminRoutes.post('/reject-doctor', adminAuth, adminController.rejectDoctor);
 
+// ==========================================
+// QUẢN LÝ CHUYÊN KHOA (CRUD)
+// ==========================================
+adminRoutes.get('/specialties', adminAuth, adminController.getAllSpecialties);
+adminRoutes.post('/specialties', adminAuth, adminController.createSpecialty);
+adminRoutes.put('/specialties/:id', adminAuth, adminController.updateSpecialty);
+adminRoutes.patch('/specialties/:id/toggle', adminAuth, adminController.toggleSpecialtyStatus);
+
 export default adminRoutes;
