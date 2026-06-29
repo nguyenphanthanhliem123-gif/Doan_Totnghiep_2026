@@ -16,6 +16,9 @@ import 'package:ung_dung_dat_lich_kham/views/health_record_menu_screen.dart';
 import 'package:ung_dung_dat_lich_kham/views/appointment_list_screen.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/notification_viewmodel.dart';
 
+// 🌟 THÊM IMPORT MÀN HÌNH CHAT VÀO ĐÂY
+import 'package:ung_dung_dat_lich_kham/views/chatbot_screen.dart'; 
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -274,6 +277,8 @@ class _HomeScreenState extends State<HomeScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20.0),
       child: Row(
+        // Dùng MainAxisAlignment.start để các icon xếp từ trái qua, cách đều nhau bằng SizedBox
+        mainAxisAlignment: MainAxisAlignment.start, 
         children: [
           InkWell(
             child: _buildCategoryItem('Hồ Sơ', Icons.assignment_outlined),
@@ -291,6 +296,19 @@ class _HomeScreenState extends State<HomeScreen> {
               if(!mounted) return;
               Navigator.of(context).push(
                 MaterialPageRoute(builder: (context) => SpecialtyListScreen())
+              );
+            },
+          ),
+          const SizedBox(width: 30),
+          
+          // 🌟 THÊM LUỒNG QUA TRANG CHAT AI Ở ĐÂY
+          InkWell(
+            child: _buildCategoryItem('Trợ lý AI', Icons.support_agent_outlined), // Icon robot tư vấn
+            onTap: () {
+              if(!mounted) return;
+              // Điều hướng sang màn hình Chat đã thiết kế
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => const ChatbotScreen())
               );
             },
           )
@@ -618,5 +636,5 @@ class _HomeScreenState extends State<HomeScreen> {
         },
       ),
     );
-}
+  }
 }

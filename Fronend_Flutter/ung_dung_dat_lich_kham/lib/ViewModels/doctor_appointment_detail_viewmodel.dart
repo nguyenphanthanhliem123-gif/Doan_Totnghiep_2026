@@ -158,7 +158,7 @@ class DoctorAppointmentDetailViewModel extends ChangeNotifier {
     }
   }
 
-  // 1. Cập nhật trạng thái thông thường (Ví dụ: Tiếp nhận, Đang khám, Hủy...)
+  // Cập nhật trạng thái thông thường (Ví dụ: Tiếp nhận, Đang khám, Hủy...)
   Future<Map<String, dynamic>> updateStatus(int appointmentId, String action) async {
     _isLoading = true;
     notifyListeners();
@@ -195,7 +195,7 @@ class DoctorAppointmentDetailViewModel extends ChangeNotifier {
     }
   }
 
-  // 2. Cập nhật trạng thái Bệnh nhân vắng mặt
+  // Cập nhật trạng thái Bệnh nhân vắng mặt
   Future<Map<String, dynamic>> updateStatusAbsent(int appointmentId) async {
     _isLoading = true;
     notifyListeners();

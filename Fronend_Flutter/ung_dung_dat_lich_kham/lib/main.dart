@@ -23,6 +23,7 @@ import 'package:ung_dung_dat_lich_kham/viewmodels/doctor_appointment_viewmodel.d
 import 'package:ung_dung_dat_lich_kham/viewmodels/doctor_appointment_list_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/doctor_appointment_detail_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/admin_viewmodel.dart';
+import 'package:ung_dung_dat_lich_kham/viewmodels/chat_viewmodel.dart';
 import 'views/admin/admin_login_screen.dart';
 
 void main() {
@@ -61,6 +62,8 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AdminViewModel()),
         ChangeNotifierProvider(create: (_) => AdminReportViewModel()),
         ChangeNotifierProvider(create: (_) => AdminServiceViewModel()),
+        // --- ViewModel của chatbotAI ---
+        ChangeNotifierProvider(create: (_) => ChatViewModel()),
       ],
       child: MaterialApp(
         title: 'Hệ thống đặt lịch khám bệnh',
