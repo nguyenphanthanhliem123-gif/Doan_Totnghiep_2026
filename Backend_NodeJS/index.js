@@ -26,6 +26,7 @@ import appointmentRoutes from './routes/appointmentRoutes.js';
 import paymentRoute from "./routes/paymentRoutes.js";
 import notificationRoute from "./routes/notificationRoutes.js";
 import serviceRoutes from "./routes/serviceRoutes.js";
+import chatbotRoutes from './routes/chatbotRoutes.js';
 
 const app = express();
 const __filename = fileURLToPath(import.meta.url);
@@ -137,6 +138,7 @@ app.use('/uploads', (req, res, next) => {
     res.header("Cross-Origin-Resource-Policy", "cross-origin"); // Quan trọng cho ảnh
     next();
 }, express.static(path.join(__dirname, 'uploads')));
+app.use('/api/chatbot', chatbotRoutes);
 
 app.use((req,res,next)=>{
     res.status(404).json({message: 'Endpoint not found'});
