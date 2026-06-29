@@ -10,6 +10,7 @@ import '../../viewmodels/admin_viewmodel.dart';
 import 'admin_login_screen.dart';
 import 'admin_pending_doctors_screen.dart';
 import 'admin_specialty_screen.dart';
+import 'admin_today_appointments_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -91,7 +92,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       _buildBigGradientCard(
                         value: stats['todayAppointments'].toString(),
                         onTap: () {
-                          // Xem chi tiết lịch khám hôm nay (nếu cần)
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const AdminTodayAppointmentsScreen()),
+                          );
                         }
                       ),
                       const SizedBox(height: kSpacingLarge),
@@ -165,7 +169,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             ),
             _buildDrawerItem(icon: Icons.dashboard, title: 'Dashboard', onTap: () => Navigator.pop(context)),
             const Divider(),
-            _buildDrawerItem(icon: Icons.fact_check_outlined, title: 'Duyệt Đăng Ký Bác Sĩ', onTap: () {}),
             _buildDrawerItem(icon: Icons.manage_accounts_outlined, title: 'Quản Lý Tài Khoản', onTap: () {
               Navigator.pop(context); // Đóng drawer trước
               Navigator.push(
@@ -177,7 +180,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               Navigator.pop(context);
               Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminPendingDoctorsScreen()));
             }),
-            _buildDrawerItem(icon: Icons.manage_accounts_outlined, title: 'Quản Lý Tài Khoản', onTap: () {}),
             const Divider(),
             _buildDrawerItem(icon: Icons.category_outlined, title: 'Danh Mục Chuyên Khoa', onTap: () {
               Navigator.pop(context);

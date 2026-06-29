@@ -266,4 +266,40 @@ export default class adminModel {
             throw new Error("Lỗi cập nhật trạng thái chuyên khoa: " + error.message);
         }
     }
+
+    // Lấy lịch hẹn hôm nay
+    static async getTodayAppointments() {
+        try {
+            const query = `
+                SELECT 
+                    lh.Ma_lich_hen, 
+                    lh.Ma_booking,
+                    lh.Hinh_thuc, 
+                    lh.Trang_thai_lich_hen,
+                    lh.Trieu_chung,
+                    kg.Thoi_gian_Bdau, 
+                    kg.Thoi_gian_Kthuc,
+                    nd_bs.Ten_nguoi_dung AS Ten_bac_si,
+                    nd_bn.Ten_nguoi_dung AS Ten_benh_nhan,
+                    -- Gom tất cả dịch vụ của 1 ca khám thành 1 chuỗi cách nhau bởi dấu phẩy
+                    GROUP_CONCAT(dv.Ten_dich_vu SEPARATOR ', ') AS Ten_dich_vu
+                FROM lich_hen lh
+                JOIN khung_gio_kham kg ON lh.Ma_khung_gio = kg.Ma_khung_gio
+                JOIN bac_si bs ON lh.Ma_bac_si = bs.Ma_bac_si
+                JOIN nguoi_dung nd_bs ON bs.Ma_nguoi_dung = nd_bs.Ma_nguoi_dung
+                JOIN benh_nhan bn ON lh.Ma_benh_nhan = bn.Ma_benh_nhan
+                JOIN nguoi_dung nd_bn ON bn.Ma_nguoi_dung = nd_bn.Ma_nguoi_dung
+                LEFT JOIN chi_tiet_lich_hen ctlh ON lh.Ma_lich_hen = ctlh.Ma_lich_hen
+                LEFT JOIN dich_vu dv ON ctlh.Ma_dich_vu = dv.Ma_dich_vu
+                WHERE DATE(kg.Thoi_gian_Bdau) = CURDATE()
+                -- Bắt buộc gom nhóm theo Mã lịch hẹn để không bị nhân bản dòng
+                GROUP BY lh.Ma_lich_hen
+                ORDER BY kg.Thoi_gian_Bdau ASC
+            `;
+            const [rows] = await execute(query);
+            return rows;
+        } catch (error) {
+            throw new Error("Lỗi lấy danh sách lịch hẹn hôm nay: " + error.message);
+        }
+    }
 }

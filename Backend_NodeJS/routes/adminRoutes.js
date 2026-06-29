@@ -41,4 +41,7 @@ adminRoutes.post('/specialties', adminAuth, adminController.createSpecialty);
 adminRoutes.put('/specialties/:id', adminAuth, adminController.updateSpecialty);
 adminRoutes.patch('/specialties/:id/toggle', adminAuth, adminController.toggleSpecialtyStatus);
 
+// Quản lý danh sách lịch hẹn trong ngày
+adminRoutes.get('/today-appointments', adminAuth, adminController.getTodayAppointmentsList);
+
 export default adminRoutes;

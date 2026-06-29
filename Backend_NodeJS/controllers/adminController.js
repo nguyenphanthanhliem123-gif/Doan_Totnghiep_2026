@@ -465,4 +465,16 @@ export default class adminController {
             return res.status(500).json({ success: false, message: error.message });
         }
     }
+
+    static async getTodayAppointmentsList(req, res) {
+        try {
+            const appointments = await adminModel.getTodayAppointments();
+            return res.status(200).json({
+                success: true,
+                data: appointments
+            });
+        } catch (error) {
+            return res.status(500).json({ success: false, message: error.message });
+        }
+    }
 }

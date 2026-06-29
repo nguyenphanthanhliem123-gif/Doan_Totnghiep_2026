@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:ung_dung_dat_lich_kham/models/health_record_model.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/health_record_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/views/add_health_record.dart';
-import '../Constants/ui_constants.dart'; // 🌟 Đã sửa thành Constants
+import '../Constants/ui_constants.dart'; 
 import '../viewmodels/booking_viewmodel.dart';
 import '../viewmodels/auth_viewmodel.dart';
 import '../models/doctor_detail_model.dart';
+import 'package:url_launcher/url_launcher.dart';
+// 🌟 Import thêm ViewModel quản lý lịch hẹn của người dùng để làm mới dữ liệu trang chủ
+import '../viewmodels/appointment_viewmodel.dart'; 
 
 class BookingScreen extends StatefulWidget {
   final DoctorDetailModel doctor; 
@@ -87,18 +89,17 @@ class _BookingScreenState extends State<BookingScreen> {
         ),
         title: Text(
           "BS. ${widget.doctor.fullName}",
-          style: kHeaderTextStyle.copyWith(fontSize: 16), // 🌟 Chuẩn hóa
+          style: kHeaderTextStyle.copyWith(fontSize: 16), 
         ),
       ),
       body: Column(
         children: [
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(kDefaultPadding), // 🌟 Lề 20
+              padding: const EdgeInsets.all(kDefaultPadding), 
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 1. LỊCH CALENDAR
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -120,7 +121,7 @@ class _BookingScreenState extends State<BookingScreen> {
                   ),
                   Container(
                     padding: const EdgeInsets.all(15),
-                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(kBorderRadiusLarge), border: Border.all(color: kBorderCyan)), // 🌟 Bo 20, viền chuẩn
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(kBorderRadiusLarge), border: Border.all(color: kBorderCyan)), 
                     child: Column(
                       children: [
                         Row(
@@ -134,7 +135,6 @@ class _BookingScreenState extends State<BookingScreen> {
                   ),
                   const SizedBox(height: kSpacingLarge),
 
-                  // 2. KHUNG GIỜ TRỐNG
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -166,7 +166,7 @@ class _BookingScreenState extends State<BookingScreen> {
 
                         Color bgColor; Color borderColor = Colors.transparent; Color textColor; TextDecoration? textDecoration;
                         if (isAvailable) {
-                          bgColor = isSelected ? kPrimaryColor : kLightCyanBg1; // 🌟 Dùng nền xanh chuẩn
+                          bgColor = isSelected ? kPrimaryColor : kLightCyanBg1; 
                           borderColor = isAvailable ? kPrimaryColor.withOpacity(0.4) : Colors.transparent;
                           textColor = isSelected ? Colors.white : kPrimaryColor;
                         } else if (isBooked) {
@@ -179,7 +179,7 @@ class _BookingScreenState extends State<BookingScreen> {
                           onTap: isAvailable ? () => setState(() => _selectedSlotId = slot.id) : null,
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                            decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(kBorderRadiusSmall), border: Border.all(color: borderColor)), // 🌟 Bo 12
+                            decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(kBorderRadiusSmall), border: Border.all(color: borderColor)), 
                             child: Text(slot.time, style: TextStyle(color: textColor, fontWeight: FontWeight.bold, decoration: textDecoration)),
                           ),
                         );
@@ -187,7 +187,6 @@ class _BookingScreenState extends State<BookingScreen> {
                     ),
                   const SizedBox(height: kSpacingLarge),
 
-                  // 3. TÙY CHỌN KHÁM CHO AI VÀ HÌNH THỨC
                   _buildSectionTitle("Khám cho"),
                   Row(
                     children: [
@@ -238,7 +237,7 @@ class _BookingScreenState extends State<BookingScreen> {
 
                         return Container(
                           padding: const EdgeInsets.symmetric(horizontal: 15),
-                          decoration: BoxDecoration(color: kLightCyanBg1, borderRadius: BorderRadius.circular(kBorderRadiusSmall)), // 🌟 Bo 12 nền chuẩn
+                          decoration: BoxDecoration(color: kLightCyanBg1, borderRadius: BorderRadius.circular(kBorderRadiusSmall)), 
                           child: DropdownButtonHideUnderline(
                             child: DropdownButton<HealthRecordModel>(
                               value: _selectedRelative,
@@ -269,7 +268,6 @@ class _BookingScreenState extends State<BookingScreen> {
                   ),
                   const SizedBox(height: kSpacingLarge),
 
-                  // 4. DỊCH VỤ KHÁM (CHỌN NHIỀU)
                   _buildSectionTitle("Dịch vụ khám (Có thể chọn nhiều)"),
                   Wrap(
                     spacing: 8.0,
@@ -279,7 +277,7 @@ class _BookingScreenState extends State<BookingScreen> {
                       return FilterChip(
                         label: Text(service.name),
                         selected: isSelected,
-                        selectedColor: kLightCyanBg1, // 🌟 Chuẩn hóa
+                        selectedColor: kLightCyanBg1, 
                         checkmarkColor: kPrimaryColor,
                         labelStyle: TextStyle(
                           color: isSelected ? kPrimaryColor : kTextColor,
@@ -305,11 +303,10 @@ class _BookingScreenState extends State<BookingScreen> {
                   ),
                   const SizedBox(height: kSpacingLarge),
 
-                  // 5. TRIỆU CHỨNG
                   _buildSectionTitle("Mô tả triệu chứng"),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 15),
-                    decoration: BoxDecoration(color: kLightCyanBg1, borderRadius: BorderRadius.circular(kBorderRadiusSmall)), // 🌟 Nền và bo góc chuẩn
+                    decoration: BoxDecoration(color: kLightCyanBg1, borderRadius: BorderRadius.circular(kBorderRadiusSmall)), 
                     child: TextField(
                       controller: _symptomController,
                       maxLines: 4,
@@ -326,9 +323,8 @@ class _BookingScreenState extends State<BookingScreen> {
             ),
           ),
 
-          // 6. THANH XÁC NHẬN
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: kDefaultPadding, vertical: 15), // 🌟 Lề 20
+            padding: const EdgeInsets.symmetric(horizontal: kDefaultPadding, vertical: 15), 
             decoration: BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -5))]),
             child: SafeArea(
               child: Row(
@@ -347,7 +343,7 @@ class _BookingScreenState extends State<BookingScreen> {
                   ElevatedButton(
                     onPressed: (_selectedSlotId == null || _selectedServices.isEmpty) ? null : () => _showSummaryBottomSheet(context, activeSlots),
                     style: ElevatedButton.styleFrom(backgroundColor: kPrimaryColor, disabledBackgroundColor: Colors.grey.shade300, padding: const EdgeInsets.symmetric(horizontal: 35, vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusSmall))),
-                    child: const Text("Xác nhận", style: kButtonTextStyle), // 🌟 Text style chuẩn
+                    child: const Text("Xác nhận", style: kButtonTextStyle), 
                   )
                 ],
               ),
@@ -408,7 +404,7 @@ class _BookingScreenState extends State<BookingScreen> {
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(color: isSelected ? kPrimaryColor : Colors.white, border: Border.all(color: isSelected ? kPrimaryColor : kBorderCyan), borderRadius: BorderRadius.circular(kBorderRadiusLarge)), // 🌟 Bo 20
+          decoration: BoxDecoration(color: isSelected ? kPrimaryColor : Colors.white, border: Border.all(color: isSelected ? kPrimaryColor : kBorderCyan), borderRadius: BorderRadius.circular(kBorderRadiusLarge)), 
           alignment: Alignment.center,
           child: Text(text, style: TextStyle(color: isSelected ? Colors.white : kTextColor, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
         ),
@@ -451,7 +447,7 @@ class _BookingScreenState extends State<BookingScreen> {
                   const SizedBox(height: 25),
                   Container(
                     padding: const EdgeInsets.all(15),
-                    decoration: BoxDecoration(color: kLightCyanBg1, borderRadius: BorderRadius.circular(kBorderRadiusSmall)), // 🌟 Nền chuẩn
+                    decoration: BoxDecoration(color: kLightCyanBg1, borderRadius: BorderRadius.circular(kBorderRadiusSmall)), 
                     child: Row(
                       children: [
                         CircleAvatar(radius: 30, backgroundImage: widget.doctor.avatar != null ? NetworkImage(widget.doctor.avatar!) : const AssetImage('assets/images/doctor_placeholder.png') as ImageProvider),
@@ -493,7 +489,7 @@ class _BookingScreenState extends State<BookingScreen> {
                       Expanded(
                         child: OutlinedButton(
                           onPressed: () => Navigator.pop(ctx),
-                          style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 15), side: const BorderSide(color: kPrimaryColor), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusLarge))), // 🌟 Bo 20
+                          style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 15), side: const BorderSide(color: kPrimaryColor), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusLarge))), 
                           child: const Text("Hủy bỏ", style: TextStyle(color: kPrimaryColor, fontWeight: FontWeight.bold)),
                         ),
                       ),
@@ -501,7 +497,7 @@ class _BookingScreenState extends State<BookingScreen> {
                       Expanded(
                         child: ElevatedButton(
                           onPressed: () => _executeBooking(ctx), 
-                          style: ElevatedButton.styleFrom(backgroundColor: kPrimaryColor, padding: const EdgeInsets.symmetric(vertical: 15), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusLarge)), elevation: 0), // 🌟 Bo 20
+                          style: ElevatedButton.styleFrom(backgroundColor: kPrimaryColor, padding: const EdgeInsets.symmetric(vertical: 15), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusLarge)), elevation: 0), 
                           child: context.watch<BookingViewModel>().isLoading 
                               ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                               : Text(_paymentMethod == 'cash' ? "Xác nhận" : "Thanh toán", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
@@ -562,7 +558,6 @@ class _BookingScreenState extends State<BookingScreen> {
     );
   }
 
-  // LOGIC VNPay giữ nguyên hoàn toàn
   Future<void> _executeBooking(BuildContext bottomSheetContext) async {
     final authVM = context.read<AuthViewModel>();
     final bookingVM = context.read<BookingViewModel>();
@@ -596,6 +591,9 @@ class _BookingScreenState extends State<BookingScreen> {
           String bookingCode = result['data']['Ma_booking'];
           String amount = result['data']['Tong_tien'].toString();
 
+          // 🌟 Kích hoạt làm mới danh sách lịch hẹn trang chủ ngay lập tức trước khi pop
+          context.read<AppointmentViewModel>().loadMyAppointments();
+
           if (_paymentMethod == 'vnpay') {
             final vnpayResult = await bookingVM.createVnpayPayment(bookingCode: bookingCode);
             if (mounted) {
@@ -606,6 +604,7 @@ class _BookingScreenState extends State<BookingScreen> {
               }
             }
           } else {
+            // Thanh toán tiền mặt thành công -> Trả về true báo hiệu cho trang trước reload
             _showSuccessDialog(result['message'], bookingCode);
           }
         } else {
@@ -669,6 +668,7 @@ class _BookingScreenState extends State<BookingScreen> {
                 child: OutlinedButton(
                   onPressed: () {
                     Navigator.pop(ctx); 
+                    // 🌟 Gửi tín hiệu true khi đóng dialog thanh toán để trang Chi tiết reload lại slot
                     _showSuccessDialog("Hệ thống đang ghi nhận thanh toán của bạn!", bookingCode);
                   },
                   style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12), side: BorderSide(color: Colors.blue.shade700), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
@@ -693,7 +693,11 @@ class _BookingScreenState extends State<BookingScreen> {
         actions: [
           Center(
             child: TextButton(
-              onPressed: () { Navigator.pop(ctx); Navigator.pop(context, true); },
+              onPressed: () { 
+                Navigator.pop(ctx); 
+                // 🌟 QUAN TRỌNG: Trả về kết quả true thay vì pop trống để trang DoctorDetail biết mà reload
+                Navigator.pop(context, true); 
+              },
               child: const Text("Quay về", style: TextStyle(color: kPrimaryColor, fontWeight: FontWeight.bold)),
             ),
           )

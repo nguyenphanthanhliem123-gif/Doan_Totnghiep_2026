@@ -46,6 +46,7 @@ class AdminViewModel extends ChangeNotifier {
 
   List<dynamic> pendingDoctors = [];
   List<dynamic> specialties = [];
+  List<dynamic> todayAppointments = [];
 
   // Endpoint Backend cho Admin (Sử dụng BASE_URL chung của dự án)
   final String _baseUrl = "$BASE_URL/api/admin";
@@ -517,6 +518,31 @@ class AdminViewModel extends ChangeNotifier {
     } catch (e) {
       _setLoading(false);
       return {'success': false, 'message': 'Lỗi kết nối máy chủ'};
+    }
+  }
+
+  Future<void> fetchTodayAppointments() async {
+    _setLoading(true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('admin_token');
+
+      final response = await http.get(
+        Uri.parse('$_baseUrl/today-appointments'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      final data = jsonDecode(response.body);
+      if (data['success'] == true) {
+        todayAppointments = data['data'] ?? [];
+      }
+    } catch (e) {
+      debugPrint("Lỗi tải lịch hẹn hôm nay của Admin: $e");
+    } finally {
+      _setLoading(false);
     }
   }
 

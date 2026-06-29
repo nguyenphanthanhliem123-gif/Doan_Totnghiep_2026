@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ung_dung_dat_lich_kham/Views/doctor/doctor_menu_screen.dart';
-import 'package:ung_dung_dat_lich_kham/Views/doctor/doctor_profile_detail_screen.dart';
-import 'package:ung_dung_dat_lich_kham/Views/doctor/doctor_service_screen.dart';
 import '../../viewmodels/doctor_appointment_viewmodel.dart';
 import '../../viewmodels/profile_viewmodel.dart';
 import '../../viewmodels/auth_viewmodel.dart';
-import '../../Constants/ui_constants.dart'; // 🌟 Đã sửa thành C viết hoa và import đồng bộ UI
-import 'doctor_appointment_screen.dart'; 
+import '../../Constants/ui_constants.dart';
+import 'doctor_appointment_screen.dart';
+import 'doctor_service_screen.dart'; 
 
 class DoctorMainScreen extends StatefulWidget {
   const DoctorMainScreen({Key? key}) : super(key: key);
@@ -436,10 +435,6 @@ class DoctorDashboardScreen extends StatelessWidget {
                         ],
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.arrow_forward_ios, size: 16, color: kPrimaryColor),
-                      onPressed: () {},
-                    )
                   ],
                 ),
               );

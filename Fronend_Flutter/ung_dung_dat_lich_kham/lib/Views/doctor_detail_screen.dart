@@ -6,7 +6,7 @@ import '../viewmodels/doctor_viewmodel.dart';
 import '../viewmodels/clinic_viewmodel.dart';
 import '../viewmodels/review_viewmodel.dart';
 import '../viewmodels/profile_viewmodel.dart';
-import '../Constants/ui_constants.dart'; // 🌟 Đồng bộ UI Constants
+import '../Constants/ui_constants.dart'; 
 import '../models/doctor_detail_model.dart';
 import 'doctor_review_screen.dart'; 
 import 'booking_screen.dart';
@@ -64,34 +64,7 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black, size: 20),
-        onPressed: () => Navigator.pop(context),
-      ),
-      actions:
-       [
-        if (doctor != null)
-          IconButton(
-            icon: const Icon(Icons.report_problem_outlined, color: Colors.redAccent),
-            tooltip: 'Báo cáo bác sĩ',
-            onPressed: () {
-              showModalBottomSheet(
-                context: context,
-                isScrollControlled: true,
-                backgroundColor: Colors.transparent,
-                builder: (context) => ReportBottomSheet(
-                  targetId: doctor.id,
-                  targetName: doctor.fullName,
-                  targetType: 'Doctor',
-                ),
-              );
-            },
-          ),
-      ],
-    ),
+      // 🌟 ĐÃ XÓA APPBAR Ở ĐÂY ĐỂ BỎ KHÚC TRẮNG DƯ THỪA Ở TRÊN
       body: doctorVM.isLoading || clinicVM.isLoading
           ? const Center(child: CircularProgressIndicator(color: kPrimaryColor))
           : doctor == null
@@ -101,7 +74,7 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // ==========================================
-                      // PHẦN 1: HEADER (Giữ nguyên bo tròn 30 của bạn)
+                      // PHẦN 1: HEADER
                       // ==========================================
                       Container(
                         width: double.infinity,
@@ -120,10 +93,29 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
+                                    // Nút Back trắng
                                     IconButton(
                                       icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
                                       onPressed: () => Navigator.pop(context),
                                     ),
+                                    // 🌟 ĐÃ DỜI NÚT BÁO CÁO XUỐNG ĐÂY VÀ ĐỔI SANG MÀU TRẮNG
+                                    if (doctor != null)
+                                      IconButton(
+                                        icon: const Icon(Icons.report_problem_outlined, color: Colors.white),
+                                        tooltip: 'Báo cáo bác sĩ',
+                                        onPressed: () {
+                                          showModalBottomSheet(
+                                            context: context,
+                                            isScrollControlled: true,
+                                            backgroundColor: Colors.transparent,
+                                            builder: (context) => ReportBottomSheet(
+                                              targetId: doctor.id,
+                                              targetName: doctor.fullName,
+                                              targetType: 'Doctor',
+                                            ),
+                                          );
+                                        },
+                                      ),
                                   ],
                                 ),
                               ),
@@ -192,11 +184,8 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
                         ),
                       ),
 
-                      const SizedBox(height: kSpacingLarge),
+                      const SizedBox(height: 10),
 
-                      // ==========================================
-                      // PHẦN 2: THÔNG TIN BÁC SĨ
-                      // ==========================================
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: kDefaultPadding),
                         child: Column(
@@ -214,7 +203,7 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
                               padding: const EdgeInsets.all(15),
                               decoration: BoxDecoration(
                                 border: Border.all(color: kPrimaryColor.withOpacity(0.5)),
-                                borderRadius: BorderRadius.circular(kBorderRadiusSmall), // Bo chuẩn 12
+                                borderRadius: BorderRadius.circular(kBorderRadiusSmall), 
                               ),
                               child: doctor.services.isEmpty
                                   ? const Text("Chưa có thông tin dịch vụ.", style: TextStyle(color: kGreyTextColor))
@@ -234,11 +223,8 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
                         ),
                       ),
 
-                      // ==========================================
-                      // PHẦN 3: THÔNG TIN PHÒNG KHÁM
-                      // ==========================================
                       Container(
-                        color: kLightCyanBg1, // 🌟 Chuẩn hóa màu nền
+                        color: kLightCyanBg1, 
                         padding: const EdgeInsets.symmetric(horizontal: kDefaultPadding, vertical: 25),
                         child: clinic == null 
                         ? const Center(child: Text("Đang tải thông tin cơ sở y tế..."))
@@ -316,7 +302,7 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
                                 child: Stack(
                                   children: [
                                     ClipRRect(
-                                      borderRadius: BorderRadius.circular(kBorderRadiusSmall), // Bo 12
+                                      borderRadius: BorderRadius.circular(kBorderRadiusSmall), 
                                       child: PageView.builder(
                                         itemCount: clinic.images.length,
                                         onPageChanged: (index) {
@@ -402,6 +388,7 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
                     builder: (context) => BookingScreen(doctor: doctor!), 
                   ),
                 );
+                
                 if (isSuccess == true && context.mounted) {
                   context.read<DoctorViewModel>().fetchDoctorDetail(widget.doctorId); 
                 }
@@ -409,12 +396,12 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: kPrimaryColor,
                 padding: const EdgeInsets.symmetric(vertical: 15),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusLarge)), // Bo chuẩn 20
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusLarge)), 
                 elevation: 0,
               ),
               child: const Text(
                 "Đặt lịch khám",
-                style: kButtonTextStyle, // 🌟 Text Style chuẩn
+                style: kButtonTextStyle, 
               ),
             ),
           ),
@@ -422,10 +409,6 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
     );
   }
 
-  // CẬP NHẬT: HIỂN THỊ CỐ ĐỊNH 7 NGÀY TIẾP THEO
-  // =====================================================================
-  // CẬP NHẬT: LUỒNG ĐỌC VÀ PHÂN LOẠI 3 CA KHÁM (SÁNG - CHIỀU - TỐI)
-  // =====================================================================
   Widget _buildExpandableSchedule(List<DoctorScheduleModel> schedules) {
     final DateTime now = DateTime.now();
     final List<DateTime> next7Days = List.generate(7, (index) => now.add(Duration(days: index)));
@@ -448,10 +431,9 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
             
         String dateDisplay = "$weekdayStr (${currentDate.day.toString().padLeft(2, '0')}/${currentDate.month.toString().padLeft(2, '0')})";
 
-        // Khai báo 3 danh sách ca khám
         List<DoctorTimeSlotModel> morningSlots = [];
         List<DoctorTimeSlotModel> afternoonSlots = [];
-        List<DoctorTimeSlotModel> eveningSlots = []; // 🌟 Thêm ca tối
+        List<DoctorTimeSlotModel> eveningSlots = []; 
 
         if (dailySchedule != null) {
           for (var slot in dailySchedule.slots) {
@@ -459,11 +441,11 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
               int hour = int.tryParse(slot.time.split(':')[0]) ?? 0;
               
               if (hour < 12) {
-                morningSlots.add(slot); // Trước 12h: Ca sáng
+                morningSlots.add(slot); 
               } else if (hour >= 12 && hour < 18) {
-                afternoonSlots.add(slot); // Từ 12h đến trước 18h: Ca chiều
+                afternoonSlots.add(slot); 
               } else if (hour >= 18 && hour <= 21) {
-                eveningSlots.add(slot); // 🌟 Từ 18h đến 21h: Ca tối ngoài giờ
+                eveningSlots.add(slot); 
               }
             }
           }
@@ -496,7 +478,6 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
                 if (!hasSlots)
                   const Text("Bác sĩ không có ca khám nào trong ngày này.", style: TextStyle(color: kGreyTextColor, fontStyle: FontStyle.italic)),
 
-                // 1. HIỂN THỊ CA SÁNG (8h - 12h)
                 if (morningSlots.isNotEmpty) ...[
                   const Text("☀️ Ca Sáng", style: TextStyle(fontWeight: FontWeight.bold, color: kPrimaryColor, fontSize: 13)),
                   const SizedBox(height: 8),
@@ -507,7 +488,6 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
                   if (afternoonSlots.isNotEmpty || eveningSlots.isNotEmpty) const SizedBox(height: 15),
                 ],
                 
-                // 2. HIỂN THỊ CA CHIỀU (13h - 17h)
                 if (afternoonSlots.isNotEmpty) ...[
                   const Text("🌙 Ca Chiều", style: TextStyle(fontWeight: FontWeight.bold, color: kPrimaryColor, fontSize: 13)),
                   const SizedBox(height: 8),
@@ -518,7 +498,6 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
                   if (eveningSlots.isNotEmpty) const SizedBox(height: 15),
                 ],
 
-                // 3. HIỂN THỊ CA TỐI (18h - 21h)
                 if (eveningSlots.isNotEmpty) ...[
                   const Text("🌆 Ca Tối", style: TextStyle(fontWeight: FontWeight.bold, color: kPrimaryColor, fontSize: 13)),
                   const SizedBox(height: 8),
@@ -535,7 +514,6 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
     );
   }
 
-  // Hàm helper xử lý chuỗi chữ gạch ngang khi slot đã bị đặt lịch
   Widget _buildTimeSlotText(DoctorTimeSlotModel slot) {
     bool isBooked = slot.status == 'booked';
     return Text(
@@ -561,7 +539,7 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(kBorderRadiusSmall), // Bo 12
+        borderRadius: BorderRadius.circular(kBorderRadiusSmall), 
         boxShadow: onTap != null ? [const BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))] : null,
       ),
       child: Row(
@@ -582,7 +560,7 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(kBorderRadiusSmall), // Bo 12
+          borderRadius: BorderRadius.circular(kBorderRadiusSmall), 
           child: content,
         ),
       );
@@ -616,12 +594,12 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 5),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(kBorderRadiusSmall), // Bo 12
+          borderRadius: BorderRadius.circular(kBorderRadiusSmall), 
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 10),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(kBorderRadiusSmall), // Bo 12
+              borderRadius: BorderRadius.circular(kBorderRadiusSmall), 
               border: Border.all(color: color.withOpacity(0.3)),
               boxShadow: [BoxShadow(color: color.withOpacity(0.05), blurRadius: 5, offset: const Offset(0, 2))],
             ),
