@@ -26,6 +26,7 @@ import appointmentRoutes from './routes/appointmentRoutes.js';
 import paymentRoute from "./routes/paymentRoutes.js";
 import notificationRoute from "./routes/notificationRoutes.js";
 import serviceRoutes from "./routes/serviceRoutes.js";
+import chatRoutes from "./routes/chatRoutes.js";
 
 const app = express();
 const __filename = fileURLToPath(import.meta.url);
@@ -131,6 +132,7 @@ app.use('/api/payment', paymentRoute);
 app.use('/api/appointments', appointmentRoutes);
 app.use('/api/notification', notificationRoute);
 app.use('/api/services', serviceRoutes);
+app.use('/api/chatbot', chatRoutes);
 app.use('/uploads', (req, res, next) => {
     res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
