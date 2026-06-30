@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ung_dung_dat_lich_kham/Views/doctor/doctor_menu_screen.dart';
+import 'package:ung_dung_dat_lich_kham/Views/notification_screen.dart';
+import 'package:ung_dung_dat_lich_kham/viewmodels/notification_viewmodel.dart';
 import '../../viewmodels/doctor_appointment_viewmodel.dart';
 import '../../viewmodels/profile_viewmodel.dart';
 import '../../viewmodels/auth_viewmodel.dart';
@@ -163,7 +165,9 @@ class DoctorDashboardScreen extends StatelessWidget {
               ],
             ),
           ),
-          
+
+          NotificationBadge(),
+          const SizedBox(width: 12),
           Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -602,6 +606,62 @@ class _ExpandableRevenueCardState extends State<_ExpandableRevenueCard> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class NotificationBadge extends StatefulWidget{
+  const NotificationBadge({super.key});
+
+  @override
+  State<NotificationBadge> createState() => _NotificationBadge();
+}
+
+class _NotificationBadge extends State<NotificationBadge>{
+  @override
+  void initState() {
+    context.read<NotificationViewmodel>().initSocket();
+    super.initState();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final notificationVM = context.watch<NotificationViewmodel>();
+    final unreadCount = notificationVM.notiUnRead;
+    return GestureDetector(
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => const NotificationScreen()),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Badge(
+                isLabelVisible: unreadCount > 0,
+                label: Text(
+                  unreadCount > 9 ? '9+' : unreadCount.toString(),
+                  style: const TextStyle(fontSize: 10, color: Colors.white),
+                ),
+                backgroundColor: Colors.redAccent,
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: const Icon(
+                  Icons.notifications_outlined,
+                  color: kPrimaryColor,
+                  size: 26,
+                ),
+              ),
+            )
     );
   }
 }

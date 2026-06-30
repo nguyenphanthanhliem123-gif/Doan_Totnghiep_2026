@@ -191,12 +191,20 @@ export default class healthRecordModel{
 
             // 1. Kiểm tra xem hồ sơ này có tồn tại và thuộc về user đang đăng nhập không
             const [checkRows] = await conn.execute(
-                'SELECT Ma_benh_nhan FROM benh_nhan WHERE Ma_benh_nhan = ? AND Ma_nguoi_dung = ?',
+                `
+                SELECT benh_nhan.Ma_benh_nhan, nt.Quan_he
+                FROM benh_nhan 
+                JOIN nguoi_than nt ON benh_nhan.Ma_benh_nhan = nt.Ma_benh_nhan
+                WHERE benh_nhan.Ma_benh_nhan = ? AND Ma_nguoi_dung = ?`,
                 [maBenhNhan, userID]
             );
 
             if (checkRows.length === 0) {
                 throw new Error("Không tìm thấy hồ sơ hoặc bạn không có quyền xóa hồ sơ này.");
+            }
+
+            if(checkRows[0].Quan_he == 'Bản thân'){
+                throw new Error("Không thể xóa hồ sơ của bản thân");
             }
 
             // 2. Xóa dữ liệu trong bảng nguoi_than trước (Vì bạn đã lưu cả "bản thân" vào đây)

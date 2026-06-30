@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ung_dung_dat_lich_kham/Views/update_health_record.dart';
+import 'package:ung_dung_dat_lich_kham/viewmodels/auth_viewmodel.dart';
+import 'package:ung_dung_dat_lich_kham/viewmodels/profile_viewmodel.dart';
 import '../constants/ui_constants.dart';
 import '../viewmodels/health_record_viewmodel.dart';
 
@@ -15,6 +17,7 @@ class HealthRecordMenuScreen extends StatefulWidget {
 }
 
 class _HealthRecordMenuScreenState extends State<HealthRecordMenuScreen> {
+  bool _isLoading = true;
   
   @override
   void initState() {
@@ -22,7 +25,24 @@ class _HealthRecordMenuScreenState extends State<HealthRecordMenuScreen> {
     // Kích hoạt gọi API lấy dữ liệu ngay khi màn hình vừa được khởi tạo
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<HealthRecordViewModel>().fetchDetailRecord(widget.maBenhNhan);
+      _loadUserIdThenFetch();
     });
+  }
+
+  Future<void> _loadUserIdThenFetch() async {
+    final id = await Provider.of<AuthViewModel>(context, listen: false).getSavedUserId();
+    if (!mounted) return;
+
+    if (id != null) {
+      final maNguoiDung = int.tryParse(id);
+      if (maNguoiDung != null) {
+        await context.read<ProfileViewModel>().getUserProfile(maNguoiDung);
+      }
+    }
+
+    if (mounted) {
+      setState(() { _isLoading = false; });
+    }
   }
 
   @override
@@ -124,7 +144,7 @@ class _HealthRecordMenuScreenState extends State<HealthRecordMenuScreen> {
           const SizedBox(width: 10),
           IconButton(
             icon: const Icon(Icons.delete_outline_rounded, color: Colors.redAccent, size: 26),
-            onPressed: () => _showDeleteSingleDialog(context, record.id, record.recordName),
+            onPressed: () => _showDeleteSingleDialog(context, record.id, record.recordName, record.relationship),
           ),
           const SizedBox(width: 5),
         ],
@@ -181,6 +201,8 @@ class _HealthRecordMenuScreenState extends State<HealthRecordMenuScreen> {
 
   // --- CÁC WIDGET THÀNH PHẦN CON GIỮ NGUYÊN ---
   Widget _buildProfileHeader(dynamic record, int age) {
+    final profileViewModel = context.watch<ProfileViewModel>();
+    final user = profileViewModel.userProfile;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 30),
@@ -190,15 +212,29 @@ class _HealthRecordMenuScreenState extends State<HealthRecordMenuScreen> {
       ),
       child: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.all(4),
-            decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-            child: CircleAvatar(
-              radius: 45,
-              backgroundColor: const Color(0xFFE0F2F1),
-              child: Icon(record.gender == 1 ? Icons.face_rounded : Icons.face_3_rounded, size: 60, color: kPrimaryColor),
+          Center(
+              child: Stack(
+                children: profileViewModel.isLoading || user == null
+                ? [Center(child: CircularProgressIndicator(),)]
+                : [
+                  Container(
+                    width: 120, height: 120,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle, 
+                      border: Border.all(color: kPrimaryColor, width: 3),
+                      image: DecorationImage(
+                        fit: BoxFit.cover, 
+                        // 💡 Kiểm tra nếu trong model user có link ảnh từ DB thì hiển thị, nếu không thì lấy ảnh mặc định
+                        // Chú ý: Hãy kiểm tra lại chính xác tên thuộc tính chứa ảnh trong UserModel của bạn (Vd: user.avatar hoặc user.anhDaiDien)
+                        image: (user.avatar != null && user.avatar!.isNotEmpty)
+                            ? NetworkImage(user.avatar!)
+                            : const NetworkImage('https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
           const SizedBox(height: 15),
           Text(record.recordName, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white), textAlign: TextAlign.center),
           const SizedBox(height: 12),
@@ -332,7 +368,7 @@ class _HealthRecordMenuScreenState extends State<HealthRecordMenuScreen> {
   }*/
 
   // Hàm hiển thị Dialog Xác nhận xóa từng hồ sơ
-  void _showDeleteSingleDialog(BuildContext context, int id, String name) {
+  void _showDeleteSingleDialog(BuildContext context, int id, String name, String relationship) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -362,7 +398,11 @@ class _HealthRecordMenuScreenState extends State<HealthRecordMenuScreen> {
               ),
               onPressed: () async {
                 Navigator.pop(dialogContext); // Tắt Dialog trước
-                
+                if(relationship == 'Bản thân'){
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Khổng thể xóa hồ sơ của bản thân.'), backgroundColor: Colors.redAccent,)
+                  );
+                }
                 final vm = context.read<HealthRecordViewModel>();
                 final success = await vm.deleteSingleRecord(id); // Gọi hàm xóa
 

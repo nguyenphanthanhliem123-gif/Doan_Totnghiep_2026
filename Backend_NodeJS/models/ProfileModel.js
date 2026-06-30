@@ -55,16 +55,13 @@ export default class profileModel{
                     bn.Di_ung,
                     bn.Benh_nen
 
-                    FROM nguoi_dung nd
-                    -- ✅ 1. Dùng LEFT JOIN để nếu bảng benh_nhan bị trống thì vẫn lấy được nguoi_dung
-                    LEFT JOIN benh_nhan bn ON nd.Ma_nguoi_dung = bn.Ma_nguoi_dung
-                    
-                    -- ✅ 2. BẮT BUỘC đưa điều kiện Quan_he lên trên mệnh đề ON (dùng AND)
-                    -- Tuyệt đối không đưa xuống mệnh đề WHERE bên dưới.
-                    LEFT JOIN nguoi_than nt ON bn.Ma_benh_nhan = nt.Ma_benh_nhan AND nt.Quan_he = 'bản thân'
-                    
-                    WHERE nd.Ma_nguoi_dung = ? 
-                    LIMIT 1;`, 
+                FROM nguoi_dung nd
+                -- Chuyển sang INNER JOIN để bắt buộc phải tồn tại hồ sơ bệnh nhân tương ứng
+                INNER JOIN benh_nhan bn ON nd.Ma_nguoi_dung = bn.Ma_nguoi_dung
+                -- Chuyển sang INNER JOIN để ép điều kiện bắt buộc phải có liên kết 'Bản thân'
+                INNER JOIN nguoi_than nt ON bn.Ma_benh_nhan = nt.Ma_benh_nhan AND nt.Quan_he = 'Bản thân'
+                WHERE nd.Ma_nguoi_dung = ? 
+                LIMIT 1;`, 
             [ma_nguoi_dung]);
             
             // Thay vì check length < 1 rồi quăng lỗi chung chung, ta kiểm tra xem có dòng dữ liệu nào không
@@ -79,15 +76,6 @@ export default class profileModel{
 
     static async updateProfile(fullName, birthDay, gender, address, avatar, phone, userID){
         let conn;
-        
-        console.log("==== DEBUG THÔNG TIN GỬI LÊN ====");
-        console.log("=== fullName: ", fullName);
-        console.log("=== birthDay: ", birthDay);
-        console.log("=== gender: ", gender);
-        console.log("=== address: ", address);
-        console.log("=== avatar: ", avatar);
-        console.log("=== phone: ", phone);
-        console.log("=== userID: ", userID);
 
         try {
 

@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../viewmodels/auth_viewmodel.dart'; 
 import '../constants/ui_constants.dart';
@@ -29,42 +32,102 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
   
   int _selectedGender = 1; 
 
+  String? _maNguoiDung;
+  bool _isLoading = true;
+
   @override
   void initState() {
     super.initState();
     _loadUserIdThenFetch();
   }
 
-  Future<void> _loadUserIdThenFetch() async {
-    final id = await Provider.of<AuthViewModel>(context, listen: false).getSavedUserId();
-    if (!mounted) return;
-
-    if (id != null) {
-      final maNguoiDung = int.tryParse(id);
-      if (maNguoiDung != null) {
-        await context.read<ProfileViewModel>().getUserProfile(maNguoiDung);
-        final user = context.read<ProfileViewModel>().userProfile;
-        
-        if (user != null && mounted) {
-          setState(() {
-            _nameController.text = user.fullName;
-            _addressController.text = user.address ?? '';
-            _phoneController.text = user.phone ?? ''; // ✅ Gán số điện thoại cũ vào ô nhập
-            _selectedGender = user.gender ?? 1; 
-
-            fullName = user.fullName;
-            address = user.address;
-            gender = user.gender;
-            avatar = user.avatar;
-            phone = user.phone;
+  Future<void> _pickAndUploadImage() async {
+    final ImagePicker picker = ImagePicker();
     
-            if (![0, 1, 2].contains(_selectedGender)) _selectedGender = 1;
-            if (user.dob != null) {
-              birth = user.dob;
-               _dobController.text = user.dob == null ? 'null' :"${user.dob!.day.toString().padLeft(2, '0')}/${user.dob!.month.toString().padLeft(2, '0')}/${user.dob!.year}";
-            }
-          });
+    // Hiển thị hộp thoại cho người dùng chọn nguồn ảnh (Bộ sưu tập hoặc Máy ảnh)
+    final XFile? pickedFile = await picker.pickImage(
+      source: ImageSource.gallery, // Bạn có thể đổi thành ImageSource.camera tùy ý
+      imageQuality: 80,            // Nén chất lượng ảnh xuống 80% cho nhẹ server
+    );
+
+    if (pickedFile != null) {
+      setState(() { _isLoading = true; });
+
+      final profileVM = context.read<ProfileViewModel>();
+      File file = File(pickedFile.path);
+
+      // Gọi hàm upload lên Backend
+      await profileVM.uploadingAvatar(file);
+      bool? isSuccess = profileVM.uploadAvatar;
+
+      if (isSuccess! && _maNguoiDung != null) {
+        final maNguoiDungInt = int.tryParse(_maNguoiDung!);
+        if (maNguoiDungInt != null) {
+          // Tải lại dữ liệu mới từ Database để cập nhật link ảnh đại diện vừa thay đổi
+          await profileVM.getUserProfile(maNguoiDungInt);
         }
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Cập nhật ảnh đại diện thành công!'), backgroundColor: Colors.green),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Tải ảnh lên thất bại. Vui lòng thử lại!'), backgroundColor: Colors.red),
+          );
+        }
+      }
+
+      if (mounted) {
+        setState(() { _isLoading = false; });
+      }
+    }
+  }
+
+  Future<void> _loadUserIdThenFetch() async {
+    try {
+      // 1. Lấy mã người dùng đăng nhập
+      final id = await Provider.of<AuthViewModel>(context, listen: false).getSavedUserId();
+      if (!mounted) return;
+      
+      setState(() { _maNguoiDung = id; });
+
+      if (id != null) {
+        final maNguoiDung = int.tryParse(id);
+        // 2. Gọi ViewModel lấy dữ liệu profile mới nhất
+        final profileVM = Provider.of<ProfileViewModel>(context, listen: false);
+        await profileVM.getUserProfile(maNguoiDung ?? 0); // Đảm bảo hàm này đã chạy xong
+        
+        final user = profileVM.userProfile;
+        
+        if (user != null) {
+          // 3. 🛑 GÁN DỮ LIỆU AN TOÀN (Dùng toán tử ?? để chống nuốt lỗi Null)
+          _nameController.text = user.fullName ?? '';
+          _addressController.text = user.address ?? '';
+          _phoneController.text = user.phone ?? '';
+          
+          // Kiểm tra an toàn cho Giới tính
+          _selectedGender = user.gender ?? 1; 
+
+          // Kiểm tra an toàn cho Ngày sinh
+          if (user.dob != null) {
+            final birthDate = user.dob!;
+            _dobController.text = "${birthDate.day.toString().padLeft(2, '0')}/${birthDate.month.toString().padLeft(2, '0')}/${birthDate.year}";
+          } else {
+            _dobController.text = '';
+          }
+        }
+      }
+    } catch (e) {
+      // Nếu có bất kỳ lỗi gì (Null, Ép kiểu, lỗi Mạng...), log ra đây để debug
+      print("❌ LỖI KHỞI TẠO UPDATE_PROFILE: $e");
+    } finally {
+      // 🔑 THẦN CHÚ: Bất kể thành công hay sập lỗi, bắt buộc phải tắt Loading!
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
       }
     }
   }
@@ -110,14 +173,20 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
     final user = profileVM.userProfile;
     
     return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(80),
-        child: Container(
-          decoration: const BoxDecoration(color: kPrimaryColor, borderRadius: BorderRadius.only(bottomLeft: Radius.circular(30), bottomRight: Radius.circular(30))),
-          child: AppBar(backgroundColor: Colors.transparent, elevation: 0, title: const Text('Cập nhật hồ sơ', style: kHeaderTextStyle), centerTitle: true),
+      appBar: AppBar(
+        backgroundColor: kPrimaryColor,
+        elevation: 0,
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          'Cập nhật cá nhân',
+          style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
         ),
       ),
-      body: profileVM.isLoading
+      body: profileVM.isLoading || _isLoading
       ? const Center(child: CircularProgressIndicator(),)
       : user == null 
         ? const Center(child: Text("Không thể tải thông tin tài khoản."))
@@ -126,22 +195,39 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
           children: [
             const SizedBox(height: 30),
             Center(
-              child: Stack(
-                children: [
-                  Container(
-                    width: 120, height: 120,
-                    decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: kPrimaryColor, width: 3), image: const DecorationImage(fit: BoxFit.cover, image: NetworkImage('https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'))),
-                  ),
-                  Positioned(
-                    bottom: 0, right: 0,
-                    child: InkWell(
-                      onTap: () {},
-                      child: Container(height: 36, width: 36, decoration: BoxDecoration(color: kPrimaryColor, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 2)), child: const Icon(Icons.camera_alt, color: Colors.white, size: 20)),
+                child: Stack(
+                  children: [
+                    Container(
+                      width: 120, height: 120,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle, 
+                        border: Border.all(color: kPrimaryColor, width: 3),
+                        image: DecorationImage(
+                          fit: BoxFit.cover, 
+                          // 💡 Kiểm tra nếu trong model user có link ảnh từ DB thì hiển thị, nếu không thì lấy ảnh mặc định
+                          // Chú ý: Hãy kiểm tra lại chính xác tên thuộc tính chứa ảnh trong UserModel của bạn (Vd: user.avatar hoặc user.anhDaiDien)
+                          image: (user.avatar != null && user.avatar!.isNotEmpty)
+                              ? NetworkImage(user.avatar!)
+                              : const NetworkImage('https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'),
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                    // Nút tròn nhỏ có hình Camera đè góc dưới bên phải ảnh đại diện
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: InkWell(
+                        onTap: _pickAndUploadImage, // Bấm vào để kích hoạt chọn ảnh
+                        child: const CircleAvatar(
+                          radius: 18,
+                          backgroundColor: kPrimaryColor,
+                          child: Icon(Icons.camera_alt, color: Colors.white, size: 18),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
             const SizedBox(height: 30),
 
             Padding(

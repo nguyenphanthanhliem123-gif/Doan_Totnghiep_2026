@@ -10,6 +10,7 @@ class HealthRecordModel {
   String? allergy;
   String? underlyingDisease;
   String? phone;
+  String relationship;
 
   HealthRecordModel({
     this.relativeId,
@@ -23,6 +24,7 @@ class HealthRecordModel {
     required this.roll,
     this.underlyingDisease,
     this.phone,
+    required this.relationship,
   });
 
   factory HealthRecordModel.fromJson(Map<String, dynamic> json){
@@ -38,6 +40,7 @@ class HealthRecordModel {
       underlyingDisease: json['Benh_nen'],
       allergy: json['Di_ung'],
       phone: json['Dien_thoai'],
+      relationship: json['Quan_he'] ?? 'Bản thân'
     );
   }
 }

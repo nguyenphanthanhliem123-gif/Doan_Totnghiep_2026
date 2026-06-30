@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:ung_dung_dat_lich_kham/Views/doctor_list_screen.dart';
 import '../constants/ui_constants.dart';
 import '../viewmodels/specialty_viewmodel.dart';
-import '../Models/specialtyModel.dart'; 
 
 class SpecialtyListScreen extends StatefulWidget {
   const SpecialtyListScreen({super.key});

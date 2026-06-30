@@ -2,6 +2,7 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { v4 as uuidv4 } from 'uuid';
 import ChatbotModel from '../models/chatbotModel.js';
+import ChromaService from '../services/chromaService.js';
 
 // MẢNG API KEY: Dùng để dự phòng khi 1 key bị hết hạn mức 20 request/ngày 
 // Thêm GEMINI_API_KEY ở file .env, mẫu theo file .env.example
@@ -132,6 +133,33 @@ function getActiveModel() {
                         },
                         required: ["ma_khung_gio", "ma_bac_si"]
                     }
+                },
+
+                {
+                    name: "findDoctorBySpecialty",
+                    description: "Tìm kiếm danh sách bác sĩ theo tên chuyên khoa, bao gồm cả thông tin mô tả bản thân và kinh nghiệm của bác sĩ.",
+                    parameters: {
+                        type: "OBJECT",
+                        properties: {
+                            specialtyName: { type: "STRING", description: "Tên chuyên khoa" }
+                        },
+                        required: ["specialtyName"],
+                    },
+                },
+
+                {
+                    name: "suggestSpecialtyBySymptom",
+                    description: "Gợi ý chuyên khoa y tế phù hợp (Nội, Ngoại, Sản, Nhi, Tai Mũi Họng, Thần kinh...) dựa trên nhóm triệu chứng hoặc bệnh lý mà người dùng mô tả.",
+                    parameters: {
+                        type: "OBJECT",
+                        properties: {
+                            symptomKeyword: { 
+                                type: "STRING", 
+                                description: "Từ khóa chính của triệu chứng hoặc bộ phận bị đau tách ra từ lời kể của người dùng (ví dụ: 'đau đầu', 'ho', 'đau bụng', 'tai')." 
+                            }
+                        },
+                        required: ["symptomKeyword"],
+                    },
                 }
                 // 👈 THÊM TOOL MỚI VÀO ĐÂY!
             ]
@@ -321,7 +349,35 @@ export default class chatbotController {
                         hoặc hệ thống đang bận, vui lòng chọn một khung giờ khác.`;
                     }
                 }
+
+                else if (call.name === "findDoctorBySpecialty") {
+                    console.log("AI GỌI HÀM: findDoctorBySpecialty ->", call.args.specialtyName);
+                    
+                    // Gọi sang Model vừa thêm ở Bước 1
+                    dbData = await ChatbotModel.findDoctorBySpecialty(call.args.specialtyName);
+                    
+                    // Gán dữ liệu vào prompt để AI vòng 2 trả lời
+                    prompt = `Người dùng muốn tìm bác sĩ khoa ${call.args.specialtyName}.
+                    Dựa vào dữ liệu tìm được: ${JSON.stringify(dbData)}.
+                    - Nếu có dữ liệu: Hãy liệt kê họ tên bác sĩ kèm theo một đoạn tóm tắt ngắn về kinh nghiệm/mô tả bản thân (lấy từ trường "Mo_ta") của từng bác sĩ để tăng sự tin tưởng cho bệnh nhân. Trình bày thật chuyên nghiệp và rõ ràng.
+                    - Nếu rỗng ([]): Hãy báo là không tìm thấy bác sĩ nào thuộc chuyên khoa này.`;
+                }
                 
+                else if (call.name === "suggestSpecialtyBySymptom") {
+                    console.log("AI GỌI HÀM: suggestSpecialtyBySymptom -> từ khóa:", call.args.symptomKeyword);
+                    const medicalFacts = await ChromaService.searchMedicalKnowledge(req.body.message);
+                    
+                    // Gọi model truy vấn Database lấy chuyên khoa phù hợp
+                    dbData = await ChatbotModel.suggestSpecialtyBySymptom(call.args.symptomKeyword);
+                    
+                    // Ném dữ liệu thô ngược lại cho AI lần 2 để nó tự phân tích và đưa ra "Lý do"
+                    prompt = `Người dùng đang gặp triệu chứng: "${call.args.symptomKeyword}".
+                    Dữ liệu chuyên khoa gợi ý từ hệ thống: ${JSON.stringify(dbData)}.
+                    
+                    Yêu cầu AI:
+                    - Nếu có dữ liệu chuyên khoa: Hãy đóng vai một bác sĩ tư vấn, gợi ý chuyên khoa đó cho người dùng và giải thích rõ ràng "Lý do" tại sao triệu chứng đó lại thuộc chuyên khoa này (dựa vào kiến thức y khoa của bạn kết hợp với Mo_ta_chuyen_khoa).
+                    - Nếu dữ liệu từ hệ thống trống ([]): Dựa vào kiến thức y khoa của bạn (AI), hãy tự phân tích triệu chứng "${call.args.symptomKeyword}" và đưa ra gợi ý chuyên khoa phù hợp nhất kèm lý do chuyên môn, đồng thời nhắc bệnh nhân nên đi khám sớm để có kết quả chính xác.`;
+                }
                 // 👈 THÊM CÁC HÀM "ELSE IF" MỚI VÀO KHU VỰC NÀY!
 
                 // 6. GỌI AI LẦN 2: Nhờ AI tổng hợp Data thô thành câu trả lời tự nhiên

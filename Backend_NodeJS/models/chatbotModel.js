@@ -232,4 +232,33 @@ export default class ChatbotModel {
             throw new Error('Không thể ghi dữ liệu đặt lịch.');
         }
     }
+
+    static async findDoctorBySpecialty(specialtyName) {
+        try{
+        const sql = `
+            SELECT nd.Ten_nguoi_dung, c.Ten_chuyen_khoa, b.Mo_ta_ban_than 
+            FROM bac_si b 
+            JOIN chuyen_khoa c ON b.Ma_chuyen_khoa = c.Ma_chuyen_khoa 
+            JOIN nguoi_dung nd ON b.Ma_nguoi_dung = nd.Ma_nguoi_dung
+            WHERE c.Ten_chuyen_khoa LIKE ? 
+            LIMIT 3
+        `;
+        const [doctors] = await execute(sql, [`%${specialtyName}%`]);
+        return doctors;
+        }catch(error){
+            console.error("Lỗi Model lấy danh sách bác sĩ theo chuyên khoa: ",error);
+            throw new Error("Không thể lấy danh sách bác sĩ.");
+        }
+    }
+
+    static async suggestSpecialtyBySymptom(symptomKeyword) {
+        const sql = `
+            SELECT Ten_chuyen_khoa, Mo_ta
+            FROM chuyen_khoa 
+            WHERE Ten_chuyen_khoa LIKE ? OR Mo_ta LIKE ?
+            LIMIT 2
+        `;
+        const [specialties] = await execute(sql, [`%${symptomKeyword}%`, `%${symptomKeyword}%`]);
+        return specialties;
+    }
 }

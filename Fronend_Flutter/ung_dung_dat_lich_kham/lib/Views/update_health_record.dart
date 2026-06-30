@@ -22,7 +22,7 @@ class _UpdateHealthRecordScreenState extends State<UpdateHealthRecordScreen> {
   String _selectedRelation = 'Khác';
   String _selectedBloodType = 'Không rõ';
 
-  final List<String> _relations = ['Cha', 'Mẹ', 'Vợ', 'Chồng', 'Con trai', 'Con gái', 'Anh', 'Chị', 'Em', 'Chủ tài khoản', 'Khác'];
+  final List<String> _relations = ['Cha', 'Mẹ', 'Vợ', 'Chồng', 'Con trai', 'Con gái', 'Anh', 'Chị', 'Em', 'Bản thân', 'Khác'];
   final List<String> _bloodTypes = ['Không rõ', 'A', 'B', 'AB', 'O'];
 
   DateTime? _selectedDate;
