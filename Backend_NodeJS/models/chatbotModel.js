@@ -100,8 +100,8 @@ export default class ChatbotModel {
     }
 
     // 6. Tìm lịch trống đích danh theo tên bác sĩ
-    static async checkDoctorSchedule(doctorName) {
-        const query = `
+    static async checkDoctorSchedule(doctorName, targetDate = null) {
+        let query = `
             SELECT 
                 bs.Ma_bac_si, nd.Ten_nguoi_dung AS ten_bac_si, ck.Ten_chuyen_khoa, kg.Ma_khung_gio,
                 DATE_FORMAT(kg.Thoi_gian_Bdau, '%Y-%m-%d %H:%i') AS start_time,
@@ -110,10 +110,22 @@ export default class ChatbotModel {
             JOIN bac_si bs ON kg.Ma_bac_si = bs.Ma_bac_si
             JOIN nguoi_dung nd ON bs.Ma_nguoi_dung = nd.Ma_nguoi_dung
             JOIN chuyen_khoa ck ON bs.Ma_chuyen_khoa = ck.Ma_chuyen_khoa
-            WHERE nd.Ten_nguoi_dung LIKE ? AND kg.Trang_thai = 'available'
-            ORDER BY kg.Thoi_gian_Bdau ASC LIMIT 10;
+            WHERE nd.Ten_nguoi_dung LIKE ? 
+              AND kg.Trang_thai = 'available' 
+              AND kg.Thoi_gian_Bdau >= NOW() -- LƯỚI AN TOÀN: Chặn lịch quá khứ
         `;
-        const [rows] = await execute(query, [`%${doctorName}%`]);
+        
+        let params = [`%${doctorName}%`];
+
+        // Nếu AI truyền ngày cụ thể vào (VD: 2 ngày tới)
+        if (targetDate) {
+            query += ` AND DATE(kg.Thoi_gian_Bdau) = ?`;
+            params.push(targetDate);
+        }
+
+        query += ` ORDER BY kg.Thoi_gian_Bdau ASC LIMIT 10;`;
+        
+        const [rows] = await execute(query, params);
         return rows;
     }
 
@@ -132,7 +144,7 @@ export default class ChatbotModel {
                 pk.Ten_phong_kham,
                 pk.Vi_tri AS dia_chi_phong_kham,
                 -- Gom tất cả dịch vụ của bác sĩ này lại thành 1 dòng (VD: Khám nội soi: 200000 VNĐ | Tái khám: 120000 VNĐ)
-                GROUP_CONCAT(DISTINCT CONCAT(dv.Ten_dich_vu, ': ', FORMAT(dv.Gia_tien, 0), ' VNĐ') SEPARATOR ' | ') AS danh_sach_dich_vu
+            GROUP_CONCAT(DISTINCT CONCAT(dv.Ten_dich_vu, ' (Mã DV: ', dv.Ma_dich_vu, ') giá ', dv.Gia_tien, ' VNĐ') SEPARATOR ' | ') AS danh_sach_dich_vu
             FROM bac_si bs
             JOIN nguoi_dung nd ON bs.Ma_nguoi_dung = nd.Ma_nguoi_dung
             JOIN chuyen_khoa ck ON bs.Ma_chuyen_khoa = ck.Ma_chuyen_khoa
@@ -171,54 +183,38 @@ export default class ChatbotModel {
         return rows;
     }
 
-    // 9. TÌM LỊCH SỚM NHẤT TRÊN TOÀN HỆ THỐNG (KHÔNG CẦN KHOA) (Dùng cho câu hỏi: "Sắp xếp cho tôi khám sớm nhất có thể")
-    static async findEarliestSlotAnySpecialty() {
-        const query = `
-            SELECT 
-                bs.Ma_bac_si, nd.Ten_nguoi_dung AS ten_bac_si, ck.Ten_chuyen_khoa,
-                kg.Ma_khung_gio, DATE_FORMAT(kg.Thoi_gian_Bdau, '%Y-%m-%d %H:%i') AS start_time
-            FROM khung_gio_kham kg
-            JOIN bac_si bs ON kg.Ma_bac_si = bs.Ma_bac_si
-            JOIN nguoi_dung nd ON bs.Ma_nguoi_dung = nd.Ma_nguoi_dung
-            JOIN chuyen_khoa ck ON bs.Ma_chuyen_khoa = ck.Ma_chuyen_khoa
-            WHERE kg.Trang_thai = 'available' 
-              AND kg.Thoi_gian_Bdau >= NOW()
-            ORDER BY kg.Thoi_gian_Bdau ASC
-            LIMIT 1;
-        `;
-        const [rows] = await execute(query, []);
-        return rows;
-    }
-
-    // 10. CHỐT ĐẶT LỊCH HẸN VÀO DATABASE
-    static async createNewAppointment(userId, maKhungGio, maBacSi, maDichVu = null, giaTien = 0) {
+    // 9. CHỐT ĐẶT LỊCH HẸN VÀO DATABASE
+    static async createNewAppointment(userId, maKhungGio, maBacSi, danhSachDichVu = []) {
         try {
             const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
             const randomCode = Math.floor(1000 + Math.random() * 9000);
             const maBooking = `BK${dateStr}_${randomCode}`;
+            let tongTien = 0;
+            if (danhSachDichVu.length > 0) {
+                tongTien = danhSachDichVu.reduce((sum, item) => sum + (item.gia_tien || 0), 0);
+            }
 
-            // 1. Tạo lịch hẹn gốc (Với Tổng tiền lấy từ tham số truyền vào)
+            // 1. Tạo lịch hẹn gốc
             const sqlInsertLichHen = `
                 INSERT INTO lich_hen (Ma_booking, Ma_bac_si, Ma_benh_nhan, Ma_khung_gio, Hinh_thuc, Trang_thai_lich_hen, Tong_tien, Ngay_tao) 
                 VALUES (?, ?, ?, ?, 'offline', 'pending', ?, NOW())
             `;
-            const [insertResult] = await execute(sqlInsertLichHen, [maBooking, maBacSi, userId, maKhungGio, giaTien]);
+            const [insertResult] = await execute(sqlInsertLichHen, [maBooking, maBacSi, userId, maKhungGio, tongTien]);
             const maLichHen = insertResult.insertId;
 
-            // 2. NẾU CÓ CHỈ ĐỊNH DỊCH VỤ -> Ghi vào bảng chi_tiet_lich_hen
-            if (maDichVu && giaTien > 0) {
-                const sqlInsertChiTiet = `
-                    INSERT INTO chi_tiet_lich_hen (Ma_lich_hen, Ma_dich_vu, Gia_tien)
-                    VALUES (?, ?, ?)
-                `;
-                await execute(sqlInsertChiTiet, [maLichHen, maDichVu, giaTien]);
+            // 3. Chạy vòng lặp ghi NHIỀU dòng vào bảng chi_tiet_lich_hen
+            if (danhSachDichVu.length > 0) {
+                const sqlInsertChiTiet = `INSERT INTO chi_tiet_lich_hen (Ma_lich_hen, Ma_dich_vu, Gia_tien) VALUES (?, ?, ?)`;
+                for (let dv of danhSachDichVu) {
+                    await execute(sqlInsertChiTiet, [maLichHen, dv.ma_dich_vu, dv.gia_tien]);
+                }
             }
 
-            // 3. Khóa khung giờ ('booked')
+            // 4. Khóa khung giờ ('booked')
             const sqlUpdateKhungGio = `UPDATE khung_gio_kham SET Trang_thai = 'booked' WHERE Ma_khung_gio = ?`;
             await execute(sqlUpdateKhungGio, [maKhungGio]);
 
-            // 4. Lưu vết lịch sử
+            // 5. Lưu vết lịch sử
             const sqlInsertLichSu = `
                 INSERT INTO lich_su_trang_thai_lich_hen (Ma_lich_hen, Trang_thai_cu, Trang_thai_moi, Nguoi_thay_doi, Ngay_thay_doi)
                 VALUES (?, NULL, 'pending', 'patient', NOW())

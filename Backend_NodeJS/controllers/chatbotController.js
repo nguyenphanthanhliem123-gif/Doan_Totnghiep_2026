@@ -65,7 +65,10 @@ function getActiveModel() {
                     description: "Dùng để kiểm tra lịch khám còn trống của một bác sĩ cụ thể khi nhắc tên đích danh bác sĩ.",
                     parameters: {
                         type: "OBJECT",
-                        properties: { doctor_name: { type: "STRING", description: "Tên bác sĩ" } },
+                        properties: { 
+                            doctor_name: { type: "STRING", description: "Tên bác sĩ" },
+                            target_date: { type: "STRING", description: "Ngày khám người dùng muốn định dạng YYYY-MM-DD. Hôm nay là " + vnTime }
+                        },
                         required: ["doctor_name"]
                     }
                 },
@@ -91,23 +94,26 @@ function getActiveModel() {
                         required: ["specialty"]
                     }
                 },
-                // TOOL: ĐẶT LỊCH NHANH KHÔNG CẦN KHOA
-                {
-                    name: "shortcut_book_any_specialty",
-                    description: "Dùng khi người dùng muốn khám SỚM NHẤT có thể nhưng KHÔNG nhắc đến chuyên khoa nào (VD: 'Đặt cho tôi lịch sớm nhất', 'Sắp xếp lịch khám ngay').",
-                    parameters: { type: "OBJECT", properties: {} }
-                },
                 // TOOL: XÁC NHẬN CHỐT LỊCH
                 {
                     name: "confirm_and_book_appointment",
-                    description: "Dùng để CHỐT ĐẶT LỊCH THẬT. Nếu trong lịch sử chat người dùng CÓ CHỈ ĐỊNH DỊCH VỤ (VD: Khám nội soi, Khám nhiều lần), AI BẮT BUỘC phải trích xuất mã dịch vụ và giá tiền đó truyền vào đây.",
+                    description: "Dùng để CHỐT ĐẶT LỊCH THẬT SỰ khi người dùng ra lệnh đặt lịch (VD: 'Đặt lịch khám nội soi sớm nhất', 'Đặt lúc 8h', 'Ok chốt đi'). QUAN TRỌNG: AI phải TỰ ĐỘNG đọc lịch sử chat phía trên để bốc đúng ma_khung_gio và ma_bac_si. Nếu người dùng yêu cầu 'sớm nhất', hãy tự động lấy mã của khung giờ đầu tiên trong danh sách vừa liệt kê. Nếu có dịch vụ (VD: khám nội soi), tự trích xuất ma_dich_vu và gia_tien truyền vào.",
                     parameters: {
                         type: "OBJECT",
                         properties: {
-                            ma_khung_gio: { type: "INTEGER" },
-                            ma_bac_si: { type: "INTEGER" },
-                            ma_dich_vu: { type: "INTEGER", description: "Mã dịch vụ (Ma_dich_vu) nếu người dùng có nhắc đến. Để trống nếu không nhắc." },
-                            gia_tien: { type: "NUMBER", description: "Giá tiền của dịch vụ đó. Để 0 nếu không có." }
+                            ma_khung_gio: { type: "INTEGER", description: "Mã khung giờ (Ma_khung_gio) tự bốc từ lịch sử chat." },
+                            ma_bac_si: { type: "INTEGER", description: "Mã bác sĩ (Ma_bac_si) tự bốc từ lịch sử chat." },
+                            danh_sach_dich_vu: { 
+                                type: "ARRAY", 
+                                description: "Danh sách các dịch vụ người dùng chọn. Bỏ trống nếu không chọn dịch vụ nào.",
+                                items: {
+                                    type: "OBJECT",
+                                    properties: {
+                                        ma_dich_vu: { type: "INTEGER", description: "Mã dịch vụ tự bốc từ [Mã DV: X]" },
+                                        gia_tien: { type: "NUMBER", description: "Giá tiền của dịch vụ đó" }
+                                    }
+                                }
+                            }
                         },
                         required: ["ma_khung_gio", "ma_bac_si"]
                     }
@@ -205,10 +211,19 @@ export default class chatbotController {
                 } 
 
                 else if (call.name === "check_doctor_schedule") {
-                    console.log("AI GỌI HÀM: check_doctor_schedule ->", call.args.doctor_name);
-                    dbData = await ChatbotModel.checkDoctorSchedule(call.args.doctor_name);
-                    prompt = `Dựa vào lịch trống của bác sĩ: ${JSON.stringify(dbData)}. 
-                    Nếu trống rỗng ([]), báo bác sĩ đã kín lịch. Ngược lại, thông báo rõ các giờ trống.`;
+                    console.log("AI GỌI HÀM: check_doctor_schedule ->", call.args.doctor_name, "Ngày:", call.args.target_date);
+                    
+                    dbData = await ChatbotModel.checkDoctorSchedule(call.args.doctor_name, call.args.target_date);
+                    
+                    prompt = `Người dùng đang hỏi lịch của bác sĩ.
+                    Dựa vào dữ liệu lịch trống: ${JSON.stringify(dbData)}.
+                    - Nếu có lịch: Hãy liệt kê thân thiện cho bệnh nhân. 
+                    QUAN TRỌNG: Ở mỗi khung giờ được liệt kê, bạn BẮT BUỘC
+                    phải viết kèm mã ẩn theo cú pháp chính xác là 
+                    [Mã giờ: X, Mã BS: Y] ngay phía sau giờ đó để hệ thống ghi nhớ.
+                    Ví dụ: * 08:00 - 08:25 [Mã giờ: 1, Mã BS: 13]
+                    - Nếu trống rỗng ([]): Hãy xin lỗi và báo rằng 
+                    bác sĩ này đã kín lịch vào thời gian yêu cầu.`;
                 }
 
                 else if (call.name === "get_doctor_profile") {
@@ -219,8 +234,11 @@ export default class chatbotController {
                     Dựa vào hồ sơ bác sĩ sau: ${JSON.stringify(dbData)}. 
                     - Nếu có dữ liệu: Hãy đóng vai lễ tân MedCare, TRẢ LỜI ĐÚNG TRỌNG TÂM
                     câu hỏi của người dùng. Chỉ trích xuất thông tin người dùng cần 
-                    (ví dụ: họ hỏi giá thì chỉ báo giá, hỏi địa chỉ thì chỉ báo địa chỉ). 
-                    Có thể khen ngợi ngắn gọn thái độ của bác sĩ nếu phù hợp. 
+                    (Ví dụ: họ hỏi giá thì chỉ báo giá, hỏi địa chỉ thì chỉ báo địa chỉ). 
+                    LƯU Ý ĐẶC BIỆT: Nếu bạn liệt kê danh sách dịch vụ khám, 
+                    bạn BẮT BUỘC phải đính kèm thẻ mã ẩn theo cú pháp [Mã DV: X] 
+                    ngay sau mỗi tên dịch vụ để hệ thống ghi nhớ.
+                    (Ví dụ: Khám nội soi [Mã DV: 23] giá 200.000 VNĐ.) 
                     KHÔNG liệt kê dài dòng những thông tin người dùng không hỏi.
                     - Nếu trống rỗng ([]): Xin lỗi và báo không tìm thấy thông tin bác sĩ này.`;
                 }
@@ -230,35 +248,34 @@ export default class chatbotController {
                     dbData = await ChatbotModel.findEarliestSlotWithSpecialty(call.args.specialty);
                     
                     prompt = `Dựa vào kết quả lịch trống sớm nhất: ${JSON.stringify(dbData)}. 
-                    - Nếu có lịch ([] không rỗng): Hãy thông báo đây là lịch sớm nhất của chuyên khoa ${call.args.specialty}, nêu rõ giờ khám, tên bác sĩ (Kèm mã ma_khung_gio và ma_bac_si ẩn trong câu trả lời để hệ thống ghi nhớ) và HỎI người dùng có ĐỒNG Ý đặt lịch này không.
+                    - Nếu có lịch ([] không rỗng): Hãy thông báo đây là lịch sớm nhất của 
+                    chuyên khoa ${call.args.specialty}, nêu rõ giờ khám, ngày khám và tên bác sĩ. 
+                      ⚠️ QUAN TRỌNG: Bạn BẮT BUỘC phải viết kèm mã ẩn theo 
+                      cú pháp chính xác là [Mã giờ: X, Mã BS: Y] ở cuối câu. 
+                      Sau đó HỎI người dùng có ĐỒNG Ý đặt lịch này không.
+                      Ví dụ: ... do Bác sĩ Nguyễn Văn A khám [Mã giờ: 1, Mã BS: 13]. 
+                      Bạn có đồng ý đặt lịch này không?
                     - Nếu trống ([]): Xin lỗi và báo chuyên khoa này hiện đã hết lịch khả dụng.`;
                 }
 
-                else if (call.name === "shortcut_book_any_specialty") {
-                    console.log("AI GỌI HÀM: Đặt lịch sớm nhất KHÔNG Khoa");
-                    dbData = await ChatbotModel.findEarliestSlotAnySpecialty();
-                    
-                    prompt = `Dựa vào kết quả lịch trống sớm nhất toàn hệ thống: ${JSON.stringify(dbData)}. 
-                    - Nếu có lịch ([] không rỗng): Thông báo đây là khung giờ sớm nhất hiện có, 
-                    nêu rõ chuyên khoa, giờ khám, tên bác sĩ (Kèm mã ma_khung_gio và ma_bac_si 
-                    ẩn trong câu để hệ thống nhớ) và HỎI người dùng có ĐỒNG Ý đặt lịch không.
-                    - Nếu trống ([]): Xin lỗi và báo toàn bộ phòng khám đã kín lịch.`;
-                }
-
                 else if (call.name === "confirm_and_book_appointment") {
-                    const maDichVu = call.args.ma_dich_vu || null;
-                    const giaTien = call.args.gia_tien || 0;
-                    console.log(`AI CHỐT LỊCH -> Giờ: ${call.args.ma_khung_gio}, Bác sĩ: ${call.args.ma_bac_si}, Dịch vụ: ${maDichVu}, Tiền: ${giaTien}`);
+                    let maKhungGio = call.args.ma_khung_gio;
+                    let maBacSi = call.args.ma_bac_si;
+                    let danhSachDichVu = call.args.danh_sach_dich_vu || [];
+                    console.log(`AI ĐANG TỰ TRUY CẬP MÃ -> Giờ: ${maKhungGio}, BS: ${maBacSi}, Dịch Vụ:`, JSON.stringify(danhSachDichVu));
                     
                     try {
-                        const bookingCode = await ChatbotModel.createNewAppointment(userId, call.args.ma_khung_gio, call.args.ma_bac_si);
+                        const bookingCode = await ChatbotModel.createNewAppointment(userId, maKhungGio, maBacSi, danhSachDichVu);
+                        const tongChiPhi = danhSachDichVu.reduce((sum, item) => sum + (item.gia_tien || 0), 0);
                         prompt = `Hệ thống vừa đặt lịch thành công với Mã Booking là: ${bookingCode}. 
-                        Hãy vào vai lễ tân, chúc mừng bệnh nhân đã đặt lịch thành công, 
-                        nhắc lại mã Booking và dặn họ đến trước 15 phút để làm thủ tục.
-                        - Nếu có giá tiền (gia_tien > 0): Hãy báo tổng chi phí 
-                        là ${giaTien} VNĐ và dặn bệnh nhân thanh toán tại quầy.
-                        - Nếu giá tiền = 0: Hãy dặn chi phí sẽ tính sau khi bác sĩ tư vấn.`;
+                        Hãy đóng vai lễ tân báo tin vui, nhắc lại ngày giờ họ đã đặt, 
+                        đọc mã Booking và dặn họ đến trước 15 phút để làm thủ tục.
+                        - Nếu tổng chi phí lớn hơn 0 (tongChiPhi = ${tongChiPhi}): 
+                        Hãy báo tổng chi phí là ${tongChiPhi} VNĐ và dặn bệnh nhân thanh toán tại quầy.
+                        - Nếu tổng chi phí = 0: Hãy dặn chi phí dịch vụ sẽ được tính 
+                        và tư vấn sau khi bác sĩ thăm khám trực tiếp.`;
                     } catch (error) {
+                        console.error("LỖI SQL KHI ĐẶT LỊCH:", error.message);
                         prompt = `Hãy xin lỗi bệnh nhân một cách lịch sự, 
                         thông báo rằng khung giờ này vừa có người khác đặt 
                         hoặc hệ thống đang bận, vui lòng chọn một khung giờ khác.`;
