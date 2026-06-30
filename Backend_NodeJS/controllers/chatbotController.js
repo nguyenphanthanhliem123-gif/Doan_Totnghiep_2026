@@ -1,26 +1,29 @@
+// Backend_NodeJS/controllers/chatbotController.js
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { execute } from "../config/db.js";
-import { v4 as uuidv4 } from 'uuid'; // Import thư viện tạo ID ngẫu nhiên
+import { v4 as uuidv4 } from 'uuid';
+import ChatbotModel from '../models/chatbotModel.js';
 
-// 1. Lưu danh sách Key vào mảng: Quản lý nhiều API key để tránh lỗi giới hạn
+// MẢNG API KEY: Dùng để dự phòng khi 1 key bị hết hạn mức 20 request/ngày
 const API_KEYS = [
     process.env.GEMINI_API_KEY_1,
     process.env.GEMINI_API_KEY_2,
     process.env.GEMINI_API_KEY_3,
-    process.env.GEMINI_API_KEY_4
-].filter(Boolean); 
+    process.env.GEMINI_API_KEY_4,
+    process.env.GEMINI_API_KEY_5
+].filter(Boolean);
 
 let currentKeyIndex = 0;
 
-// Bù đúng 7 tiếng (7 * 60 phút * 60 giây * 1000 mili-giây) để ra giờ Việt Nam
+// Bù đúng 7 tiếng để đồng bộ hoàn toàn với múi giờ thực tế Việt Nam
 const vnTime = new Date(new Date().getTime() + 7 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-// 2. Hàm động để lấy Model: Tự khởi tạo AI với cấu hình cho trước
+// HÀM KHỞI TẠO AI: Cấu hình nhân cách (System Instruction) và bộ Công cụ (Tools) cho bot
 function getActiveModel() {
     const genAI = new GoogleGenerativeAI(API_KEYS[currentKeyIndex]);
     return genAI.getGenerativeModel({ 
+
+        // Cài đặt vai trò và kiến thức nền cho chatbot
         model: "gemini-2.5-flash",
-        // System Instruction: Thiết lập vai trò "cố định" cho AI
         systemInstruction: `Bạn là trợ lý AI ảo của App Hẹn Đặt Lịch Khám MedCare.
         Nhiệm vụ: Trả lời ngắn gọn, lịch sự về quy trình khám.
         1. Giấy tờ: CMND/CCCD, BHYT, sổ khám cũ.
@@ -28,44 +31,85 @@ function getActiveModel() {
         3. Chi phí ban đầu: 150.000 VNĐ.
         4. Gửi xe: Xe máy miễn phí trước cửa, ô tô 30k ở ngã tư cách 50m.
         5. Giờ làm việc: 08:00 - 21:00 (T2-CN).`,
-        // Định nghĩa công cụ để AI biết khi nào cần tìm bác sĩ hoặc tìm khung giờ trống
+
+        // Dạy cho AI biết khi nào thì cần gọi hàm (Function Calling)
         tools: [{
             functionDeclarations: [
+                // TOOL: TÌM KIẾM BÁC SĨ
                 {
                     name: "search_doctors",
                     description: "Dùng để tìm bác sĩ. Trả về danh sách bác sĩ.",
                     parameters: {
                         type: "OBJECT",
-                        properties: {
-                            specialty: { type: "STRING", description: "Tên chuyên khoa (VD: Nội khoa)" }
-                        },
+                        properties: { specialty: { type: "STRING", description: "Tên chuyên khoa (VD: Nội khoa)" } },
                         required: ["specialty"]
                     }
                 },
-
+                // TOOL: TÌM LỊCH TRỐNG THEO CHUYÊN KHOA
                 {
                     name: "search_doctor_available_slots",
-                    description: "Dùng khi người dùng muốn tìm bác sĩ có lịch trống, hoặc hỏi xem một chuyên khoa nào đó còn khung giờ trống nào không.",
+                    description: "Dùng khi người dùng muốn tìm bác sĩ có lịch trống theo chuyên khoa kèm thời gian mong muốn.",
                     parameters: {
                         type: "OBJECT",
                         properties: {
-                            specialty: { type: "STRING", description: "Tên chuyên khoa cần tìm lịch trống (VD: Răng Hàm Mặt, Nội tổng quát)" },
-                            target_date: { type: "STRING", description: "Ngày khám người dùng muốn định dạng YYYY-MM-DD. Lưu ý: Hôm nay là " + vnTime },
-                            time_of_day: { type: "STRING", description: "Buổi khám: 'morning' (sáng), 'afternoon' (chiều), 'evening' (tối). Để trống nếu không nhắc đến." }
+                            specialty: { type: "STRING", description: "Tên chuyên khoa cần tìm lịch trống" },
+                            target_date: { type: "STRING", description: "Ngày khám định dạng YYYY-MM-DD. Hôm nay là " + vnTime },
+                            time_of_day: { type: "STRING", description: "Buổi khám: 'morning' (sáng), 'afternoon' (chiều), 'evening' (tối)." }
                         },
                         required: ["specialty"]
                     }
                 },
-
+                // TOOL: KIẾM TRA LỊCH TRỐNG CỦA BÁC SĨ
                 {
                     name: "check_doctor_schedule",
-                    description: "Dùng để kiểm tra lịch khám còn trống của một bác sĩ cụ thể khi người dùng nhắc trực tiếp tên bác sĩ.",
+                    description: "Dùng để kiểm tra lịch khám còn trống của một bác sĩ cụ thể khi nhắc tên đích danh bác sĩ.",
+                    parameters: {
+                        type: "OBJECT",
+                        properties: { doctor_name: { type: "STRING", description: "Tên bác sĩ" } },
+                        required: ["doctor_name"]
+                    }
+                },
+                // TOOL: TRA CỨU THÔNG TIN BÁC SĨ
+                {
+                    name: "get_doctor_profile",
+                    description: "Dùng để tra cứu BẤT KỲ thông tin nào của bác sĩ (địa chỉ phòng khám, nơi làm việc, giá tiền dịch vụ, kinh nghiệm, học vị, đánh giá bệnh nhân) khi người dùng nhắc tên đích danh.",
                     parameters: {
                         type: "OBJECT",
                         properties: {
-                            doctor_name: { type: "STRING", description: "Tên bác sĩ (VD: Nguyễn Văn Alery, Alery)" }
+                            doctor_name: { type: "STRING", description: "Tên bác sĩ cần tra cứu thông tin (VD: Nguyễn Văn Alery)" }
                         },
                         required: ["doctor_name"]
+                    }
+                },
+                // TOOL: ĐẶT LỊCH NHANH CÓ CHUYÊN KHOA
+                {
+                    name: "shortcut_book_with_specialty",
+                    description: "Dùng khi người dùng muốn ĐẶT LỊCH NHANH/SỚM NHẤT và có nói rõ tên chuyên khoa (VD: 'Đặt lịch bác sĩ nội khoa sớm nhất', 'Tìm lịch khoa nhi sớm nhất').",
+                    parameters: {
+                        type: "OBJECT",
+                        properties: { specialty: { type: "STRING", description: "Tên chuyên khoa (VD: Nội tổng quát)" } },
+                        required: ["specialty"]
+                    }
+                },
+                // TOOL: ĐẶT LỊCH NHANH KHÔNG CẦN KHOA
+                {
+                    name: "shortcut_book_any_specialty",
+                    description: "Dùng khi người dùng muốn khám SỚM NHẤT có thể nhưng KHÔNG nhắc đến chuyên khoa nào (VD: 'Đặt cho tôi lịch sớm nhất', 'Sắp xếp lịch khám ngay').",
+                    parameters: { type: "OBJECT", properties: {} }
+                },
+                // TOOL: XÁC NHẬN CHỐT LỊCH
+                {
+                    name: "confirm_and_book_appointment",
+                    description: "Dùng để CHỐT ĐẶT LỊCH THẬT. Nếu trong lịch sử chat người dùng CÓ CHỈ ĐỊNH DỊCH VỤ (VD: Khám nội soi, Khám nhiều lần), AI BẮT BUỘC phải trích xuất mã dịch vụ và giá tiền đó truyền vào đây.",
+                    parameters: {
+                        type: "OBJECT",
+                        properties: {
+                            ma_khung_gio: { type: "INTEGER" },
+                            ma_bac_si: { type: "INTEGER" },
+                            ma_dich_vu: { type: "INTEGER", description: "Mã dịch vụ (Ma_dich_vu) nếu người dùng có nhắc đến. Để trống nếu không nhắc." },
+                            gia_tien: { type: "NUMBER", description: "Giá tiền của dịch vụ đó. Để 0 nếu không có." }
+                        },
+                        required: ["ma_khung_gio", "ma_bac_si"]
                     }
                 }
             ]
@@ -73,293 +117,195 @@ function getActiveModel() {
     });
 }
 
+// Lớp chatbotController: Đảm nhận vai trò (Controller) điều phối API
 export default class chatbotController {
     static async askQuestion(req, res) {
         try {
-            // Lấy thông tin từ request của người dùng
+            // 1. Nhận câu hỏi từ Mobile App (Flutter) gửi lên
             const { message, userId = 1, session_token: reqSessionToken } = req.body; 
             if (!message) return res.status(400).json({ success: false, message: "Vui lòng nhập câu hỏi." });
 
             let session_token = reqSessionToken;
             let chatHistoryText = "";
 
-            // PHẦN 1 & 2: XỬ LÝ SESSION & TRÍ NHỚ (Lấy lịch sử từ DB để AI nhớ bối cảnh)
+            // 2. XỬ LÝ TRÍ NHỚ (NGỮ CẢNH HỘI THOẠI)
             if (session_token) {
-                // Nếu đã có session, truy vấn lịch sử 10 tin nhắn gần nhất
+                // Người dùng đã chat rồi -> Gọi Model lấy lịch sử cũ
                 try {
-                    const sqlGetHistory = `
-                        SELECT tn.Vai_tro, tn.Noi_dung 
-                        FROM tin_nhan_hoi_thoai tn
-                        JOIN phien_hoi_thoai ph ON tn.Ma_hoi_thoai = ph.Ma_hoi_thoai
-                        WHERE ph.Session_token = ?
-                        ORDER BY tn.Ngay_tao ASC
-                        LIMIT 10
-                    `;
-                    const [historyRows] = await execute(sqlGetHistory, [session_token]);
-                    
+                    const historyRows = await ChatbotModel.getChatHistory(session_token);
                     if (historyRows && historyRows.length > 0) {
                         chatHistoryText = "--- Lịch sử trò chuyện trước đó ---\n";
                         historyRows.forEach(row => {
-                            const sender = row.Vai_tro === 'user' ? 'Bệnh nhân' : 'AI';
-                            chatHistoryText += `${sender}: ${row.Noi_dung}\n`;
+                            chatHistoryText += `${row.Vai_tro === 'user' ? 'Bệnh nhân' : 'AI'}: ${row.Noi_dung}\n`;
                         });
                         chatHistoryText += "-----------------------------------\n\n";
                         console.log("Đã tải lịch sử chat thành công!");
                     }
-                } catch (err) {
-                    console.error("Lỗi lấy lịch sử chat:", err);
-                }
+                } catch (err) { console.error("Lỗi lấy lịch sử chat:", err); }
             } else {
-                // Nếu chưa có session, tạo phiên mới và lưu vào bảng phiên hội thoại
+                // Người dùng mới chưa chat -> Gọi Model tạo phiên chat mới
                 session_token = uuidv4();
                 try {
-                    const sqlCreateSession = `INSERT INTO phien_hoi_thoai (Ma_nguoi_dung, Chu_de, Session_token, Bat_dau) VALUES (?, ?, ?, NOW())`;
-                    await execute(sqlCreateSession, [userId, JSON.stringify(message), session_token]);
+                    await ChatbotModel.createSession(userId, session_token, message);
                     console.log("Đã tạo Session mới:", session_token);
-                } catch (dbError) {
-                    console.error("Lỗi tạo DB Session:", dbError);
-                }
+                } catch (dbError) { console.error("Lỗi tạo DB Session:", dbError); }
             }
 
-            // Gộp lịch sử vào câu hỏi hiện tại để tạo ngữ cảnh hoàn chỉnh
+            // Gộp lịch sử và câu hỏi mới thành 1 khối để nạp cho AI
             const finalMessageToAI = chatHistoryText + "Câu hỏi hiện tại của Bệnh nhân: " + message;
 
-            // PHẦN: CƠ CHẾ ĐỔI KEY TỰ ĐỘNG (Xử lý khi vượt hạn mức API)
+            // 3. GỌI AI PHÂN TÍCH CÂU HỎI (Vòng 1 có cơ chế bảo vệ Key)
             let result;
             let attempts = 0;
-            const maxAttempts = API_KEYS.length; 
-
-            while (attempts < maxAttempts) {
+            while (attempts < API_KEYS.length) {
                 try {
-                    const currentModel = getActiveModel();
-                    result = await currentModel.generateContent(finalMessageToAI);
-                    break; 
+                    result = await getActiveModel().generateContent(finalMessageToAI);
+                    break; // Thành công -> Thoát vòng lặp
                 } catch (aiError) {
-                    // Nếu lỗi do hạn mức (429/403), chuyển sang key tiếp theo
-                    if (aiError.message && (aiError.message.includes('429') || aiError.message.includes('403'))) {
-                        console.log(`Key thứ ${currentKeyIndex + 1} gặp lỗi. Đang chuyển sang Key tiếp theo...`);
-                        
+                    // Nếu lỗi do hết hạn mức, tự động nhảy sang Key tiếp theo
+                    if (aiError.message && (aiError.message.includes('429') || aiError.message.includes('403') || aiError.message.includes('503') || aiError.message.includes('500'))) {
+                        console.log(`Key thứ ${currentKeyIndex + 1} gặp lỗi. Đang chuyển Key...`);
                         currentKeyIndex = (currentKeyIndex + 1) % API_KEYS.length;
                         attempts++;
-                    } else {
-                        throw aiError;
-                    }
+                    } else { throw aiError; }
                 }
             }
 
-            if (!result) {
-                return res.status(500).json({ success: false, message: "Tất cả API Key đều đã hết hạn mức. Vui lòng thử lại vào ngày mai!" });
-            }
+            if (!result) return res.status(500).json({ success: false, message: "Hạn mức API cạn kiệt." });
             
-            // LƯỚI AN TOÀN: Kiểm tra AI có gọi hàm tìm bác sĩ hay không
+            // 4. KIỂM TRA XEM AI CÓ MUỐN GỌI HÀM NÀO KHÔNG?
             let call = null;
             if (result.response.functionCalls) {
-                const calls = typeof result.response.functionCalls === 'function' 
-                              ? result.response.functionCalls() 
-                              : result.response.functionCalls;
-                if (calls && calls.length > 0) {
-                    call = calls[0];
+                const calls = typeof result.response.functionCalls === 'function' ? result.response.functionCalls() : result.response.functionCalls;
+                if (calls && calls.length > 0) call = calls[0];
+            }
+
+            // 5. XỬ LÝ NẾU CÓ FUNCTION CALLING (AI yêu cầu tìm dữ liệu)
+            if (call) {
+                let dbData = [];
+                let prompt = "";
+
+                // Gọi hàm tương ứng dưới tầng Model tùy theo lệnh của AI
+                if (call.name === "search_doctors") {
+                    console.log("AI GỌI HÀM: search_doctors ->", call.args.specialty);
+                    dbData = await ChatbotModel.searchDoctors(call.args.specialty);
+                    prompt = `Dựa vào danh sách bác sĩ sau: ${JSON.stringify(dbData)}. 
+                    Hãy liệt kê rõ tên, học vị và điểm đánh giá của từng bác sĩ, sau đó mời đặt lịch.`;
+                } 
+                else if (call.name === "search_doctor_available_slots") {
+                    console.log("AI GỌI HÀM: search_doctor_available_slots ->", call.args.specialty);
+                    dbData = await ChatbotModel.searchAvailableSlots(call.args.specialty, call.args.target_date, call.args.time_of_day);
+                prompt = `Dựa vào danh sách lịch khám còn trống sau đây của 
+                chuyên khoa ${call.args.specialty}: ${JSON.stringify(dbData)}.
+                - Nếu có lịch trống: Hãy đóng vai trợ lý ảo MedCare, trả lời thân thiện,
+                liệt kê rõ tên bác sĩ, học vị, điểm đánh giá và các khung giờ trống để bệnh nhân lựa chọn.
+                - Nếu danh sách trống rỗng ([]): Hãy trả lời lịch sự với bệnh nhân rằng
+                 hiện tại khoa này đã kín lịch hoặc chưa có lịch khám vào thời gian yêu cầu,
+                và gợi ý họ chọn một ngày khác hoặc chuyên khoa khác.`;
+                } 
+
+                else if (call.name === "check_doctor_schedule") {
+                    console.log("AI GỌI HÀM: check_doctor_schedule ->", call.args.doctor_name);
+                    dbData = await ChatbotModel.checkDoctorSchedule(call.args.doctor_name);
+                    prompt = `Dựa vào lịch trống của bác sĩ: ${JSON.stringify(dbData)}. 
+                    Nếu trống rỗng ([]), báo bác sĩ đã kín lịch. Ngược lại, thông báo rõ các giờ trống.`;
                 }
-            }
 
-            // XỬ LÝ KHI CÓ GỌI HÀM TÌM BÁC SĨ THEO CHUYÊN KHOA
-            if (call && call.name === "search_doctors") {
-                console.log("AI ĐÃ NHẬN DIỆN HÀM:", call.args.specialty);
+                else if (call.name === "get_doctor_profile") {
+                    console.log("AI GỌI HÀM: get_doctor_profile ->", call.args.doctor_name);
+                    dbData = await ChatbotModel.getDoctorProfile(call.args.doctor_name);
+                    
+                    prompt = `Người dùng vừa hỏi câu này: "${message}"
+                    Dựa vào hồ sơ bác sĩ sau: ${JSON.stringify(dbData)}. 
+                    - Nếu có dữ liệu: Hãy đóng vai lễ tân MedCare, TRẢ LỜI ĐÚNG TRỌNG TÂM
+                    câu hỏi của người dùng. Chỉ trích xuất thông tin người dùng cần 
+                    (ví dụ: họ hỏi giá thì chỉ báo giá, hỏi địa chỉ thì chỉ báo địa chỉ). 
+                    Có thể khen ngợi ngắn gọn thái độ của bác sĩ nếu phù hợp. 
+                    KHÔNG liệt kê dài dòng những thông tin người dùng không hỏi.
+                    - Nếu trống rỗng ([]): Xin lỗi và báo không tìm thấy thông tin bác sĩ này.`;
+                }
                 
-                const doctors = await chatbotController.handleSearchDoctors(call.args.specialty);
-                
-                const prompt = `Dựa vào danh sách bác sĩ sau: ${JSON.stringify(doctors)}. 
-                Hãy trả lời thân thiện, liệt kê rõ tên, học vị và 
-                điểm đánh giá của từng bác sĩ, sau đó mời họ đặt lịch.`;
-                
+                else if (call.name === "shortcut_book_with_specialty") {
+                    console.log("AI GỌI HÀM: Đặt lịch sớm nhất CÓ Khoa ->", call.args.specialty);
+                    dbData = await ChatbotModel.findEarliestSlotWithSpecialty(call.args.specialty);
+                    
+                    prompt = `Dựa vào kết quả lịch trống sớm nhất: ${JSON.stringify(dbData)}. 
+                    - Nếu có lịch ([] không rỗng): Hãy thông báo đây là lịch sớm nhất của chuyên khoa ${call.args.specialty}, nêu rõ giờ khám, tên bác sĩ (Kèm mã ma_khung_gio và ma_bac_si ẩn trong câu trả lời để hệ thống ghi nhớ) và HỎI người dùng có ĐỒNG Ý đặt lịch này không.
+                    - Nếu trống ([]): Xin lỗi và báo chuyên khoa này hiện đã hết lịch khả dụng.`;
+                }
+
+                else if (call.name === "shortcut_book_any_specialty") {
+                    console.log("AI GỌI HÀM: Đặt lịch sớm nhất KHÔNG Khoa");
+                    dbData = await ChatbotModel.findEarliestSlotAnySpecialty();
+                    
+                    prompt = `Dựa vào kết quả lịch trống sớm nhất toàn hệ thống: ${JSON.stringify(dbData)}. 
+                    - Nếu có lịch ([] không rỗng): Thông báo đây là khung giờ sớm nhất hiện có, 
+                    nêu rõ chuyên khoa, giờ khám, tên bác sĩ (Kèm mã ma_khung_gio và ma_bac_si 
+                    ẩn trong câu để hệ thống nhớ) và HỎI người dùng có ĐỒNG Ý đặt lịch không.
+                    - Nếu trống ([]): Xin lỗi và báo toàn bộ phòng khám đã kín lịch.`;
+                }
+
+                else if (call.name === "confirm_and_book_appointment") {
+                    const maDichVu = call.args.ma_dich_vu || null;
+                    const giaTien = call.args.gia_tien || 0;
+                    console.log(`AI CHỐT LỊCH -> Giờ: ${call.args.ma_khung_gio}, Bác sĩ: ${call.args.ma_bac_si}, Dịch vụ: ${maDichVu}, Tiền: ${giaTien}`);
+                    
+                    try {
+                        const bookingCode = await ChatbotModel.createNewAppointment(userId, call.args.ma_khung_gio, call.args.ma_bac_si);
+                        prompt = `Hệ thống vừa đặt lịch thành công với Mã Booking là: ${bookingCode}. 
+                        Hãy vào vai lễ tân, chúc mừng bệnh nhân đã đặt lịch thành công, 
+                        nhắc lại mã Booking và dặn họ đến trước 15 phút để làm thủ tục.
+                        - Nếu có giá tiền (gia_tien > 0): Hãy báo tổng chi phí 
+                        là ${giaTien} VNĐ và dặn bệnh nhân thanh toán tại quầy.
+                        - Nếu giá tiền = 0: Hãy dặn chi phí sẽ tính sau khi bác sĩ tư vấn.`;
+                    } catch (error) {
+                        prompt = `Hãy xin lỗi bệnh nhân một cách lịch sự, 
+                        thông báo rằng khung giờ này vừa có người khác đặt 
+                        hoặc hệ thống đang bận, vui lòng chọn một khung giờ khác.`;
+                    }
+                }
+
+                // 6. GỌI AI LẦN 2: Nhờ AI tổng hợp Data thô thành câu trả lời tự nhiên
                 let finalResult = await chatbotController.handleAIRequestWithRotation(prompt);
-                if (!finalResult) return res.status(500).json({ success: false, message: "Hệ thống AI quá tải." });
+                if (!finalResult) return res.status(500).json({ success: false, message: "Hệ thống AI bận." });
 
-                await chatbotController.saveMessagesToDB(session_token, message, finalResult.response.text());
-                
-                return res.status(200).json({ success: true, reply: finalResult.response.text(), session_token });
+                const replyText = finalResult.response.text();
+
+                // 7. LƯU LỊCH SỬ CHAT VÀO DATABASE
+                await ChatbotModel.saveMessage(session_token, 'user', message);
+                await ChatbotModel.saveMessage(session_token, 'chatbot', replyText);
+
+                // Trả kết quả về cho Flutter App
+                return res.status(200).json({ success: true, reply: replyText, session_token });
             }
 
-            // XỬ LÝ KHI GỌI HÀM: TÌM BÁC SĨ THEO CHUYÊN KHOA KÈM LỊCH TRỐNG
-            if (call && call.name === "search_doctor_available_slots") {
-                console.log("AI ĐÃ NHẬN DIỆN HÀM TÌM LỊCH TRỐNG KHOA:", call.args.specialty);
-                
-                // Gọi hàm lấy cả bác sĩ và lịch trống từ database
-                const slots = await chatbotController.handleSearchAvailableSlots(call.args.specialty, call.args.target_date, call.args.time_of_day);
-                
-                const prompt = `Dựa vào danh sách lịch khám còn trống sau đây của chuyên khoa: ${JSON.stringify(slots)}.
-                Hãy trả lời thân thiện, liệt kê rõ tên bác sĩ, học vị, 
-                điểm đánh giá và các khung giờ (Thời gian bắt đầu đến kết thúc) 
-                còn trống tương ứng để bệnh nhân lựa chọn.`;
-                
-                let finalResult = await chatbotController.handleAIRequestWithRotation(prompt);
-                if (!finalResult) return res.status(500).json({ success: false, message: "Hệ thống AI quá tải." });
-
-                await chatbotController.saveMessagesToDB(session_token, message, finalResult.response.text());
-                
-                return res.status(200).json({ success: true, reply: finalResult.response.text(), session_token });
-            }
-
-            // XỬ LÝ KHI GỌI HÀM: TÌM LỊCH TRỐNG THEO TÊN BÁC SĨ
-            if (call && call.name === "check_doctor_schedule") {
-                console.log("AI ĐÃ NHẬN DIỆN HÀM KIỂM TRA LỊCH BÁC SĨ:", call.args.doctor_name);
-                
-                const slots = await chatbotController.handleCheckDoctorSchedule(call.args.doctor_name);
-                
-                const prompt = `Dựa vào dữ liệu lịch trống sau đây của bác sĩ: ${JSON.stringify(slots)}.
-                Nếu có lịch: Hãy trả lời thân thiện, thông báo tên bác sĩ, 
-                chuyên khoa, và các khung giờ còn trống.
-                Nếu trống rỗng ([]): Hãy xin lỗi và báo rằng bác sĩ này hiện tại
-                đã kín lịch hoặc không có lịch khám trong hệ thống.`;
-                
-                let finalResult = await chatbotController.handleAIRequestWithRotation(prompt);
-                if (!finalResult) return res.status(500).json({ success: false, message: "Hệ thống AI quá tải." });
-
-                await chatbotController.saveMessagesToDB(session_token, message, finalResult.response.text());
-                
-                return res.status(200).json({ success: true, reply: finalResult.response.text(), session_token });
-            }
-
-            // XỬ LÝ MẶC ĐỊNH: Trả lời không cần gọi hàm và lưu lịch sử
+            // 8. XỬ LÝ NẾU KHÔNG GỌI HÀM (Chỉ hỏi đáp thông thường về chi phí, giờ làm...)
             const replyText = result.response.text();
-            await chatbotController.saveMessagesToDB(session_token, message, replyText);
+            await ChatbotModel.saveMessage(session_token, 'user', message);
+            await ChatbotModel.saveMessage(session_token, 'chatbot', replyText);
 
             return res.status(200).json({ success: true, reply: replyText, session_token });
 
         } catch (error) {
-            console.error("LỖI AI:", error);
-            return res.status(500).json({ success: false, message: "AI đang bận.", error: error.message });
+            console.error("LỖI HỆ THỐNG:", error);
+            return res.status(500).json({ success: false, message: "Hệ thống lỗi.", error: error.message });
         }
     }
 
-    // HÀM BỔ TRỢ: Tách luồng xoay Key lần 2 ra ngoài giúp code sạch gọn hơn
+    // HÀM BỔ TRỢ: Rút gọn luồng xoay vòng Key lần 2 (Gọi ở bước 6)
     static async handleAIRequestWithRotation(prompt) {
-        let finalResult;
         let finalAttempts = 0;
         while (finalAttempts < API_KEYS.length) {
             try {
-                const currentModel = getActiveModel();
-                finalResult = await currentModel.generateContent(prompt);
-                return finalResult;
+                return await getActiveModel().generateContent(prompt);
             } catch (aiError) {
-                if (aiError.message && (aiError.message.includes('429') || aiError.message.includes('403'))) {
-                    console.log(`Key thứ ${currentKeyIndex + 1} lỗi ở bước tổng hợp. Đang chuyển Key...`);
+                // Gặp lỗi 429 hoặc 403 thì tăng Index để đổi Key
+                if (aiError.message && (aiError.message.includes('429') || aiError.message.includes('403') || aiError.message.includes('503') || aiError.message.includes('500'))) {
                     currentKeyIndex = (currentKeyIndex + 1) % API_KEYS.length;
                     finalAttempts++;
                 } else { throw aiError; }
             }
         }
-        return null;
-    }
-
-    // HÀM BỔ TRỢ: Lưu tin nhắn hội thoại vào DB
-    static async saveMessagesToDB(session_token, userMsg, botMsg) {
-        try {
-            const sqlSaveMessage = `INSERT INTO tin_nhan_hoi_thoai (Ma_hoi_thoai, Vai_tro, Noi_dung) VALUES ((SELECT Ma_hoi_thoai FROM phien_hoi_thoai WHERE Session_token = ? LIMIT 1), ?, ?)`;
-            await execute(sqlSaveMessage, [session_token, 'user', userMsg]);
-            await execute(sqlSaveMessage, [session_token, 'chatbot', botMsg]);
-            console.log("Đã lưu lịch sử 2 tin nhắn vào DB thành công!");
-        } catch (msgError) { console.error("Lỗi lưu tin nhắn vào DB:", msgError); }
-    }
-
-    // HÀM BỔ TRỢ: Truy vấn SQL tìm bác sĩ theo chuyên khoa
-    static async handleSearchDoctors(specialty) {
-        try {
-            console.log("Đang truy vấn Database thật tìm bác sĩ khoa:", specialty);
-            const query = `
-                SELECT bs.Ma_bac_si, nd.Ten_nguoi_dung AS ten_bac_si, ck.Ten_chuyen_khoa, bs.Hoc_vi, AVG(dg.So_sao) AS diem_danh_gia
-                FROM bac_si bs
-                JOIN nguoi_dung nd ON bs.Ma_nguoi_dung = nd.Ma_nguoi_dung
-                JOIN chuyen_khoa ck ON bs.Ma_chuyen_khoa = ck.Ma_chuyen_khoa
-                LEFT JOIN danh_gia dg ON bs.Ma_bac_si = dg.Ma_bac_si
-                WHERE ck.Ten_chuyen_khoa LIKE ?
-                GROUP BY bs.Ma_bac_si ORDER BY diem_danh_gia DESC LIMIT 5;
-            `;
-            const [rows] = await execute(query, [`%${specialty}%`]);
-            return rows;
-        } catch (error) { console.error("Lỗi truy vấn SQL tìm bác sĩ:", error); return []; }
-    }
-
-    // HÀM BỔ TRỢ: Truy vấn SQL tìm bác sĩ theo chuyên khoa kèm khung giờ TRỐNG ('available')
-    static async handleSearchAvailableSlots(specialty, targetDate = null, timeOfDay = null) {
-        try {
-            console.log(`Đang tìm lịch trống - Khoa: ${specialty}, Ngày: ${targetDate}, Buổi: ${timeOfDay}`);
-            
-            // Câu lệnh JOIN kết hợp tìm thông tin bác sĩ, điểm đánh giá và lịch khám còn trống
-            let query = `
-                SELECT 
-                    bs.Ma_bac_si, nd.Ten_nguoi_dung AS ten_bac_si, ck.Ten_chuyen_khoa, bs.Hoc_vi,
-                    AVG(dg.So_sao) AS diem_danh_gia, kg.Ma_khung_gio,
-                    DATE_FORMAT(kg.Thoi_gian_Bdau, '%Y-%m-%d %H:%i') AS start_time,
-                    DATE_FORMAT(kg.Thoi_gian_Kthuc, '%H:%i') AS end_time
-                FROM khung_gio_kham kg
-                JOIN bac_si bs ON kg.Ma_bac_si = bs.Ma_bac_si
-                JOIN nguoi_dung nd ON bs.Ma_nguoi_dung = nd.Ma_nguoi_dung
-                JOIN chuyen_khoa ck ON bs.Ma_chuyen_khoa = ck.Ma_chuyen_khoa
-                LEFT JOIN danh_gia dg ON bs.Ma_bac_si = dg.Ma_bac_si
-                WHERE ck.Ten_chuyen_khoa LIKE ? AND kg.Trang_thai = 'available'
-            `;
-            
-            let params = [`%${specialty}%`];
-
-            // Nếu AI bóc tách được người dùng có yêu cầu ngày cụ thể
-            if (targetDate) {
-                query += ` AND DATE(kg.Thoi_gian_Bdau) = ?`;
-                params.push(targetDate);
-            }
-            
-            // Nếu AI bóc tách được buổi sáng/chiều/tối
-            if (timeOfDay === 'morning') {
-                query += ` AND HOUR(kg.Thoi_gian_Bdau) < 12`;
-            } else if (timeOfDay === 'afternoon') {
-                query += ` AND HOUR(kg.Thoi_gian_Bdau) >= 12 AND HOUR(kg.Thoi_gian_Bdau) < 17`;
-            } else if (timeOfDay === 'evening') {
-                query += ` AND HOUR(kg.Thoi_gian_Bdau) >= 17`;
-            }
-
-            query += `
-                GROUP BY kg.Ma_khung_gio, bs.Ma_bac_si
-                ORDER BY diem_danh_gia DESC, kg.Thoi_gian_Bdau ASC
-                LIMIT 15;
-            `;
-            
-            const [rows] = await execute(query, params);
-            return rows;
-        } catch (error) {
-            console.error("Lỗi SQL lịch trống:", error);
-            return [];
-        }
-    }
-
-    // HÀM BỔ TRỢ: Truy vấn SQL tìm lịch trống theo TÊN BÁC SĨ
-    static async handleCheckDoctorSchedule(doctorName) {
-        try {
-            console.log("Đang truy vấn Database tìm lịch của bác sĩ:", doctorName);
-            
-            // Dùng LIKE trên cột Ten_nguoi_dung thay vì Ten_chuyen_khoa
-            const query = `
-                SELECT 
-                    bs.Ma_bac_si,
-                    nd.Ten_nguoi_dung AS ten_bac_si,
-                    ck.Ten_chuyen_khoa,
-                    kg.Ma_khung_gio,
-                    DATE_FORMAT(kg.Thoi_gian_Bdau, '%Y-%m-%d %H:%i') AS start_time,
-                    DATE_FORMAT(kg.Thoi_gian_Kthuc, '%H:%i') AS end_time
-                FROM khung_gio_kham kg
-                JOIN bac_si bs ON kg.Ma_bac_si = bs.Ma_bac_si
-                JOIN nguoi_dung nd ON bs.Ma_nguoi_dung = nd.Ma_nguoi_dung
-                JOIN chuyen_khoa ck ON bs.Ma_chuyen_khoa = ck.Ma_chuyen_khoa
-                WHERE nd.Ten_nguoi_dung LIKE ? AND kg.Trang_thai = 'available'
-                ORDER BY kg.Thoi_gian_Bdau ASC
-                LIMIT 10;
-            `;
-            
-            // Tìm kiếm tương đối để dù user gõ "Alery" hay "Nguyễn Văn Alery" đều ra
-            const [rows] = await execute(query, [`%${doctorName}%`]);
-            return rows;
-        } catch (error) {
-            console.error("Lỗi truy vấn SQL lịch bác sĩ:", error);
-            return [];
-        }
+        return null; // Nếu thử hết tất cả Key mà vẫn lỗi thì báo tải thất bại
     }
 }
