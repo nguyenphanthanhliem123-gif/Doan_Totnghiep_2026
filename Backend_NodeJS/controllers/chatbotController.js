@@ -3,7 +3,8 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { v4 as uuidv4 } from 'uuid';
 import ChatbotModel from '../models/chatbotModel.js';
 
-// MẢNG API KEY: Dùng để dự phòng khi 1 key bị hết hạn mức 20 request/ngày
+// MẢNG API KEY: Dùng để dự phòng khi 1 key bị hết hạn mức 20 request/ngày 
+// Thêm GEMINI_API_KEY ở file .env, mẫu theo file .env.example
 const API_KEYS = [
     process.env.GEMINI_API_KEY_1,
     process.env.GEMINI_API_KEY_2,
@@ -24,17 +25,31 @@ function getActiveModel() {
 
         // Cài đặt vai trò và kiến thức nền cho chatbot
         model: "gemini-2.5-flash",
+        // Dữ liệu mẫu
         systemInstruction: `Bạn là trợ lý AI ảo của App Hẹn Đặt Lịch Khám MedCare.
         Nhiệm vụ: Trả lời ngắn gọn, lịch sự về quy trình khám.
         1. Giấy tờ: CMND/CCCD, BHYT, sổ khám cũ.
         2. Thời gian: 15-30 phút (thêm 1-2 tiếng nếu xét nghiệm).
         3. Chi phí ban đầu: 150.000 VNĐ.
         4. Gửi xe: Xe máy miễn phí trước cửa, ô tô 30k ở ngã tư cách 50m.
-        5. Giờ làm việc: 08:00 - 21:00 (T2-CN).`,
+        5. Giờ làm việc: 08:00 - 21:00 (T2-CN).
+
+        QUY TẮC BẮT BUỘC (Trường hợp thiếu thông tin): 
+        Nếu người dùng yêu cầu 'Đặt lịch', 'Tìm lịch' chung chung mà không nói rõ
+        tên bác sĩ hoặc chuyên khoa nào, bạn TUYỆT ĐỐI KHÔNG ĐƯỢC gọi bất kỳ 
+        hàm (Tool) nào. Hãy chủ động nhắn tin hỏi lại người dùng một cách lịch sự 
+        để họ cung cấp rõ tên chuyên khoa hoặc bác sĩ mà họ mong muốn thăm khám.`,
 
         // Dạy cho AI biết khi nào thì cần gọi hàm (Function Calling)
         tools: [{
             functionDeclarations: [
+                // ====================================================================================
+                // 📍 [HƯỚNG DẪN] - BƯỚC 1: KHAI BÁO CÔNG CỤ (TOOL) CHO AI
+                // - Nếu nhóm muốn thêm chức năng mới (VD: Hủy lịch, Tra cứu thuốc...) thì THÊM VÀO ĐÂY.
+                // - Cần khai báo: name (tên hàm), description (AI dựa vào đây để biết khi nào nên gọi), 
+                //   và parameters (các tham số AI cần tự động bóc tách từ lời nói của user).
+                // ====================================================================================
+
                 // TOOL: TÌM KIẾM BÁC SĨ
                 {
                     name: "search_doctors",
@@ -118,6 +133,7 @@ function getActiveModel() {
                         required: ["ma_khung_gio", "ma_bac_si"]
                     }
                 }
+                // 👈 THÊM TOOL MỚI VÀO ĐÂY!
             ]
         }]
     });
@@ -168,12 +184,17 @@ export default class chatbotController {
                     result = await getActiveModel().generateContent(finalMessageToAI);
                     break; // Thành công -> Thoát vòng lặp
                 } catch (aiError) {
-                    // Nếu lỗi do hết hạn mức, tự động nhảy sang Key tiếp theo
+                    // Nếu lỗi do hết hạn mức hoặc server Google lỗi, in chi tiết và nhảy Key
                     if (aiError.message && (aiError.message.includes('429') || aiError.message.includes('403') || aiError.message.includes('503') || aiError.message.includes('500'))) {
-                        console.log(`Key thứ ${currentKeyIndex + 1} gặp lỗi. Đang chuyển Key...`);
+                        console.log(`[CẢNH BÁO] API Key thứ ${currentKeyIndex + 1} thất bại. Lý do: ${aiError.message}`);
+                        console.log(`🔄 Đang chuyển sang API Key tiếp theo...`);
                         currentKeyIndex = (currentKeyIndex + 1) % API_KEYS.length;
                         attempts++;
-                    } else { throw aiError; }
+                    } else { 
+                        // Nếu là lỗi logic code (không phải lỗi API), in ra lỗi đỏ và dừng hệ thống
+                        console.error(`[LỖI NGHIÊM TRỌNG] Quá trình gọi AI vòng 1 gặp sự cố:`, aiError);
+                        throw aiError; 
+                    }
                 }
             }
 
@@ -191,30 +212,39 @@ export default class chatbotController {
                 let dbData = [];
                 let prompt = "";
 
+                // ====================================================================================
+                // 📍 [HƯỚNG DẪN] - BƯỚC 2: XỬ LÝ LOGIC DATABASE CHO CHỨC NĂNG MỚI
+                // - Thêm nhánh `else if (call.name === "ten_tool_moi_cua_ban")` vào khu vực dưới đây.
+                // - Bước 2.1: Gọi `await ChatbotModel.hamXuLySQL(...)` để chọc vào Database.
+                // - Bước 2.2: Gán cục data thô đó vào biến `prompt` và ra lệnh cho AI cách trả lời user.
+                // ====================================================================================
+
                 // Gọi hàm tương ứng dưới tầng Model tùy theo lệnh của AI
                 if (call.name === "search_doctors") {
                     console.log("AI GỌI HÀM: search_doctors ->", call.args.specialty);
                     dbData = await ChatbotModel.searchDoctors(call.args.specialty);
+
                     prompt = `Dựa vào danh sách bác sĩ sau: ${JSON.stringify(dbData)}. 
                     Hãy liệt kê rõ tên, học vị và điểm đánh giá của từng bác sĩ, sau đó mời đặt lịch.`;
-                } 
+                }
+
                 else if (call.name === "search_doctor_available_slots") {
                     console.log("AI GỌI HÀM: search_doctor_available_slots ->", call.args.specialty);
                     dbData = await ChatbotModel.searchAvailableSlots(call.args.specialty, call.args.target_date, call.args.time_of_day);
-                prompt = `Dựa vào danh sách lịch khám còn trống sau đây của 
-                chuyên khoa ${call.args.specialty}: ${JSON.stringify(dbData)}.
-                - Nếu có lịch trống: Hãy đóng vai trợ lý ảo MedCare, trả lời thân thiện,
-                liệt kê rõ tên bác sĩ, học vị, điểm đánh giá và các khung giờ trống để bệnh nhân lựa chọn.
-                - Nếu danh sách trống rỗng ([]): Hãy trả lời lịch sự với bệnh nhân rằng
-                 hiện tại khoa này đã kín lịch hoặc chưa có lịch khám vào thời gian yêu cầu,
-                và gợi ý họ chọn một ngày khác hoặc chuyên khoa khác.`;
+
+                    prompt = `Dựa vào danh sách lịch khám còn trống sau đây của 
+                    chuyên khoa ${call.args.specialty}: ${JSON.stringify(dbData)}.
+                    - Nếu có lịch trống: Hãy đóng vai trợ lý ảo MedCare, trả lời thân thiện,
+                    liệt kê rõ tên bác sĩ, học vị, điểm đánh giá và các khung giờ trống để bệnh nhân lựa chọn.
+                    - Nếu danh sách trống rỗng ([]): Hãy trả lời lịch sự với bệnh nhân rằng
+                    hiện tại khoa này đã kín lịch hoặc chưa có lịch khám vào thời gian yêu cầu,
+                    và gợi ý họ chọn một ngày khác hoặc chuyên khoa khác.`;
                 } 
 
                 else if (call.name === "check_doctor_schedule") {
                     console.log("AI GỌI HÀM: check_doctor_schedule ->", call.args.doctor_name, "Ngày:", call.args.target_date);
-                    
                     dbData = await ChatbotModel.checkDoctorSchedule(call.args.doctor_name, call.args.target_date);
-                    
+
                     prompt = `Người dùng đang hỏi lịch của bác sĩ.
                     Dựa vào dữ liệu lịch trống: ${JSON.stringify(dbData)}.
                     - Nếu có lịch: Hãy liệt kê thân thiện cho bệnh nhân. 
@@ -240,9 +270,14 @@ export default class chatbotController {
                     ngay sau mỗi tên dịch vụ để hệ thống ghi nhớ.
                     (Ví dụ: Khám nội soi [Mã DV: 23] giá 200.000 VNĐ.) 
                     KHÔNG liệt kê dài dòng những thông tin người dùng không hỏi.
-                    - Nếu trống rỗng ([]): Xin lỗi và báo không tìm thấy thông tin bác sĩ này.`;
+                    
+                    - Trường hợp Sai tên bác sĩ (nếu dữ liệu trả về rỗng []): Hãy lịch sự 
+                    báo không tìm thấy bác sĩ mang tên "${call.args.doctor_name}". 
+                    Sau đó, hãy chủ động dựa vào chuyên khoa được nhắc tới (nếu có) hoặc 
+                    đọc lại lịch sử trò chuyện ở trên để gợi ý một vài tên bác sĩ nổi bật 
+                    có tên gần giống hoặc cùng chuyên khoa cho bệnh nhân.`;
                 }
-                
+
                 else if (call.name === "shortcut_book_with_specialty") {
                     console.log("AI GỌI HÀM: Đặt lịch sớm nhất CÓ Khoa ->", call.args.specialty);
                     dbData = await ChatbotModel.findEarliestSlotWithSpecialty(call.args.specialty);
@@ -255,7 +290,11 @@ export default class chatbotController {
                       Sau đó HỎI người dùng có ĐỒNG Ý đặt lịch này không.
                       Ví dụ: ... do Bác sĩ Nguyễn Văn A khám [Mã giờ: 1, Mã BS: 13]. 
                       Bạn có đồng ý đặt lịch này không?
-                    - Nếu trống ([]): Xin lỗi và báo chuyên khoa này hiện đã hết lịch khả dụng.`;
+                      
+                    - Trường hợp Hết chỗ (nếu kết quả trả về rỗng []): Hãy xin lỗi người dùng 
+                    một cách lịch sự vì chuyên khoa ${call.args.specialty} hiện tại đã kín lịch 
+                    hoặc không có khung giờ khả dụng. Hãy chủ động đề xuất họ đổi sang đặt lịch 
+                    vào một ngày khác, hoặc gợi ý họ tham khảo các chuyên khoa liên quan gần nhất.`;
                 }
 
                 else if (call.name === "confirm_and_book_appointment") {
@@ -267,6 +306,7 @@ export default class chatbotController {
                     try {
                         const bookingCode = await ChatbotModel.createNewAppointment(userId, maKhungGio, maBacSi, danhSachDichVu);
                         const tongChiPhi = danhSachDichVu.reduce((sum, item) => sum + (item.gia_tien || 0), 0);
+
                         prompt = `Hệ thống vừa đặt lịch thành công với Mã Booking là: ${bookingCode}. 
                         Hãy đóng vai lễ tân báo tin vui, nhắc lại ngày giờ họ đã đặt, 
                         đọc mã Booking và dặn họ đến trước 15 phút để làm thủ tục.
@@ -281,6 +321,8 @@ export default class chatbotController {
                         hoặc hệ thống đang bận, vui lòng chọn một khung giờ khác.`;
                     }
                 }
+                
+                // 👈 THÊM CÁC HÀM "ELSE IF" MỚI VÀO KHU VỰC NÀY!
 
                 // 6. GỌI AI LẦN 2: Nhờ AI tổng hợp Data thô thành câu trả lời tự nhiên
                 let finalResult = await chatbotController.handleAIRequestWithRotation(prompt);
@@ -316,11 +358,16 @@ export default class chatbotController {
             try {
                 return await getActiveModel().generateContent(prompt);
             } catch (aiError) {
-                // Gặp lỗi 429 hoặc 403 thì tăng Index để đổi Key
+                // Gặp lỗi thì in chi tiết ra terminal để debug
                 if (aiError.message && (aiError.message.includes('429') || aiError.message.includes('403') || aiError.message.includes('503') || aiError.message.includes('500'))) {
+                    console.log(`[CẢNH BÁO LẦN 2] API Key thứ ${currentKeyIndex + 1} thất bại. Lý do: ${aiError.message}`);
+                    console.log(`🔄 Đang chuyển sang API Key tiếp theo...`);
                     currentKeyIndex = (currentKeyIndex + 1) % API_KEYS.length;
                     finalAttempts++;
-                } else { throw aiError; }
+                } else { 
+                    console.error(`[LỖI NGHIÊM TRỌNG] Quá trình gọi AI vòng 2 gặp sự cố:`, aiError);
+                    throw aiError; 
+                }
             }
         }
         return null; // Nếu thử hết tất cả Key mà vẫn lỗi thì báo tải thất bại

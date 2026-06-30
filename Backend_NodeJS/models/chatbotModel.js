@@ -145,6 +145,11 @@ export default class ChatbotModel {
                 pk.Vi_tri AS dia_chi_phong_kham,
                 -- Gom tất cả dịch vụ của bác sĩ này lại thành 1 dòng (VD: Khám nội soi: 200000 VNĐ | Tái khám: 120000 VNĐ)
             GROUP_CONCAT(DISTINCT CONCAT(dv.Ten_dich_vu, ' (Mã DV: ', dv.Ma_dich_vu, ') giá ', dv.Gia_tien, ' VNĐ') SEPARATOR ' | ') AS danh_sach_dich_vu
+            -- Nếu gõ sai tên, lấy tên của các bác sĩ khác cùng chuyên khoa để AI làm danh sách gợi ý
+                (SELECT GROUP_CONCAT(nd2.Ten_nguoi_dung SEPARATOR ', ') 
+                    FROM bac_si bs2 
+                    JOIN nguoi_dung nd2 ON bs2.Ma_nguoi_dung = nd2.Ma_nguoi_dung 
+                    WHERE bs2.Ma_chuyen_khoa = bs.Ma_chuyen_khoa AND nd2.Ten_nguoi_dung NOT LIKE ?) AS danh_sach_goi_y
             FROM bac_si bs
             JOIN nguoi_dung nd ON bs.Ma_nguoi_dung = nd.Ma_nguoi_dung
             JOIN chuyen_khoa ck ON bs.Ma_chuyen_khoa = ck.Ma_chuyen_khoa
@@ -157,8 +162,8 @@ export default class ChatbotModel {
             GROUP BY bs.Ma_bac_si, pk.Ten_phong_kham, pk.Vi_tri
             LIMIT 1;
         `;
-        // Tìm kiếm linh hoạt với LIKE
-        const [rows] = await execute(query, [`%${doctorName}%`]);
+        // Truyền tham số cho cả câu lệnh loại trừ ở Subquery và câu lệnh chính
+        const [rows] = await execute(query, [`%${doctorName}%`, `%${doctorName}%`]);
         return rows;
     }
 
