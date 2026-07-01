@@ -41,6 +41,9 @@ function getActiveModel() {
         TUYỆT ĐỐI BẮT BUỘC phải chèn thêm câu cảnh báo: "Lưu ý: Thông tin 
         này chỉ mang tính tham khảo, vui lòng liên hệ trực tiếp bác sĩ 
         điều trị nếu có triệu chứng bất thường." ở cuối câu.
+        7. TƯ VẤN TRIỆU CHỨNG & SÀNG LỌC BỆNH: 
+        - Khi bệnh nhân mô tả các triệu chứng tự nhiên (Ví dụ: "Tôi bị đau đầu và sốt nhẹ 2 ngày", "Tôi ho dữ dội"...), bạn BẮT BUỘC phải gọi hàm "suggestSpecialtyBySymptom" để hệ thống lấy cẩm nang nhóm bệnh tương ứng từ kho dữ liệu Vector (ChromaDB).
+        - Tuyệt đối KHÔNG tự phán đoán hay kết luận vo khi chưa gọi hàm này.
 
         QUY TẮC BẮT BUỘC (Trường hợp thiếu thông tin): 
         Nếu người dùng yêu cầu 'Đặt lịch', 'Tìm lịch' chung chung mà không nói rõ
@@ -158,7 +161,7 @@ function getActiveModel() {
                     name: "lookup_my_prescription",
                     description: "Dùng khi người dùng muốn xem lại đơn thuốc của họ, hỏi cách uống thuốc trong đơn, hoặc hỏi về bệnh án gần nhất (VD: 'Đơn thuốc của tôi có những gì?', 'Thuốc bác sĩ kê hôm trước uống sao?').",
                     parameters: { type: "OBJECT", properties: {} }
-                }
+                },
             ]
         }]
     });
@@ -352,18 +355,42 @@ export default class chatbotController {
                 else if (call.name === "suggestSpecialtyBySymptom") {
                     console.log("AI GỌI HÀM: suggestSpecialtyBySymptom -> từ khóa:", call.args.symptomKeyword);
                     
-                    const medicalFacts = await ChromaService.searchMedicalKnowledge(req.body.message);
+                    // 1. Thực hiện RAG: Lấy kiến thức y khoa chuyên sâu từ kho lưu trữ Vector ChromaDB
+                    const medicalFacts = await ChromaService.searchMedicalKnowledge(message);
+                    console.log("[RAG ChromaDB Data]:", medicalFacts);
                     
-                    // Gọi model truy vấn Database lấy chuyên khoa phù hợp
+                    // 2. Lấy dữ liệu chuyên khoa ánh xạ từ Database MySQL
                     dbData = await ChatbotModel.suggestSpecialtyBySymptom(call.args.symptomKeyword);
                     
-                    // Ném dữ liệu thô ngược lại cho AI lần 2 để nó tự phân tích và đưa ra "Lý do"
-                    prompt = `Người dùng đang gặp triệu chứng: "${call.args.symptomKeyword}".
-                    Dữ liệu chuyên khoa gợi ý từ hệ thống: ${JSON.stringify(dbData)}.
+                    // 3. Định hình prompt nâng cao kết hợp cả 2 nguồn tri thức
+                    prompt = `Bạn đang đóng vai một Bác sĩ tư vấn sàng lọc thông minh của hệ thống phòng khám MedCare.
+                    Người dùng vừa mô tả tình trạng: "${message}" (Từ khóa hệ thống trích xuất: "${call.args.symptomKeyword}").
+
+                    ------------------------------------------
+                    KHO KIẾN THỨC Y KHOA ĐƯỢC TRA CỨU TỪ CHROMADB (RAG):
+                    ${medicalFacts ? JSON.stringify(medicalFacts) : "Không tìm thấy tài liệu y khoa khớp chính xác hoàn toàn."}
+
+                    DANH SÁCH CHUYÊN KHOA PHÙ HỢP TỪ DATABASE MYSQL:
+                    ${JSON.stringify(dbData)}
+                    ------------------------------------------
+
+                    QUY TRÌNH TƯ VẤN VÀ PHÂN LOẠI CỦA BÁC SĨ AI (HÃY LÀM THEO CÁC BƯỚC):
                     
-                    Yêu cầu AI:
-                    - Nếu có dữ liệu chuyên khoa: Hãy đóng vai một bác sĩ tư vấn, gợi ý chuyên khoa đó cho người dùng và giải thích rõ ràng "Lý do" tại sao triệu chứng đó lại thuộc chuyên khoa này (dựa vào kiến thức y khoa của bạn kết hợp với Mo_ta_chuyen_khoa).
-                    - Nếu dữ liệu từ hệ thống trống ([]): Dựa vào kiến thức y khoa của bạn (AI), hãy tự phân tích triệu chứng "${call.args.symptomKeyword}" và đưa ra gợi ý chuyên khoa phù hợp nhất kèm lý do chuyên môn, đồng thời nhắc bệnh nhân nên đi khám sớm để có kết quả chính xác.`;
+                    Bước 1: Đối chiếu & Phân loại nhóm bệnh tạm thời
+                    - Dựa vào nội dung "Kho kiến thức y khoa từ ChromaDB", hãy chỉ ra cho bệnh nhân biết họ có khả năng đang thuộc "Nhóm bệnh" nào (Ví dụ: Nhiễm trùng đường hô hấp cấp tính, Cơ xương khớp...). 
+
+                    Bước 2: Hỏi thêm câu hỏi sàng lọc (Nếu dữ liệu thiếu hụt)
+                    - Nếu lời kể của bệnh nhân còn ngắn (ví dụ chỉ nói đau đầu, sốt nhẹ 2 ngày giống như hiện tại), hãy đối chiếu với mục "Triệu chứng điển hình" trong cẩm nang vừa tìm được.
+                    - Hãy chủ động và ân cần hỏi thêm bệnh nhân xem họ có xuất hiện các triệu chứng vệ tinh khác không để giúp định vị bệnh chính xác hơn (Ví dụ: "Anh/Chị có kèm theo ho, nghẹt mũi, chảy dịch mũi hay đau rát họng nhiều không?").
+
+                    Bước 3: Đưa ra thông tin cảnh báo & Hướng xử lý sơ bộ
+                    - Tóm tắt nhanh "Mức độ nguy hiểm" và "Hướng xử lý" tại nhà (uống nhiều nước, súc họng, dùng paracetamol...) dựa vào đúng dữ liệu của cẩm nang ChromaDB mang lại.
+
+                    Bước 4: Định hướng Chuyên khoa
+                    - Dựa vào dữ liệu Chuyên khoa từ MySQL để khuyên họ nên đặt lịch hẹn tại chuyên khoa nào (Ví dụ: Khoa Nội tổng quát, Khoa Thần Kinh, Khoa Tai Mũi Họng...). 
+                    - Nếu dữ liệu MySQL trống ([]), dựa trên chuyên môn y khoa của bạn để tự gợi ý chuyên khoa phù hợp nhất trong ứng dụng.
+
+                    Phong cách phản hồi: Nhẹ nhàng, thấu hiểu, mang tính chuyên môn cao nhưng dễ hiểu đối với người dân. Sử dụng Markdown, gạch đầu dòng rõ ràng để người bệnh không bị ngợp thông tin.`;
                 }
 
                 else if (call.name === "lookup_my_prescription") {

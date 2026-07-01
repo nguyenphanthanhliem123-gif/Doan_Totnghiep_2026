@@ -31,7 +31,7 @@ async function sendNotification(maNguoiDung, loai, noiDung, io) {
         }
         
     } catch (error) {
-        console.error("Lỗi khi gửi thông báo:", error);
+        console.error("Lỗi khi gửi thông báo: " + error);
     }
 }
 

@@ -28,29 +28,45 @@ const API_KEYS = [
 
 let currentKeyIndex = 0;
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 // HÀM BỔ TRỢ: Đổi văn bản thuần thành mảng số Vector có chống sập bằng xoay vòng Key
 async function getEmbedding(text) {
     if (API_KEYS.length === 0) {
-        throw new Error("❌ CẢNH BÁO TỐI NGUY HIỂM: Hệ thống vẫn không thể đọc được file .env của bạn. Hãy đảm bảo bạn đặt file .env nằm ở thư mục gốc Backend_NodeJS và gõ đúng tên các biến.");
+        throw new Error("❌ CẢNH BÁO TỐI NGUY HIỂM: Hệ thống vẫn không thể đọc được file .env của bạn.");
     }
 
     let attempts = 0;
     while (attempts < API_KEYS.length) {
         try {
             const genAI = new GoogleGenerativeAI(API_KEYS[currentKeyIndex]);
-            const embeddingModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
+            const embeddingModel = genAI.getGenerativeModel({ model: "gemini-embedding-001" });
             
             const result = await embeddingModel.embedContent(text);
+            
+            // 🕒 Giãn cách an toàn: Sau khi tạo công thành công 1 cụm, nghỉ 350ms 
+            // giúp luồng chạy seed không bị đẩy tốc độ lên quá cao dẫn đến dính 429
+            await sleep(350); 
+            
             return result.embedding.values; 
 
         } catch (error) {
-            console.warn(`⚠️ [XỬ LÝ LỖI KEY] API Key số ${currentKeyIndex + 1} thất bại khi tạo Embedding. Đang đổi key...`);
+            // 🛑 HIỂN THỊ LỖI THẬT: In ra lý do chính xác từ Google (error.message) để dễ debug
+            const errMsg = error.message || String(error);
+            console.warn(`⚠️ [XỬ LÝ LỖI KEY] API Key số ${currentKeyIndex + 1} thất bại. Chi tiết: ${errMsg}`);
+            
+            // Nếu dính lỗi 429 hoặc lỗi cạn kiệt tài nguyên tạm thời từ Google
+            if (errMsg.includes('429') || errMsg.includes('ResourceExhausted') || errMsg.includes('Quota')) {
+                console.log(`⏳ Phát hiện giới hạn tốc độ (429/Quota). Tạm dừng luồng 2 giây để giãn cách trước khi đổi sang Key tiếp theo...`);
+                await sleep(2000); // Nghỉ 2 giây nhằm đánh lừa bộ quét spam của Google
+            }
+            
             currentKeyIndex = (currentKeyIndex + 1) % API_KEYS.length;
             attempts++;
         }
     }
     
-    throw new Error("❌ CẠN KIỆT KEY: Cả 3 API Key của bạn đều không thể kết nối hoặc đã hết hạn mức ngày hôm nay.");
+    throw new Error(`❌ CẠN KIỆT TOÀN BỘ KEY: Đã thử xoay vòng qua tất cả ${API_KEYS.length} keys nhưng đều bị Google từ chối do spam tốc độ cao hoặc hết sạch quota ngày.`);
 }
 
 export default class ChromaService {

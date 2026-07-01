@@ -10,6 +10,8 @@ import fileUpload from 'express-fileupload';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import jwt from 'jsonwebtoken';
+import { startReminderCron } from './utils/cronJob.js';
+import { startReminderCron24h } from "../Backend_NodeJS/utils/cronJob24h.js";
 
 //Import Routes
 import userRoutes from './routes/userRoutes.js';
@@ -109,6 +111,9 @@ io.on('connection', (socket) => {
 // Để có thể gọi lại ở bất kỳ file Router/Controller nào
 app.set('io', io);
 app.set('onlineUsers', onlineUsers);
+
+startReminderCron(io);
+startReminderCron24h(io);
 
 app.use(bodyParser.json());
 // THÊM DÒNG NÀY: Để Node.js đọc được dữ liệu từ Form HTML gửi lên
