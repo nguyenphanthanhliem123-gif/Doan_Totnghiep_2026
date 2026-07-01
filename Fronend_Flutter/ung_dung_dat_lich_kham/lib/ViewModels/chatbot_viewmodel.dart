@@ -4,12 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../models/chat_message_model.dart';
+import '../models/chatbot_model.dart';
 import '../Config/BASE_URL.dart'; 
 
-class ChatViewModel extends ChangeNotifier {
+class ChatbotViewModel extends ChangeNotifier {
   // Danh sách lưu trữ các tin nhắn hiển thị trên màn hình chat
-  List<ChatMessage> messages = [];
+  List<ChatbotMessage> messages = [];
   
   // Trạng thái chờ đợi phản hồi từ API Backend (true là đang load, false là xong)
   bool isLoading = false;
@@ -25,7 +25,7 @@ class ChatViewModel extends ChangeNotifier {
     if (text.trim().isEmpty) return;
 
     // 1. Cập nhật UI: Thêm ngay tin nhắn của Bệnh nhân (isUser: true) lên màn hình
-    messages.add(ChatMessage(text: text, isUser: true));
+    messages.add(ChatbotMessage(text: text, isUser: true));
     isLoading = true;
     notifyListeners(); // Thông báo cho View (giao diện) biết để vẽ lại bong bóng chat mới
 
@@ -72,19 +72,36 @@ class ChatViewModel extends ChangeNotifier {
           // Lưu lại session_token được Backend trả về để dùng cho các câu hỏi tiếp theo
           sessionToken = data['session_token'];
           
-          // Thêm tin nhắn phản hồi của AI (isUser: false) vào danh sách hiển thị
-          messages.add(ChatMessage(text: data['reply'], isUser: false));
+          // ------------------------------------------------------------------
+          // 📍 [XỬ LÝ REGEX ĐỂ ẨN MÃ]
+          // Lấy chuỗi văn bản thô từ Backend (có thể chứa các thẻ ẩn như [Mã giờ: 12, Mã BS: 3])
+          String rawReply = data['reply'];
+
+          // Sử dụng Regex để tìm và xóa toàn bộ các chuỗi có định dạng nằm trong dấu ngoặc vuông [...]
+          // Giải thích Regex:
+          // r'...' : Khai báo chuỗi raw trong Dart, giúp xử lý các ký tự escape dễ dàng hơn.
+          // \[     : Bắt đầu bằng dấu ngoặc vuông mở '['.
+          // .*?    : Khớp với bất kỳ ký tự nào bên trong, '?' giúp khớp ít nhất có thể (lazy match) để tránh xóa nhầm văn bản giữa 2 thẻ.
+          // \]     : Kết thúc bằng dấu ngoặc vuông đóng ']'.
+          String cleanReply = rawReply.replaceAll(RegExp(r'\[.*?\]'), '');
+
+          // Cắt bỏ khoảng trắng dư thừa ở đầu và cuối chuỗi (nếu có) do việc xóa thẻ để lại
+          cleanReply = cleanReply.trim();
+          // ------------------------------------------------------------------
+
+          // Thêm tin nhắn phản hồi đã ĐƯỢC LỌC SẠCH của AI (isUser: false) vào danh sách hiển thị
+          messages.add(ChatbotMessage(text: cleanReply, isUser: false));
         } else {
           // Trường hợp Backend chạy nhưng trả về success: false (lỗi logic bên trong)
-          messages.add(ChatMessage(text: "Lỗi hệ thống: ${data['message']}", isUser: false));
+          messages.add(ChatbotMessage(text: "Lỗi hệ thống: ${data['message']}", isUser: false));
         }
       } else {
         // Trường hợp Server trả về các mã lỗi như 404, 500, 429...
-        messages.add(ChatMessage(text: "Lỗi kết nối: Phản hồi không hợp lệ từ máy chủ (${response.statusCode}).", isUser: false));
+        messages.add(ChatbotMessage(text: "Lỗi kết nối: Phản hồi không hợp lệ từ máy chủ (${response.statusCode}).", isUser: false));
       }
     } catch (e) {
       // Bắt các lỗi mất mạng mạng, rớt kết nối hoặc sai IP không thể chọc tới Server
-      messages.add(ChatMessage(text: "Không thể kết nối đến máy chủ. Vui lòng kiểm tra mạng.", isUser: false));
+      messages.add(ChatbotMessage(text: "Không thể kết nối đến máy chủ. Vui lòng kiểm tra mạng.", isUser: false));
       print("Lỗi call API Chatbot: $e");
     } finally {
       // 5. Kết thúc luồng xử lý: Tắt hiệu ứng chờ và cập nhật giao diện lần cuối

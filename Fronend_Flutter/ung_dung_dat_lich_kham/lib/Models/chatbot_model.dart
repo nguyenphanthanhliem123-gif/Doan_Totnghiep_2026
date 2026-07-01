@@ -1,8 +1,8 @@
-class ChatMessage {
+class ChatbotMessage {
   final String text;
   final bool isUser; // true: Tin nhắn của bệnh nhân, false: Tin nhắn của AI
 
-  ChatMessage({
+  ChatbotMessage({
     required this.text,
     required this.isUser,
   });

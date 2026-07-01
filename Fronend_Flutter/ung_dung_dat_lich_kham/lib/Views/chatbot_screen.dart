@@ -3,7 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ung_dung_dat_lich_kham/Constants/ui_constants.dart';
-import 'package:ung_dung_dat_lich_kham/viewmodels/chat_viewmodel.dart';
+import 'package:ung_dung_dat_lich_kham/viewmodels/chatbot_viewmodel.dart';
 
 class ChatbotScreen extends StatefulWidget {
   const ChatbotScreen({super.key});
@@ -43,8 +43,8 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   void _handleSend() {
     final text = _textController.text.trim();
     if (text.isNotEmpty) {
-      // Gọi hàm sendMessage từ ChatViewModel thông qua Provider (read vì không cần lắng nghe thay đổi ở đây)
-      context.read<ChatViewModel>().sendMessage(text);
+      // Gọi hàm sendMessage từ ChatbotViewModel thông qua Provider (read vì không cần lắng nghe thay đổi ở đây)
+      context.read<ChatbotViewModel>().sendMessage(text);
       _textController.clear(); // Xóa chữ trong ô nhập sau khi gửi
       _scrollToBottom(); // Cuộn giao diện xuống
     }
@@ -52,8 +52,8 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Lắng nghe sự thay đổi dữ liệu từ ChatViewModel (mảng messages, biến isLoading)
-    final chatVM = context.watch<ChatViewModel>();
+    // Lắng nghe sự thay đổi dữ liệu từ ChatbotViewModel (mảng messages, biến isLoading)
+    final chatVM = context.watch<ChatbotViewModel>();
     final Color primaryCyan = kPrimaryColor; // Màu xanh Cyan chủ đạo giống trang chủ
 
     // Kích hoạt cuộn xuống dưới cùng mỗi khi ViewModel cập nhật danh sách tin nhắn hoặc trạng thái loading

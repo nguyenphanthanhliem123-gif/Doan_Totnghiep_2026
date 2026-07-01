@@ -31,9 +31,16 @@ function getActiveModel() {
         Nhiệm vụ: Trả lời ngắn gọn, lịch sự về quy trình khám.
         1. Giấy tờ: CMND/CCCD, BHYT, sổ khám cũ.
         2. Thời gian: 15-30 phút (thêm 1-2 tiếng nếu xét nghiệm).
-        3. Chi phí ban đầu: 150.000 VNĐ.
+        3. Chi phí ban đầu: 150.000 VNĐ (Khi khách hàng đặt lịch nhanh không nói rõ 
+        dịch vụ, hệ thống sẽ tự động đăng ký gói Khám lâm sàng cơ bản 150.000 VNĐ).
         4. Gửi xe: Xe máy miễn phí trước cửa, ô tô 30k ở ngã tư cách 50m.
         5. Giờ làm việc: 08:00 - 21:00 (T2-CN).
+        6. HỎI ĐÁP HẬU KHÁM (THUỐC): Khi người dùng hỏi về tác dụng phụ, 
+        công dụng hoặc cách uống của một loại thuốc bất kỳ, hãy đóng vai 
+        dược sĩ và sử dụng kiến thức y khoa chuyên môn của bạn để trả lời. 
+        TUYỆT ĐỐI BẮT BUỘC phải chèn thêm câu cảnh báo: "Lưu ý: Thông tin 
+        này chỉ mang tính tham khảo, vui lòng liên hệ trực tiếp bác sĩ 
+        điều trị nếu có triệu chứng bất thường." ở cuối câu.
 
         QUY TẮC BẮT BUỘC (Trường hợp thiếu thông tin): 
         Nếu người dùng yêu cầu 'Đặt lịch', 'Tìm lịch' chung chung mà không nói rõ
@@ -46,19 +53,16 @@ function getActiveModel() {
             functionDeclarations: [
                 // ====================================================================================
                 // 📍 [HƯỚNG DẪN] - BƯỚC 1: KHAI BÁO CÔNG CỤ (TOOL) CHO AI
-                // - Nếu nhóm muốn thêm chức năng mới (VD: Hủy lịch, Tra cứu thuốc...) thì THÊM VÀO ĐÂY.
-                // - Cần khai báo: name (tên hàm), description (AI dựa vào đây để biết khi nào nên gọi), 
-                //   và parameters (các tham số AI cần tự động bóc tách từ lời nói của user).
                 // ====================================================================================
 
-                // TOOL: TÌM KIẾM BÁC SĨ
+                // TOOL: TÌM KIẾM BÁC SĨ THEO CHUYÊN KHOA
                 {
-                    name: "search_doctors",
-                    description: "Dùng để tìm bác sĩ. Trả về danh sách bác sĩ.",
+                    name: "search_doctor_by_specialty",
+                    description: "Tìm kiếm danh sách bác sĩ theo tên chuyên khoa. Trả về danh sách bác sĩ kèm học vị, điểm đánh giá và mô tả bản thân.",
                     parameters: {
                         type: "OBJECT",
-                        properties: { specialty: { type: "STRING", description: "Tên chuyên khoa (VD: Nội khoa)" } },
-                        required: ["specialty"]
+                        properties: { specialtyName: { type: "STRING", description: "Tên chuyên khoa (VD: Nội khoa, Tai Mũi Họng)" } },
+                        required: ["specialtyName"]
                     }
                 },
                 // TOOL: TÌM LỊCH TRỐNG THEO CHUYÊN KHOA
@@ -134,19 +138,7 @@ function getActiveModel() {
                         required: ["ma_khung_gio", "ma_bac_si"]
                     }
                 },
-
-                {
-                    name: "findDoctorBySpecialty",
-                    description: "Tìm kiếm danh sách bác sĩ theo tên chuyên khoa, bao gồm cả thông tin mô tả bản thân và kinh nghiệm của bác sĩ.",
-                    parameters: {
-                        type: "OBJECT",
-                        properties: {
-                            specialtyName: { type: "STRING", description: "Tên chuyên khoa" }
-                        },
-                        required: ["specialtyName"],
-                    },
-                },
-
+                // TOOL: GỢI Ý CHUYÊN KHOA THEO TRIỆU CHỨNG
                 {
                     name: "suggestSpecialtyBySymptom",
                     description: "Gợi ý chuyên khoa y tế phù hợp (Nội, Ngoại, Sản, Nhi, Tai Mũi Họng, Thần kinh...) dựa trên nhóm triệu chứng hoặc bệnh lý mà người dùng mô tả.",
@@ -160,8 +152,13 @@ function getActiveModel() {
                         },
                         required: ["symptomKeyword"],
                     },
+                },
+                // TOOL: TRA CỨU ĐƠN THUỐC CỦA BỆNH NHÂN
+                {
+                    name: "lookup_my_prescription",
+                    description: "Dùng khi người dùng muốn xem lại đơn thuốc của họ, hỏi cách uống thuốc trong đơn, hoặc hỏi về bệnh án gần nhất (VD: 'Đơn thuốc của tôi có những gì?', 'Thuốc bác sĩ kê hôm trước uống sao?').",
+                    parameters: { type: "OBJECT", properties: {} }
                 }
-                // 👈 THÊM TOOL MỚI VÀO ĐÂY!
             ]
         }]
     });
@@ -180,7 +177,6 @@ export default class chatbotController {
 
             // 2. XỬ LÝ TRÍ NHỚ (NGỮ CẢNH HỘI THOẠI)
             if (session_token) {
-                // Người dùng đã chat rồi -> Gọi Model lấy lịch sử cũ
                 try {
                     const historyRows = await ChatbotModel.getChatHistory(session_token);
                     if (historyRows && historyRows.length > 0) {
@@ -193,7 +189,6 @@ export default class chatbotController {
                     }
                 } catch (err) { console.error("Lỗi lấy lịch sử chat:", err); }
             } else {
-                // Người dùng mới chưa chat -> Gọi Model tạo phiên chat mới
                 session_token = uuidv4();
                 try {
                     await ChatbotModel.createSession(userId, session_token, message);
@@ -201,7 +196,6 @@ export default class chatbotController {
                 } catch (dbError) { console.error("Lỗi tạo DB Session:", dbError); }
             }
 
-            // Gộp lịch sử và câu hỏi mới thành 1 khối để nạp cho AI
             const finalMessageToAI = chatHistoryText + "Câu hỏi hiện tại của Bệnh nhân: " + message;
 
             // 3. GỌI AI PHÂN TÍCH CÂU HỎI (Vòng 1 có cơ chế bảo vệ Key)
@@ -210,16 +204,14 @@ export default class chatbotController {
             while (attempts < API_KEYS.length) {
                 try {
                     result = await getActiveModel().generateContent(finalMessageToAI);
-                    break; // Thành công -> Thoát vòng lặp
+                    break;
                 } catch (aiError) {
-                    // Nếu lỗi do hết hạn mức hoặc server Google lỗi, in chi tiết và nhảy Key
                     if (aiError.message && (aiError.message.includes('429') || aiError.message.includes('403') || aiError.message.includes('503') || aiError.message.includes('500'))) {
                         console.log(`[CẢNH BÁO] API Key thứ ${currentKeyIndex + 1} thất bại. Lý do: ${aiError.message}`);
                         console.log(`🔄 Đang chuyển sang API Key tiếp theo...`);
                         currentKeyIndex = (currentKeyIndex + 1) % API_KEYS.length;
                         attempts++;
                     } else { 
-                        // Nếu là lỗi logic code (không phải lỗi API), in ra lỗi đỏ và dừng hệ thống
                         console.error(`[LỖI NGHIÊM TRỌNG] Quá trình gọi AI vòng 1 gặp sự cố:`, aiError);
                         throw aiError; 
                     }
@@ -235,25 +227,25 @@ export default class chatbotController {
                 if (calls && calls.length > 0) call = calls[0];
             }
 
-            // 5. XỬ LÝ NẾU CÓ FUNCTION CALLING (AI yêu cầu tìm dữ liệu)
+            // 5. XỬ LÝ NẾU CÓ FUNCTION CALLING
             if (call) {
                 let dbData = [];
                 let prompt = "";
 
                 // ====================================================================================
                 // 📍 [HƯỚNG DẪN] - BƯỚC 2: XỬ LÝ LOGIC DATABASE CHO CHỨC NĂNG MỚI
-                // - Thêm nhánh `else if (call.name === "ten_tool_moi_cua_ban")` vào khu vực dưới đây.
-                // - Bước 2.1: Gọi `await ChatbotModel.hamXuLySQL(...)` để chọc vào Database.
-                // - Bước 2.2: Gán cục data thô đó vào biến `prompt` và ra lệnh cho AI cách trả lời user.
                 // ====================================================================================
 
-                // Gọi hàm tương ứng dưới tầng Model tùy theo lệnh của AI
-                if (call.name === "search_doctors") {
-                    console.log("AI GỌI HÀM: search_doctors ->", call.args.specialty);
-                    dbData = await ChatbotModel.searchDoctors(call.args.specialty);
+                // HÀM ĐÃ GỘP: Tìm kiếm bác sĩ theo chuyên khoa
+                if (call.name === "search_doctor_by_specialty") {
+                    console.log("AI GỌI HÀM: search_doctor_by_specialty ->", call.args.specialtyName);
+                    // Đã đổi tên hàm gọi xuống Model cho khớp
+                    dbData = await ChatbotModel.searchDoctorsBySpecialty(call.args.specialtyName);
 
-                    prompt = `Dựa vào danh sách bác sĩ sau: ${JSON.stringify(dbData)}. 
-                    Hãy liệt kê rõ tên, học vị và điểm đánh giá của từng bác sĩ, sau đó mời đặt lịch.`;
+                    prompt = `Người dùng muốn tìm bác sĩ khoa ${call.args.specialtyName}.
+                    Dựa vào dữ liệu tìm được: ${JSON.stringify(dbData)}.
+                    - Nếu có dữ liệu: Hãy liệt kê họ tên bác sĩ kèm theo học vị, điểm đánh giá và một đoạn tóm tắt ngắn về kinh nghiệm/mô tả bản thân của từng bác sĩ để tăng sự tin tưởng cho bệnh nhân. Trình bày thật chuyên nghiệp, thân thiện và mời đặt lịch.
+                    - Nếu rỗng ([]): Hãy báo là không tìm thấy bác sĩ nào thuộc chuyên khoa này.`;
                 }
 
                 else if (call.name === "search_doctor_available_slots") {
@@ -329,6 +321,13 @@ export default class chatbotController {
                     let maKhungGio = call.args.ma_khung_gio;
                     let maBacSi = call.args.ma_bac_si;
                     let danhSachDichVu = call.args.danh_sach_dich_vu || [];
+
+                    // Nếu danh sách dịch vụ trống, tự động thêm dịch vụ khám ban đầu với giá 150k
+                    if (danhSachDichVu.length === 0) {
+                        danhSachDichVu = [
+                            { ma_dich_vu: 25, gia_tien: 150000 }
+                        ];
+                    }
                     console.log(`AI ĐANG TỰ TRUY CẬP MÃ -> Giờ: ${maKhungGio}, BS: ${maBacSi}, Dịch Vụ:`, JSON.stringify(danhSachDichVu));
                     
                     try {
@@ -349,22 +348,10 @@ export default class chatbotController {
                         hoặc hệ thống đang bận, vui lòng chọn một khung giờ khác.`;
                     }
                 }
-
-                else if (call.name === "findDoctorBySpecialty") {
-                    console.log("AI GỌI HÀM: findDoctorBySpecialty ->", call.args.specialtyName);
-                    
-                    // Gọi sang Model vừa thêm ở Bước 1
-                    dbData = await ChatbotModel.findDoctorBySpecialty(call.args.specialtyName);
-                    
-                    // Gán dữ liệu vào prompt để AI vòng 2 trả lời
-                    prompt = `Người dùng muốn tìm bác sĩ khoa ${call.args.specialtyName}.
-                    Dựa vào dữ liệu tìm được: ${JSON.stringify(dbData)}.
-                    - Nếu có dữ liệu: Hãy liệt kê họ tên bác sĩ kèm theo một đoạn tóm tắt ngắn về kinh nghiệm/mô tả bản thân (lấy từ trường "Mo_ta") của từng bác sĩ để tăng sự tin tưởng cho bệnh nhân. Trình bày thật chuyên nghiệp và rõ ràng.
-                    - Nếu rỗng ([]): Hãy báo là không tìm thấy bác sĩ nào thuộc chuyên khoa này.`;
-                }
                 
                 else if (call.name === "suggestSpecialtyBySymptom") {
                     console.log("AI GỌI HÀM: suggestSpecialtyBySymptom -> từ khóa:", call.args.symptomKeyword);
+                    
                     const medicalFacts = await ChromaService.searchMedicalKnowledge(req.body.message);
                     
                     // Gọi model truy vấn Database lấy chuyên khoa phù hợp
@@ -378,7 +365,20 @@ export default class chatbotController {
                     - Nếu có dữ liệu chuyên khoa: Hãy đóng vai một bác sĩ tư vấn, gợi ý chuyên khoa đó cho người dùng và giải thích rõ ràng "Lý do" tại sao triệu chứng đó lại thuộc chuyên khoa này (dựa vào kiến thức y khoa của bạn kết hợp với Mo_ta_chuyen_khoa).
                     - Nếu dữ liệu từ hệ thống trống ([]): Dựa vào kiến thức y khoa của bạn (AI), hãy tự phân tích triệu chứng "${call.args.symptomKeyword}" và đưa ra gợi ý chuyên khoa phù hợp nhất kèm lý do chuyên môn, đồng thời nhắc bệnh nhân nên đi khám sớm để có kết quả chính xác.`;
                 }
-                // 👈 THÊM CÁC HÀM "ELSE IF" MỚI VÀO KHU VỰC NÀY!
+
+                else if (call.name === "lookup_my_prescription") {
+                    console.log("AI GỌI HÀM: lookup_my_prescription -> UserId:", userId);
+                    dbData = await ChatbotModel.getRecentPrescription(userId);
+                    
+                    prompt = `Người dùng vừa hỏi về đơn thuốc của họ.
+                    Dựa vào dữ liệu đơn thuốc gần nhất từ Database: ${JSON.stringify(dbData)}.
+                    - Nếu có dữ liệu ([] không rỗng): Hãy thông báo ngày khám, 
+                    chuẩn đoán bệnh và liệt kê chi tiết các loại thuốc, liều dùng,
+                    giờ uống một cách thân thiện. Nếu họ hỏi riêng về 1 loại thuốc 
+                    trong danh sách đó, hãy hướng dẫn cách uống loại đó.
+                    - Nếu trống rỗng ([]): Hãy xin lỗi và báo rằng hệ thống 
+                    không tìm thấy lịch sử đơn thuốc nào gần đây của họ.`;
+                }
 
                 // 6. GỌI AI LẦN 2: Nhờ AI tổng hợp Data thô thành câu trả lời tự nhiên
                 let finalResult = await chatbotController.handleAIRequestWithRotation(prompt);
@@ -407,14 +407,13 @@ export default class chatbotController {
         }
     }
 
-    // HÀM BỔ TRỢ: Rút gọn luồng xoay vòng Key lần 2 (Gọi ở bước 6)
+    // HÀM BỔ TRỢ: Rút gọn luồng xoay vòng Key lần 2
     static async handleAIRequestWithRotation(prompt) {
         let finalAttempts = 0;
         while (finalAttempts < API_KEYS.length) {
             try {
                 return await getActiveModel().generateContent(prompt);
             } catch (aiError) {
-                // Gặp lỗi thì in chi tiết ra terminal để debug
                 if (aiError.message && (aiError.message.includes('429') || aiError.message.includes('403') || aiError.message.includes('503') || aiError.message.includes('500'))) {
                     console.log(`[CẢNH BÁO LẦN 2] API Key thứ ${currentKeyIndex + 1} thất bại. Lý do: ${aiError.message}`);
                     console.log(`🔄 Đang chuyển sang API Key tiếp theo...`);
@@ -426,6 +425,6 @@ export default class chatbotController {
                 }
             }
         }
-        return null; // Nếu thử hết tất cả Key mà vẫn lỗi thì báo tải thất bại
+        return null; 
     }
 }

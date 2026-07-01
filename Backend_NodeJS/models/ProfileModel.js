@@ -31,7 +31,8 @@ export default class profileModel{
     static async getProfileByMaNguoiDung(ma_nguoi_dung){
         try{
             console.log('==== DEBUG ====');
-            console.log(ma_nguoi_dung);
+            console.log("Đang lấy Profile cho User ID:", ma_nguoi_dung);
+            
             const [profile] = await execute(
                 `SELECT
                     nd.Ma_nguoi_dung,
@@ -56,15 +57,14 @@ export default class profileModel{
                     bn.Benh_nen
 
                 FROM nguoi_dung nd
-                -- Chuyển sang INNER JOIN để bắt buộc phải tồn tại hồ sơ bệnh nhân tương ứng
-                INNER JOIN benh_nhan bn ON nd.Ma_nguoi_dung = bn.Ma_nguoi_dung
-                -- Chuyển sang INNER JOIN để ép điều kiện bắt buộc phải có liên kết 'Bản thân'
-                INNER JOIN nguoi_than nt ON bn.Ma_benh_nhan = nt.Ma_benh_nhan AND nt.Quan_he = 'Bản thân'
+                -- 🌟 CẬP NHẬT: Dùng LEFT JOIN để giữ lại User dù họ chưa có thông tin bệnh nhân
+                LEFT JOIN benh_nhan bn ON nd.Ma_nguoi_dung = bn.Ma_nguoi_dung
+                -- 🌟 CẬP NHẬT: Dùng LEFT JOIN để không bắt buộc phải có người thân 'Bản thân'
+                LEFT JOIN nguoi_than nt ON bn.Ma_benh_nhan = nt.Ma_benh_nhan AND nt.Quan_he = 'Bản thân'
                 WHERE nd.Ma_nguoi_dung = ? 
                 LIMIT 1;`, 
             [ma_nguoi_dung]);
             
-            // Thay vì check length < 1 rồi quăng lỗi chung chung, ta kiểm tra xem có dòng dữ liệu nào không
             if(profile.length < 1) throw new Error('Tài khoản này không tồn tại trên hệ thống.');
             
             return profile[0] ?? null;

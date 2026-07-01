@@ -44,18 +44,31 @@ export default class ChatbotModel {
     }
 
     // 4. Tìm kiếm bác sĩ theo chuyên khoa (Sắp xếp theo đánh giá giảm dần)
-    static async searchDoctors(specialty) {
-        const query = `
-            SELECT bs.Ma_bac_si, nd.Ten_nguoi_dung AS ten_bac_si, ck.Ten_chuyen_khoa, bs.Hoc_vi, AVG(dg.So_sao) AS diem_danh_gia
-            FROM bac_si bs
-            JOIN nguoi_dung nd ON bs.Ma_nguoi_dung = nd.Ma_nguoi_dung
-            JOIN chuyen_khoa ck ON bs.Ma_chuyen_khoa = ck.Ma_chuyen_khoa
-            LEFT JOIN danh_gia dg ON bs.Ma_bac_si = dg.Ma_bac_si
-            WHERE ck.Ten_chuyen_khoa LIKE ?
-            GROUP BY bs.Ma_bac_si ORDER BY diem_danh_gia DESC LIMIT 5;
-        `;
-        const [rows] = await execute(query, [`%${specialty}%`]);
-        return rows;
+    static async searchDoctorsBySpecialty(specialty) {
+        try {
+            const query = `
+                SELECT 
+                    bs.Ma_bac_si, 
+                    nd.Ten_nguoi_dung AS ten_bac_si, 
+                    ck.Ten_chuyen_khoa, 
+                    bs.Hoc_vi, 
+                    bs.Mo_ta_ban_than,
+                    AVG(dg.So_sao) AS diem_danh_gia
+                FROM bac_si bs
+                JOIN nguoi_dung nd ON bs.Ma_nguoi_dung = nd.Ma_nguoi_dung
+                JOIN chuyen_khoa ck ON bs.Ma_chuyen_khoa = ck.Ma_chuyen_khoa
+                LEFT JOIN danh_gia dg ON bs.Ma_bac_si = dg.Ma_bac_si
+                WHERE ck.Ten_chuyen_khoa LIKE ?
+                GROUP BY bs.Ma_bac_si 
+                ORDER BY diem_danh_gia DESC 
+                LIMIT 5;
+            `;
+            const [rows] = await execute(query, [`%${specialty}%`]);
+            return rows;
+        } catch (error) {
+            console.error("Lỗi Model lấy danh sách bác sĩ: ", error);
+            throw new Error("Không thể lấy danh sách bác sĩ.");
+        }
     }
 
     // 5. Tìm lịch trống theo Chuyên khoa + bộ lọc Ngày/Buổi nâng cao
@@ -144,7 +157,7 @@ export default class ChatbotModel {
                 pk.Ten_phong_kham,
                 pk.Vi_tri AS dia_chi_phong_kham,
                 -- Gom tất cả dịch vụ của bác sĩ này lại thành 1 dòng (VD: Khám nội soi: 200000 VNĐ | Tái khám: 120000 VNĐ)
-            GROUP_CONCAT(DISTINCT CONCAT(dv.Ten_dich_vu, ' (Mã DV: ', dv.Ma_dich_vu, ') giá ', dv.Gia_tien, ' VNĐ') SEPARATOR ' | ') AS danh_sach_dich_vu
+            GROUP_CONCAT(DISTINCT CONCAT(dv.Ten_dich_vu, ' (Mã DV: ', dv.Ma_dich_vu, ') giá ', dv.Gia_tien, ' VNĐ') SEPARATOR ' | ') AS danh_sach_dich_vu,
             -- Nếu gõ sai tên, lấy tên của các bác sĩ khác cùng chuyên khoa để AI làm danh sách gợi ý
                 (SELECT GROUP_CONCAT(nd2.Ten_nguoi_dung SEPARATOR ', ') 
                     FROM bac_si bs2 
@@ -166,7 +179,6 @@ export default class ChatbotModel {
         const [rows] = await execute(query, [`%${doctorName}%`, `%${doctorName}%`]);
         return rows;
     }
-
 
     // 8. TÌM LỊCH SỚM NHẤT THEO CHUYÊN KHOA (Dùng cho câu hỏi: "Đặt lịch khoa Nội sớm nhất")
     static async findEarliestSlotWithSpecialty(specialty) {
@@ -194,20 +206,22 @@ export default class ChatbotModel {
             const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
             const randomCode = Math.floor(1000 + Math.random() * 9000);
             const maBooking = `BK${dateStr}_${randomCode}`;
+            
             let tongTien = 0;
             if (danhSachDichVu.length > 0) {
                 tongTien = danhSachDichVu.reduce((sum, item) => sum + (item.gia_tien || 0), 0);
             }
 
-            // 1. Tạo lịch hẹn gốc
+            // 1. Tạo lịch hẹn gốc (Tự động tìm Ma_benh_nhan từ userId)
             const sqlInsertLichHen = `
                 INSERT INTO lich_hen (Ma_booking, Ma_bac_si, Ma_benh_nhan, Ma_khung_gio, Hinh_thuc, Trang_thai_lich_hen, Tong_tien, Ngay_tao) 
-                VALUES (?, ?, ?, ?, 'offline', 'pending', ?, NOW())
+                VALUES (?, ?, (SELECT Ma_benh_nhan FROM benh_nhan WHERE Ma_nguoi_dung = ? LIMIT 1), ?, 'offline', 'pending', ?, NOW())
             `;
             const [insertResult] = await execute(sqlInsertLichHen, [maBooking, maBacSi, userId, maKhungGio, tongTien]);
-            const maLichHen = insertResult.insertId;
+            
+            const maLichHen = insertResult.insertId; 
 
-            // 3. Chạy vòng lặp ghi NHIỀU dòng vào bảng chi_tiet_lich_hen
+            // 2. Chạy vòng lặp ghi NHIỀU dòng vào bảng chi_tiet_lich_hen
             if (danhSachDichVu.length > 0) {
                 const sqlInsertChiTiet = `INSERT INTO chi_tiet_lich_hen (Ma_lich_hen, Ma_dich_vu, Gia_tien) VALUES (?, ?, ?)`;
                 for (let dv of danhSachDichVu) {
@@ -215,11 +229,11 @@ export default class ChatbotModel {
                 }
             }
 
-            // 4. Khóa khung giờ ('booked')
+            // 3. Khóa khung giờ ('booked')
             const sqlUpdateKhungGio = `UPDATE khung_gio_kham SET Trang_thai = 'booked' WHERE Ma_khung_gio = ?`;
             await execute(sqlUpdateKhungGio, [maKhungGio]);
 
-            // 5. Lưu vết lịch sử
+            // 4. Lưu vết lịch sử
             const sqlInsertLichSu = `
                 INSERT INTO lich_su_trang_thai_lich_hen (Ma_lich_hen, Trang_thai_cu, Trang_thai_moi, Nguoi_thay_doi, Ngay_thay_doi)
                 VALUES (?, NULL, 'pending', 'patient', NOW())
@@ -233,24 +247,7 @@ export default class ChatbotModel {
         }
     }
 
-    static async findDoctorBySpecialty(specialtyName) {
-        try{
-        const sql = `
-            SELECT nd.Ten_nguoi_dung, c.Ten_chuyen_khoa, b.Mo_ta_ban_than 
-            FROM bac_si b 
-            JOIN chuyen_khoa c ON b.Ma_chuyen_khoa = c.Ma_chuyen_khoa 
-            JOIN nguoi_dung nd ON b.Ma_nguoi_dung = nd.Ma_nguoi_dung
-            WHERE c.Ten_chuyen_khoa LIKE ? 
-            LIMIT 3
-        `;
-        const [doctors] = await execute(sql, [`%${specialtyName}%`]);
-        return doctors;
-        }catch(error){
-            console.error("Lỗi Model lấy danh sách bác sĩ theo chuyên khoa: ",error);
-            throw new Error("Không thể lấy danh sách bác sĩ.");
-        }
-    }
-
+    // 10. GỢI Ý CHUYÊN KHOA THEO TRIỆU CHỨNG
     static async suggestSpecialtyBySymptom(symptomKeyword) {
         const sql = `
             SELECT Ten_chuyen_khoa, Mo_ta
@@ -260,5 +257,26 @@ export default class ChatbotModel {
         `;
         const [specialties] = await execute(sql, [`%${symptomKeyword}%`, `%${symptomKeyword}%`]);
         return specialties;
+    }
+
+    // 11. TRA CỨU ĐƠN THUỐC GẦN NHẤT CỦA BỆNH NHÂN
+    static async getRecentPrescription(userId) {
+        const query = `
+            SELECT 
+                dt.Ma_don_thuoc, 
+                dt.Chuan_doan_benh, 
+                DATE_FORMAT(dt.Ngay_tao, '%d/%m/%Y') AS ngay_kham,
+                DATE_FORMAT(dt.Ngay_tai_kham, '%d/%m/%Y') AS ngay_tai_kham,
+                GROUP_CONCAT(CONCAT('- ', ct.Ten_thuoc, ': ', ct.So_luong, ' viên (', ct.Lieu_dung, ' - Giờ uống: ', IFNULL(ct.Gio_uong_thuoc, 'Tùy ý'), ')') SEPARATOR '\n') AS chi_tiet_thuoc
+            FROM don_thuoc dt
+            JOIN lich_hen lh ON dt.Ma_lich_hen = lh.Ma_lich_hen
+            JOIN chi_tiet_dthuoc ct ON dt.Ma_don_thuoc = ct.Ma_don_thuoc
+            WHERE lh.Ma_benh_nhan = ? AND dt.Trang_thai = 1
+            GROUP BY dt.Ma_don_thuoc
+            ORDER BY dt.Ngay_tao DESC
+            LIMIT 1;
+        `;
+        const [rows] = await execute(query, [userId]);
+        return rows;
     }
 }
