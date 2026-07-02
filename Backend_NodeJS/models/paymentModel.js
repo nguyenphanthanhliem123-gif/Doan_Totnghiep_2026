@@ -1,4 +1,4 @@
-import { execute } from '../config/db.js';
+import { beginTransaction, commitTransaction, execute, rollbackTransaction } from '../config/db.js';
 
 
 export default class paymentModel{
@@ -134,6 +134,63 @@ export default class paymentModel{
 
         } catch (error) {
             throw new Error("Lỗi PaymentModel.getPayment: " + error.message);
+        }
+    }
+
+    static async getAllPayment(){
+        try{
+            const sql = `
+                SELECT
+                    tt.*,
+                    nd.Ten_nguoi_dung,
+                    nd.Ma_nguoi_dung,
+                    nd.Email,
+                    nd.Dien_thoai,
+                    nd.Anh_dai_dien,
+                    lh.Ma_booking,
+                    lh.Hinh_thuc,
+                    lh.Trang_thai_lich_hen,
+                    kg.Thoi_gian_Bdau,
+                    kg.Thoi_gian_Kthuc
+                FROM
+                    thanh_toan tt
+                JOIN lich_hen lh ON lh.Ma_lich_hen = tt.Ma_lich_hen
+                JOIN benh_nhan bn ON lh.Ma_benh_nhan = bn.Ma_benh_nhan
+                JOIN nguoi_dung nd ON bn.Ma_nguoi_dung = nd.Ma_nguoi_dung
+                JOIN khung_gio_kham kg ON kg.Ma_khung_gio = lh.Ma_khung_gio
+            `;
+
+            const [rows] = await execute(sql);
+
+            return rows;
+        }catch(error){
+            throw new Error("Lỗi getAllPayment: " + error.message);
+        }
+    }
+
+    static async updatePaymentStatusForAdmin(paymentId, status, adminId, userId, reason) {
+        let conn = await beginTransaction();
+        try {
+            const query = `UPDATE thanh_toan SET Trang_thai_thanh_toan = ? WHERE Ma_thanh_toan = ?`;
+            const [result] = await conn.execute(query, [status, paymentId]);
+
+            const queryAdminLog = `
+                INSERT INTO admin_logs(
+                    admin_id,
+                    action,
+                    target_type,
+                    target_id,
+                    reason
+                )
+                VALUES(?,?,?,?,?)
+            `;
+
+            await conn.execute(queryAdminLog,[adminId, `UPDATE_PAYMENT_STATUS_${status}_${paymentId}`, `USER`, userId, reason]);
+            await commitTransaction(conn);
+            return result.affectedRows > 0;
+        } catch (error) {
+            await rollbackTransaction(conn);
+            throw new Error("Lỗi updatePaymentStatusForAdmin: " + error.message);
         }
     }
 }

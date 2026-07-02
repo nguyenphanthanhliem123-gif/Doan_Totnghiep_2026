@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:ung_dung_dat_lich_kham/viewmodels/admin_payment_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/ViewModels/doctor_clinic_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/admin_report_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/admin_service_viewmodel.dart';
@@ -62,6 +63,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AdminViewModel()),
         ChangeNotifierProvider(create: (_) => AdminReportViewModel()),
         ChangeNotifierProvider(create: (_) => AdminServiceViewModel()),
+        ChangeNotifierProvider(create: (_) => AdminPaymentViewModel()),
         // --- ViewModel của chatbotAI ---
         ChangeNotifierProvider(create: (_) => ChatbotViewModel()),
       ],
@@ -74,8 +76,8 @@ class MyApp extends StatelessWidget {
         scrollBehavior: const MaterialScrollBehavior().copyWith(
         dragDevices: {PointerDeviceKind.mouse, PointerDeviceKind.touch},
       ),
-        home: const LoginScreen(),
-        //home: const AdminLoginScreen(),
+        //home: const LoginScreen(),
+        home: const AdminLoginScreen(),
       ),
     );
   }

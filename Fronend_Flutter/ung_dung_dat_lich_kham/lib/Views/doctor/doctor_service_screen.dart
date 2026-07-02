@@ -187,13 +187,12 @@ class _DoctorServiceManagementScreenState extends State<DoctorServiceManagementS
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Cấu hình dịch vụ & phí', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 0,
+        backgroundColor: kPrimaryColor,
+        title: const Text('Quản lý Lịch hẹn', style: kHeaderTextStyle), // 🌟 Text Style chuẩn
+        centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.add, color: kPrimaryColor, size: 28),
+            icon: const Icon(Icons.add, color: Colors.white, size: 28),
             onPressed: _showAddServiceDialog,
           )
         ],

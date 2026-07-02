@@ -292,8 +292,7 @@ class _UpdateProfileScreenState extends State<UpdateProfileScreen> {
                     // ✅ ĐÃ SỬA: Hàm updateProfile truyền 6 tham số (thêm _phone)
                     await context.read<ProfileViewModel>().updateProfile(
                       _fullName, 
-                      selectedBirth, 
-                      avatar ?? '',  
+                      selectedBirth,   
                       _address,      
                       _selectedGender,
                       _phone 
