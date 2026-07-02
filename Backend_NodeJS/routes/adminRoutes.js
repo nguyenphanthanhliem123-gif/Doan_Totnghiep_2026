@@ -1,6 +1,7 @@
 import { Router } from "express";
 import adminController from "../controllers/adminController.js";
 import adminAuth from "../middleware/admin.js";
+import paymentController from "../controllers/paymentController.js";
 
 const adminRoutes = Router();
 
@@ -43,5 +44,9 @@ adminRoutes.patch('/specialties/:id/toggle', adminAuth, adminController.toggleSp
 
 // Quản lý danh sách lịch hẹn trong ngày
 adminRoutes.get('/today-appointments', adminAuth, adminController.getTodayAppointmentsList);
+
+//Quản lý thanh toán
+adminRoutes.get('/payment', adminAuth, paymentController.getAllPayment);
+adminRoutes.put('/payments/:id/status', adminAuth, paymentController.updatePaymentStatusForAdmin);
 
 export default adminRoutes;

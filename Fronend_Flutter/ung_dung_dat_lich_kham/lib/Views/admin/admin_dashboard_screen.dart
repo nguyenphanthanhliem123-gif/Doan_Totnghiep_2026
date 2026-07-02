@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:ung_dung_dat_lich_kham/Views/admin/admin_account_menu_screen.dart';
 import 'package:ung_dung_dat_lich_kham/Views/admin/admin_doctor_list_screen.dart';
 import 'package:ung_dung_dat_lich_kham/Views/admin/admin_patient_list_screen.dart';
+import 'package:ung_dung_dat_lich_kham/Views/admin/admin_payment_screen.dart';
 import 'package:ung_dung_dat_lich_kham/Views/admin/admin_report_screen.dart';
 import 'package:ung_dung_dat_lich_kham/Views/admin/admin_service_screen.dart';
 import '../../Constants/ui_constants.dart';
@@ -176,6 +177,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 MaterialPageRoute(builder: (context) => const AdminAccountMenuScreen()),
               );
             }),
+            _buildDrawerItem(icon: Icons.payment, title: 'Quản lý thanh toán', onTap: () {
+              Navigator.pop(context);
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminPaymentScreen()));
+            }),
             _buildDrawerItem(icon: Icons.fact_check_outlined, title: 'Duyệt Đăng Ký Bác Sĩ', onTap: () {
               Navigator.pop(context);
               Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminPendingDoctorsScreen()));
@@ -194,6 +199,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               Navigator.pop(context);
               Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminReportScreen()));
             }),
+            
           ],
         ),
       ),

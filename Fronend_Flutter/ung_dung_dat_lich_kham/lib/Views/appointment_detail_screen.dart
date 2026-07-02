@@ -55,15 +55,6 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
     return 'cancelled';
   }
 
-  Future<void> _launchExternalUrl(String urlString) async {
-    final Uri url = Uri.parse(urlString);
-    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Không thể mở liên kết này!')));
-      }
-    }
-  }
-
   void _handleJoinMeeting(String bookingCode, String patientName) async {
     try {
       print("Đang bắt đầu gọi Jitsi cho: $bookingCode");

@@ -24,7 +24,7 @@ export default class NotificationModel{
             `;
 
             const [result] = await execute(sql, [userID]);
-
+            console.log('=== totalUnCountNotification: ' + result[0].total);
             return result[0].total;
         }catch(error){
             throw new Error("Lỗi NotificationModel.getNotificationsUnRead: " + error.message);

@@ -42,10 +42,11 @@ export default class profileController{
 
     static async updateProfile(req,res){
         try{
-            const {fullName, birthDay, gender, address, avatar, phone} = req.body;
+            const {fullName, birthDay, gender, address, phone} = req.body;
             const userId = req.Ma_nguoi_dung;
 
-            const result = await profileModel.updateProfile(fullName, birthDay, gender, address, avatar, phone, userId);
+
+            const result = await profileModel.updateProfile(fullName, birthDay, gender, address, phone, userId);
 
             if(result) return res.status(200).json({
                 succeeded: true,
@@ -93,6 +94,9 @@ export default class profileController{
             const host = req.get('host');
             const protocol = req.protocol;
             const imageUrl = `${protocol}://${host}/uploads/${uniqueFilename}`;
+
+            console.log('=== userID'+ userID);
+            console.log('=== FILE UPLOADS: ' + imageUrl);
 
             // 7. Cập nhật link ảnh vào Database
             const query = `UPDATE nguoi_dung SET Anh_dai_dien = ? WHERE Ma_nguoi_dung = ?`;

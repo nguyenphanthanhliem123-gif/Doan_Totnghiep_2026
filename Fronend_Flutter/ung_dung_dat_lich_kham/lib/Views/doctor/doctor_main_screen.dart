@@ -40,6 +40,7 @@ class _DoctorMainScreenState extends State<DoctorMainScreen> {
     }
     if (mounted) {
       await context.read<DoctorAppointmentViewModel>().loadDashboard();
+      context.read<NotificationViewmodel>().initSocket();
     }
   }
 

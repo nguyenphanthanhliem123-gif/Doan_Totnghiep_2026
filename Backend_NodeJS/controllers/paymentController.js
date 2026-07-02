@@ -198,4 +198,42 @@ export default class paymentController {
             return res.status(500).send("Lỗi xử lý giao dịch.");
         }
     }
+
+    static async getAllPayment(req,res){
+        try{
+            const rows = await paymentModel.getAllPayment();
+
+            return res.status(200).json({
+                succeeded: true,
+                payments: rows
+            });
+        }catch(error){
+            return res.status(500).json({
+                succeeded: false,
+                message: error.message
+            });
+        }
+    }
+
+    static async updatePaymentStatusForAdmin(req, res) {
+        try {
+            const { id } = req.params;
+            const { status, userId, reason } = req.body;
+            const adminId = req.adminId;
+            
+            if(!id || !status || !userId || !reason) return res.status(400).json({
+                success: false,
+                message: "Thiếu thông tin cần thiết."
+            });
+
+            const success = await paymentModel.updatePaymentStatusForAdmin(id, status, adminId, userId, reason);
+            if (success) {
+                return res.status(200).json({ succeeded: true, message: "Cập nhật trạng thái thành công!" });
+            }
+            return res.status(400).json({ succeeded: false, message: "Không tìm thấy giao dịch hoặc cập nhật thất bại." });
+        } catch (error) {
+            console.error("Lỗi updatePaymentStatus:", error);
+            return res.status(500).json({ succeeded: false, message: error.message });
+        }
+    }
 }

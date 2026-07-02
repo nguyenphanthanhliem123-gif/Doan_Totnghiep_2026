@@ -74,7 +74,7 @@ export default class profileModel{
         }
     }
 
-    static async updateProfile(fullName, birthDay, gender, address, avatar, phone, userID){
+    static async updateProfile(fullName, birthDay, gender, address, phone, userID){
         let conn;
 
         try {
@@ -85,15 +85,14 @@ export default class profileModel{
             const safeBirthDay = birthDay ?? null;
             const safeGender = gender ?? null;
             const safeAddress = address ?? null;
-            const safeAvatar = avatar ?? null;
             const safePhone = phone ?? null;
 
             const sqlNguoiDung = `
                 UPDATE nguoi_dung 
-                SET Ten_nguoi_dung = ?, Anh_dai_dien = ?, Dien_thoai = ?
+                SET Ten_nguoi_dung = ?, Dien_thoai = ?
                 WHERE Ma_nguoi_dung = ?
             `;
-            await conn.execute(sqlNguoiDung, [safeFullName, safeAvatar, safePhone, userID]);
+            await conn.execute(sqlNguoiDung, [safeFullName, safePhone, userID]);
 
 
             const sqlBenhNhan = `

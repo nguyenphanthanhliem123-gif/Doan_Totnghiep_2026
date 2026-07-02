@@ -59,7 +59,6 @@ class NotificationViewmodel extends ChangeNotifier {
   Future<void> fetchUnreadCount() async {
     _isLoading = true;
     _errorMessage = '';
-    _notiUnRead;
     notifyListeners();
 
     try{
