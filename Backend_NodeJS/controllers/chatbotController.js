@@ -1,4 +1,3 @@
-// Backend_NodeJS/controllers/chatbotController.js
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { v4 as uuidv4 } from 'uuid';
 import ChatbotModel from '../models/chatbotModel.js';

@@ -188,6 +188,35 @@ export default class paymentController {
                     }
                     return res.status(200).send("Thanh toán thành công. Vui lòng quay lại ứng dụng.");
                 } else {
+                    // 🌟 NẾU THANH TOÁN VNPay THẤT BẠI HOẶC BỊ HỦY
+                    await paymentModel.updateStatus(bookingId, 'failed');
+                    
+                    const { execute } = await import('../config/db.js');
+                    // Kiểm tra xem lịch này là Online hay Offline (Lấy thêm Ma_lich_hen để ghi log)
+                    const [lhRows] = await execute(`SELECT Ma_lich_hen, Ma_khung_gio, Hinh_thuc FROM lich_hen WHERE Ma_booking = ?`, [bookingId]);
+
+                    if (lhRows.length > 0 && lhRows[0].Hinh_thuc === 'online') {
+                        const maLichHen = lhRows[0].Ma_lich_hen;
+                        const maKhungGio = lhRows[0].Ma_khung_gio;
+
+                        // ❌ NẾU ONLINE: Hủy lịch
+                        await execute(`UPDATE lich_hen SET Trang_thai_lich_hen = 'cancelled' WHERE Ma_booking = ?`, [bookingId]);
+                        
+                        // Ghi log hệ thống tự hủy
+                        await execute(
+                            `INSERT INTO lich_su_trang_thai_lich_hen (Ma_lich_hen, Trang_thai_cu, Trang_thai_moi, Ly_do_thay_doi, Nguoi_thay_doi) 
+                             VALUES (?, 'pending', 'cancelled', 'Hệ thống tự động hủy do giao dịch VNPay thất bại/quá hạn', 'system')`,
+                            [maLichHen]
+                        );
+
+                        // Nhả Slot ngay lập tức
+                        await execute(`UPDATE khung_gio_kham SET Trang_thai = 'available' WHERE Ma_khung_gio = ?`, [maKhungGio]);
+                        console.log(`[VNPay] Đã tự động HỦY lịch ${bookingId} (Online) do không thanh toán.`);
+                    } else {
+                        // ✅ NẾU OFFLINE: Giữ nguyên lịch hẹn, bệnh nhân tới phòng khám trả tiền mặt sau
+                        console.log(`[VNPay] Giữ nguyên lịch ${bookingId} (Offline) dù VNPay thất bại.`);
+                    }
+                    
                     return res.status(200).send("Thanh toán thất bại hoặc đã bị hủy.");
                 }
             } else {

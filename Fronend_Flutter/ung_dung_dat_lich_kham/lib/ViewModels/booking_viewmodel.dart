@@ -119,5 +119,16 @@ class BookingViewModel extends ChangeNotifier {
       };
     }
   }
-
+  // Hàm Hủy lịch Online nếu bệnh nhân bấm nút Hủy ở cửa sổ VNPay
+  Future<void> cancelUnpaidBooking(String bookingCode) async {
+    try {
+      await http.post(
+        Uri.parse('$_baseUrl/cancel-unpaid'),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"bookingCode": bookingCode}),
+      );
+    } catch (e) {
+      print("Lỗi khi hủy lịch chưa thanh toán: $e");
+    }
+  }
 }

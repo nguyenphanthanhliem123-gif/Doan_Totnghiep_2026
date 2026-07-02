@@ -271,7 +271,7 @@ export default class ChatbotModel {
             FROM don_thuoc dt
             JOIN lich_hen lh ON dt.Ma_lich_hen = lh.Ma_lich_hen
             JOIN chi_tiet_dthuoc ct ON dt.Ma_don_thuoc = ct.Ma_don_thuoc
-            WHERE lh.Ma_benh_nhan = ? AND dt.Trang_thai = 1
+            WHERE lh.Ma_benh_nhan = (SELECT Ma_benh_nhan FROM benh_nhan WHERE Ma_nguoi_dung = ? LIMIT 1)
             GROUP BY dt.Ma_don_thuoc
             ORDER BY dt.Ngay_tao DESC
             LIMIT 1;

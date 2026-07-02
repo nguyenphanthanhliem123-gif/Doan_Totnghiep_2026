@@ -114,4 +114,39 @@ export default class bookingController {
             });
         }
     }
+
+    // Hàm Hủy lịch tự động
+    static async cancelUnpaidBooking(req, res) {
+        try {
+            const { bookingCode } = req.body;
+            const { execute } = await import('../config/db.js');
+            
+            // 1. Tìm xem lịch này đang giữ khung giờ nào và lấy Ma_lich_hen
+            const [rows] = await execute(`SELECT Ma_lich_hen, Ma_khung_gio FROM lich_hen WHERE Ma_booking = ?`, [bookingCode]);
+            
+            if (rows.length > 0) {
+                const maLichHen = rows[0].Ma_lich_hen;
+                const maKhungGio = rows[0].Ma_khung_gio;
+
+                // 2. Hủy lịch hẹn
+                await execute(`UPDATE lich_hen SET Trang_thai_lich_hen = 'cancelled' WHERE Ma_booking = ?`, [bookingCode]);
+                
+                // 3. Ghi log vào bảng lich_su_trang_thai_lich_hen
+                await execute(
+                    `INSERT INTO lich_su_trang_thai_lich_hen (Ma_lich_hen, Trang_thai_cu, Trang_thai_moi, Ly_do_thay_doi, Nguoi_thay_doi) 
+                     VALUES (?, 'pending', 'cancelled', 'Khách hàng hủy thanh toán trực tuyến', 'patient')`,
+                    [maLichHen]
+                );
+
+                // 4. Nhả khung giờ đó về trạng thái available
+                await execute(`UPDATE khung_gio_kham SET Trang_thai = 'available' WHERE Ma_khung_gio = ?`, [maKhungGio]);
+                
+                // 5. Đánh dấu thanh toán thất bại
+                await execute(`UPDATE thanh_toan SET Trang_thai_thanh_toan = 'failed' WHERE Ma_lich_hen = ?`, [maLichHen]);
+            }
+            return res.status(200).json({ succeeded: true, message: "Đã hủy lịch chưa thanh toán và nhả slot." });
+        } catch (error) {
+            return res.status(500).json({ succeeded: false, message: error.message });
+        }
+    }
 }

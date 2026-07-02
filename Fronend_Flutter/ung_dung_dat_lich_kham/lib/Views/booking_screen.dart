@@ -8,7 +8,6 @@ import '../viewmodels/booking_viewmodel.dart';
 import '../viewmodels/auth_viewmodel.dart';
 import '../models/doctor_detail_model.dart';
 import 'package:url_launcher/url_launcher.dart';
-// 🌟 Import thêm ViewModel quản lý lịch hẹn của người dùng để làm mới dữ liệu trang chủ
 import '../viewmodels/appointment_viewmodel.dart'; 
 
 class BookingScreen extends StatefulWidget {
@@ -600,7 +599,18 @@ class _BookingScreenState extends State<BookingScreen> {
               if (vnpayResult['succeeded'] == true) {
                 _showVNPayDialog(bookingCode, amount, vnpayResult['paymentUrl']);
               } else {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(vnpayResult['message'] ?? "Lỗi cổng thanh toán VNPay")));
+                // 🌟 ĐÃ SỬA: CƠ CHẾ ROLLBACK KHI VNPAY LỖI (CHƯA CÓ KEY)
+                if (!_isOffline) {
+                  // ❌ NẾU ONLINE: VNPay lỗi -> Tự động gọi API hủy lịch và nhả Slot
+                  await bookingVM.cancelUnpaidBooking(bookingCode);
+                  context.read<AppointmentViewModel>().loadMyAppointments(); // Load lại trang chủ
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Lỗi hệ thống thanh toán. Đã tự động hủy lịch Online."), backgroundColor: Colors.red)
+                  );
+                } else {
+                  // ✅ NẾU OFFLINE: Giữ nguyên lịch, chỉ đổi thông báo sang đóng tiền mặt
+                  _showSuccessDialog("Lỗi cổng VNPay. Vui lòng thanh toán tiền mặt tại quầy lễ tân khi đến khám.", bookingCode);
+                }
               }
             }
           } else {
@@ -663,16 +673,42 @@ class _BookingScreenState extends State<BookingScreen> {
                 ),
               ),
               const SizedBox(height: 8),
+              // 🌟 NÚT XÁC NHẬN THANH TOÁN XONG
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton(
                   onPressed: () {
                     Navigator.pop(ctx); 
-                    // 🌟 Gửi tín hiệu true khi đóng dialog thanh toán để trang Chi tiết reload lại slot
-                    _showSuccessDialog("Hệ thống đang ghi nhận thanh toán của bạn!", bookingCode);
+                    // Hiện thông báo chung chung, trạng thái thật sự sẽ do VNPay quyết định ở Backend
+                    _showSuccessDialog("Hệ thống đang ghi nhận giao dịch. Nếu thanh toán thành công, lịch Online của bạn sẽ được kích hoạt.", bookingCode);
                   },
                   style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12), side: BorderSide(color: Colors.blue.shade700), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                   child: Text("Tôi đã thanh toán xong", style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.bold)),
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: () async {
+                    Navigator.pop(ctx); // Đóng hộp thoại VNPay
+                    
+                    if (!_isOffline) {
+                      // ❌ NẾU ONLINE: Gọi API Hủy lịch ngay lập tức để nhả slot cho người khác
+                      await context.read<BookingViewModel>().cancelUnpaidBooking(bookingCode);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Đã hủy lịch khám Online do chưa hoàn tất thanh toán.'), backgroundColor: Colors.red),
+                        );
+                        // Reload lại trang chủ để cập nhật lại Slot trống
+                        context.read<AppointmentViewModel>().loadMyAppointments();
+                      }
+                    } else {
+                      // ✅ NẾU OFFLINE: Vẫn lưu lịch, thông báo bệnh nhân đến trả tiền mặt
+                      _showSuccessDialog("Đã ghi nhận lịch hẹn. Vui lòng thanh toán tiền mặt tại quầy lễ tân khi đến khám.", bookingCode);
+                    }
+                  },
+                  child: const Text("Hủy bỏ giao dịch", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w600)),
                 ),
               )
             ],
