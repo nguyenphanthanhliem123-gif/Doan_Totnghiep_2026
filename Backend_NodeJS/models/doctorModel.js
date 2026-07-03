@@ -15,6 +15,7 @@ export default class doctorModel {
                     bs.Mo_ta_ban_than,
                     ck.Ten_chuyen_khoa,
                     ck.Ma_chuyen_khoa,
+                    pk.Ma_phong_kham,
                     pk.Ten_phong_kham,
                     pk.Vi_tri AS Dia_chi
                 FROM bac_si bs
@@ -293,6 +294,7 @@ export default class doctorModel {
                     bs.Mo_ta_ban_than,
                     ck.Ten_chuyen_khoa,
                     ck.Ma_chuyen_khoa,
+                    pk.Ma_phong_kham,
                     pk.Ten_phong_kham,
                     pk.Vi_tri AS Dia_chi
                 FROM bac_si bs

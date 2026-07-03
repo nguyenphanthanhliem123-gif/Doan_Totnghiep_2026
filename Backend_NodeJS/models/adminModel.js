@@ -60,9 +60,8 @@ export default class adminModel {
             // 2. Tổng số bệnh nhân đã đăng ký (Người dùng có vai trò Benh_nhan và Trang_thai = 1)
             const [totalPatients] = await execute(`
                 SELECT COUNT(*) as count 
-                FROM benh_nhan bn 
-                JOIN nguoi_dung nd ON bn.Ma_nguoi_dung = nd.Ma_nguoi_dung 
-                WHERE nd.Trang_thai = 1
+                FROM nguoi_dung 
+                WHERE Phan_quyen = 'Benh_nhan' AND Trang_thai != 0
             `);
 
             // 3. Số hồ sơ bác sĩ mới đăng ký đang chờ duyệt (Trang_thai_hoat_dong = 'pending')

@@ -635,9 +635,9 @@ class _BookingScreenState extends State<BookingScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.payment_rounded, color: Colors.blue, size: 24),
+              const Icon(Icons.payment_rounded, color: kPrimaryColor, size: 24),
               const SizedBox(width: 8),
-              Text("Thanh toán VNPay", style: TextStyle(color: Colors.blue.shade800, fontWeight: FontWeight.bold, fontSize: 18)),
+              Text("Thanh toán VNPay", style: TextStyle(color: kPrimaryColor, fontWeight: FontWeight.bold, fontSize: 18)),
             ],
           )
         ),
@@ -669,7 +669,7 @@ class _BookingScreenState extends State<BookingScreen> {
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Không thể mở cổng thanh toán. Lỗi: $e')));
                     }
                   },
-                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blue.shade700, padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                  style: ElevatedButton.styleFrom(backgroundColor: kPrimaryColor, padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
                 ),
               ),
               const SizedBox(height: 8),
@@ -682,8 +682,8 @@ class _BookingScreenState extends State<BookingScreen> {
                     // Hiện thông báo chung chung, trạng thái thật sự sẽ do VNPay quyết định ở Backend
                     _showSuccessDialog("Hệ thống đang ghi nhận giao dịch. Nếu thanh toán thành công, lịch Online của bạn sẽ được kích hoạt.", bookingCode);
                   },
-                  style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12), side: BorderSide(color: Colors.blue.shade700), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                  child: Text("Tôi đã thanh toán xong", style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.bold)),
+                  style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12), side: BorderSide(color: kPrimaryColor), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                  child: Text("Tôi đã thanh toán xong", style: TextStyle(color: kPrimaryColor, fontWeight: FontWeight.bold)),
                 ),
               ),
               const SizedBox(height: 8),
@@ -705,7 +705,7 @@ class _BookingScreenState extends State<BookingScreen> {
                       }
                     } else {
                       // ✅ NẾU OFFLINE: Vẫn lưu lịch, thông báo bệnh nhân đến trả tiền mặt
-                      _showSuccessDialog("Đã ghi nhận lịch hẹn. Vui lòng thanh toán tiền mặt tại quầy lễ tân khi đến khám.", bookingCode);
+                      _showSuccessDialog("Đã ghi nhận lịch hẹn. Vui lòng thanh toán tiền mặt hoặc VNPay tại quầy lễ tân khi đến khám.", bookingCode);
                     }
                   },
                   child: const Text("Hủy bỏ giao dịch", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w600)),

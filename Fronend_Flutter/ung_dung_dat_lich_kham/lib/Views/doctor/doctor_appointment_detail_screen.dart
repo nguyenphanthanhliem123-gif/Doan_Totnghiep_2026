@@ -492,7 +492,7 @@ class _DoctorAppointmentDetailScreenState extends State<DoctorAppointmentDetailS
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // ==========================================
-                      // PHẦN 1: HEADER - THÔNG TIN BỆNH NHÂN (Giữ form gốc bo 30)
+                      // PHẦN 1: HEADER - THÔNG TIN BỆNH NHÂN
                       // ==========================================
                       Container(
                         width: double.infinity,
@@ -544,7 +544,7 @@ class _DoctorAppointmentDetailScreenState extends State<DoctorAppointmentDetailS
                                     
                                     IconButton(
                                       icon: const Icon(Icons.report_problem_outlined, color: Colors.redAccent),
-                                      tooltip: 'Báo cáo bác sĩ',
+                                      tooltip: 'Báo cáo bệnh nhân',
                                       onPressed: () {
                                         showModalBottomSheet(
                                           context: context,
@@ -595,6 +595,14 @@ class _DoctorAppointmentDetailScreenState extends State<DoctorAppointmentDetailS
                       _buildCardContainer(
                         child: Column(
                           children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text("Trạng thái ca", style: TextStyle(color: kGreyTextColor, fontSize: 14)),
+                                _buildStatusDetailBadge(appointment['status'] ?? 'pending'),
+                              ],
+                            ),
+                            const Divider(height: 25, color: kBorderCyan),
                             _buildInfoRow("Mã đặt lịch", appointment['bookingCode'] ?? 'Chưa rõ', isBoldValue: true),
                             const Divider(height: 20, color: kBorderCyan),
                             Row(
@@ -705,8 +713,8 @@ class _DoctorAppointmentDetailScreenState extends State<DoctorAppointmentDetailS
                     ],
                   ),
                 ),
-      bottomSheet: vm.isLoading || appointment == null
-          ? const SizedBox.shrink()
+      bottomSheet: vm.isLoading || appointment == null || appointment['status'] == 'cancelled' || appointment['status'] == 'absent'
+          ? null
           : Container(
               padding: const EdgeInsets.symmetric(horizontal: kDefaultPadding, vertical: 15),
               decoration: BoxDecoration(
@@ -715,6 +723,23 @@ class _DoctorAppointmentDetailScreenState extends State<DoctorAppointmentDetailS
               ),
               child: SafeArea(child: _buildDoctorBottomActions(context, appointment)),
             ),
+    );
+  }
+
+  // Hàm vẽ Badge trạng thái chuẩn màu giống trang danh sách
+  Widget _buildStatusDetailBadge(String status) {
+    Color bgColor; Color textColor; String text;
+    switch (status) {
+      case 'pending': bgColor = Colors.orange.shade50; textColor = Colors.orange; text = 'Chờ duyệt'; break;
+      case 'confirmed': bgColor = Colors.blue.shade50; textColor = Colors.blue; text = 'Đang khám'; break;
+      case 'done': bgColor = Colors.green.shade50; textColor = Colors.green; text = 'Đã hoàn thành'; break;
+      case 'cancelled': bgColor = Colors.red.shade50; textColor = Colors.red; text = 'Đã hủy'; break;
+      case 'absent': default: bgColor = Colors.grey.shade200; textColor = Colors.grey.shade700; text = 'Vắng mặt'; break;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(8)),
+      child: Text(text, style: TextStyle(color: textColor, fontSize: 13, fontWeight: FontWeight.bold)),
     );
   }
 

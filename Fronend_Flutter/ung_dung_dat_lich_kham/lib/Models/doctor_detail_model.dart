@@ -77,6 +77,7 @@ class DoctorDetailModel {
   final String? description;
   final String? specialtyName;
   final int? specialtyId;
+  final int? clinicId;
   final String? clinicName;
   final String? clinicAddress;
   
@@ -96,6 +97,7 @@ class DoctorDetailModel {
     this.description,
     this.specialtyName,
     this.specialtyId,
+    this.clinicId,
     this.clinicName,
     this.clinicAddress,
     required this.services,
@@ -120,6 +122,7 @@ class DoctorDetailModel {
       description: json['Mo_ta_ban_than'],
       specialtyName: json['Ten_chuyen_khoa'],
       specialtyId: json['Ma_chuyen_khoa'] ?? 0,
+      clinicId: json['Ma_phong_kham'],
       clinicName: json['Ten_phong_kham'],
       clinicAddress: json['Dia_chi'],
       services: parsedServices, // Gán vào model

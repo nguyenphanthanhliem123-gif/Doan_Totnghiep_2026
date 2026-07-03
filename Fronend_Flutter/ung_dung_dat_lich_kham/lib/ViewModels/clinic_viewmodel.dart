@@ -25,6 +25,7 @@ class ClinicViewModel extends ChangeNotifier {
   // Hàm gọi API lấy chi tiết phòng khám theo ID
   Future<void> fetchClinicDetail(int clinicId) async {
     _isLoading = true;
+    _clinicDetail = null;
     notifyListeners();
 
     try {

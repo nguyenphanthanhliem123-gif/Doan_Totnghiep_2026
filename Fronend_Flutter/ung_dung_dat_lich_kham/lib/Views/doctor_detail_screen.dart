@@ -42,11 +42,23 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<DoctorViewModel>().fetchDoctorDetail(widget.doctorId); 
-      context.read<ClinicViewModel>().fetchClinicDetail(widget.doctorId); 
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // 1. Tải review song song
       context.read<ReviewViewModel>().clearReviews(); 
       context.read<ReviewViewModel>().fetchReviews(widget.doctorId);
+
+      // 2. Chờ tải xong thông tin Bác sĩ trước
+      final doctorVM = context.read<DoctorViewModel>();
+      await doctorVM.fetchDoctorDetail(widget.doctorId); 
+      
+      // 3. Lấy đúng mã phòng khám của bác sĩ đó để đi tải thông tin CSYT
+      if (mounted && doctorVM.doctorDetail != null) {
+        final clinicId = doctorVM.doctorDetail!.clinicId; 
+        
+        if (clinicId != null) {
+          context.read<ClinicViewModel>().fetchClinicDetail(clinicId);
+        }
+      }
     });
   }
 
@@ -64,7 +76,6 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      // 🌟 ĐÃ XÓA APPBAR Ở ĐÂY ĐỂ BỎ KHÚC TRẮNG DƯ THỪA Ở TRÊN
       body: doctorVM.isLoading || clinicVM.isLoading
           ? const Center(child: CircularProgressIndicator(color: kPrimaryColor))
           : doctor == null
@@ -98,10 +109,9 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
                                       icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
                                       onPressed: () => Navigator.pop(context),
                                     ),
-                                    // 🌟 ĐÃ DỜI NÚT BÁO CÁO XUỐNG ĐÂY VÀ ĐỔI SANG MÀU TRẮNG
                                     if (doctor != null)
                                       IconButton(
-                                        icon: const Icon(Icons.report_problem_outlined, color: Colors.white),
+                                        icon: const Icon(Icons.report_problem_outlined, color: Colors.redAccent),
                                         tooltip: 'Báo cáo bác sĩ',
                                         onPressed: () {
                                           showModalBottomSheet(

@@ -563,10 +563,16 @@ class _ExpandableRevenueCardState extends State<_ExpandableRevenueCard> {
                     final localTime = DateTime.parse(item['Thoi_gian_Bdau']).toLocal();
                     final timeStr = "${localTime.day}/${localTime.month} - ${localTime.hour.toString().padLeft(2, '0')}:${localTime.minute.toString().padLeft(2, '0')}";
 
+                    // 🌟 XỬ LÝ CHUỖI DỊCH VỤ: Chuyển dấu phẩy thành dấu xuống dòng kèm gạch đầu dòng (bullet)
+                    String rawServices = item['Ten_dich_vu'] ?? 'Khám dịch vụ';
+                    String displayServices = rawServices.contains(',') 
+                        ? '• ${rawServices.split(', ').join('\n• ')}'
+                        : rawServices;
+
                     return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12), // Tăng khoảng cách trên dưới cho thoáng
                       child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start, // 🌟 Neo các cột lên trên cùng (Top) khi bị rớt dòng
                         children: [
                           Expanded(
                             flex: 3,
@@ -574,25 +580,33 @@ class _ExpandableRevenueCardState extends State<_ExpandableRevenueCard> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(item['Ten_benh_nhan'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: kTextColor)),
+                                const SizedBox(height: 4),
                                 Text(timeStr, style: const TextStyle(color: kGreyTextColor, fontSize: 12)),
                               ],
                             ),
                           ),
+                          const SizedBox(width: 8),
+                          
+                          Expanded(
+                            flex: 4, // 🌟 Tăng diện tích cho cột dịch vụ
+                            child: Text(
+                              displayServices,
+                              style: const TextStyle(
+                                color: kTextColor, 
+                                fontSize: 13, 
+                                height: 1.4 // 🌟 Tăng khoảng cách giữa các dòng (Line height) cho dễ đọc
+                              ),
+                              // 🌟 Đã xóa maxLines và overflow để hiển thị toàn bộ
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          
                           Expanded(
                             flex: 3,
                             child: Text(
-                              item['Ten_dich_vu'] ?? 'Khám dịch vụ',
-                              style: const TextStyle(color: kTextColor, fontSize: 13),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          Expanded(
-                            flex: 2,
-                            child: Text(
                               '${_formatCurrency(item['Tong_tien'])} đ',
                               textAlign: TextAlign.right,
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: kTextColor),
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: kPrimaryColor), // 🌟 Đổi màu giá tiền thành màu chủ đạo cho nổi bật
                             ),
                           ),
                         ],
