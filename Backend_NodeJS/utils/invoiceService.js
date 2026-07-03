@@ -52,8 +52,8 @@ export const taoVaGuiHoaDonPDF = async (data) => {
                .font(fontRegular)
                .fontSize(10)
                .text(data.viTriPhongKham, 50, 80)
-               .text('Điện thoại: 1900 1234', 50, 95)
-               .text('Email: lienhe@phongkhamabc.com', 50, 110);
+               .text(`Điện thoại: ${data.Dien_thoai_phong_kham}`, 50, 95)
+               .text(`Email: ${data.Email_phong_kham}`, 50, 110);
 
             // Chữ HÓA ĐƠN bám sát lề phải
             doc.fillColor('#333333')
@@ -136,9 +136,9 @@ export const taoVaGuiHoaDonPDF = async (data) => {
                 const pdfData = Buffer.concat(buffers);
 
                 const mailOptions = {
-                    from: '"Phòng Khám Đa Khoa ABC" <process.env.EMAIL_USER>',
+                    from: '"MedCare - Ứng dụng đặt lịch khám online" <process.env.EMAIL_USER>',
                     to: data.emailNguoiDung,
-                    subject: `[Phòng Khám ABC] Biên lai thanh toán thành công - Lịch hẹn ${data.maBooking}`,
+                    subject: `[MedCare] Biên lai thanh toán thành công - Lịch hẹn ${data.maBooking}`,
                     html: `
                         <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
                             <h2 style="color: #005983;">Thanh toán thành công!</h2>
@@ -151,7 +151,7 @@ export const taoVaGuiHoaDonPDF = async (data) => {
                             </ul>
                             <p>Vui lòng xem biên lai chi tiết được đính kèm ở định dạng PDF trong email này.</p>
                             <br>
-                            <p>Trân trọng,<br><b>Đội ngũ Phòng Khám Đa Khoa ABC</b></p>
+                            <p>Trân trọng,</p>
                         </div>
                     `,
                     attachments: [

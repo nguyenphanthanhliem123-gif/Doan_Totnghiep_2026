@@ -67,6 +67,7 @@ class APINotificationService {
 
       if(res.statusCode == 200){
         final data = jsonDecode(res.body);
+        print('COUNT: ${data['count']}');
         return data['count'];
       }else{
         final data = jsonDecode(res.body);

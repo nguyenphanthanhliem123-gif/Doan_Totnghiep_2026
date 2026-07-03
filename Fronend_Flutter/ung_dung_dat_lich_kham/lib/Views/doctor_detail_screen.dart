@@ -119,7 +119,7 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
                                             isScrollControlled: true,
                                             backgroundColor: Colors.transparent,
                                             builder: (context) => ReportBottomSheet(
-                                              targetId: doctor.id,
+                                              targetId: doctor.userId,
                                               targetName: doctor.fullName,
                                               targetType: 'Doctor',
                                             ),
