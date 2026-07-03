@@ -341,6 +341,9 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
                         bool success = viewModel.scheduleConfigResult;
                         
                         if (context.mounted) {
+                          if(success){
+                            context.read<ScheduleConfigViewmodel>().loadScheduleConfig();
+                          }
                           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                             content: Text(success ? 'Cập nhật cấu hình chung thành công!' : 'Cập nhật cấu hình thất bại.'),
                             backgroundColor: success ? kPrimaryColor : Colors.red,

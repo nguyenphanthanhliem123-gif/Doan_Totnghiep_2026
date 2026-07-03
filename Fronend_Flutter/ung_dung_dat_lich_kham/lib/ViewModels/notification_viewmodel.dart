@@ -99,7 +99,7 @@ class NotificationViewmodel extends ChangeNotifier {
 
     // 🌟 LẮNG NGHE SỰ KIỆN TỪ BACKEND
     _socket!.on('new_notification', (data) {
-      debugPrint('🔔 Nhận tín hiệu thông báo mới qua Socket');
+      print('🔔 Nhận tín hiệu thông báo mới qua Socket');
       
       // Cách 1: Gọi lại API để cập nhật số lượng chính xác nhất từ DB
       fetchUnreadCount();
@@ -109,14 +109,20 @@ class NotificationViewmodel extends ChangeNotifier {
       notifyListeners(); 
     });
 
-    _socket!.onDisconnect((_) => debugPrint('❌ Mất kết nối Socket'));
+    _socket!.onDisconnect((_) => print('❌ Mất kết nối Socket'));
   }
 
   // 3. Hàm ngắt kết nối khi user đăng xuất
   void disconnectSocket() {
-    _socket?.disconnect();
-    _socket?.dispose();
-    _socket = null;
+    if(_socket != null){
+      _socket?.disconnect();
+      _socket?.dispose();
+      _socket = null;
+    }
+
+    _notiUnRead = 0;
+    _listNotification = null;
+    notifyListeners();
   }
 
   @override

@@ -4,6 +4,7 @@ import 'package:ung_dung_dat_lich_kham/Views/change_password_screen.dart';
 import 'package:ung_dung_dat_lich_kham/Views/health_record_menu_screen.dart';
 import 'package:ung_dung_dat_lich_kham/Views/profile_detail_screen.dart';
 import 'package:ung_dung_dat_lich_kham/Views/payment_history_screen.dart';
+import 'package:ung_dung_dat_lich_kham/viewmodels/notification_viewmodel.dart';
 import '../constants/ui_constants.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/profile_viewmodel.dart';
 import '../viewmodels/auth_viewmodel.dart';
@@ -239,6 +240,7 @@ class _ProfileScreen extends State<ProfileScreen> {
                           }
                         } else {
                           // LOGIC ĐĂNG XUẤT 
+                          Provider.of<NotificationViewmodel>(context, listen: false).disconnectSocket();
                           await Provider.of<AuthViewModel>(context, listen: false).logout();
                           
                           if (!context.mounted) return;

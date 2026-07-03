@@ -170,15 +170,17 @@ export default class paymentController {
 
                         // Tạo gói dữ liệu chuẩn hóa để truyền vào hàm gửi hóa đơn email
                         const thongTinHoaDon = {
-                            maGiaoDich: thongTinChung.Ma_giao_dich,
+                            maGiaoDich: vnp_TransactionNo,
                             maBooking: thongTinChung.Ma_booking,
                             tenBenhNhan: thongTinChung.Ten_benh_nhan,
                             emailNguoiDung: thongTinChung.Email,
                             tenBacSi: thongTinChung.Ten_bac_si,
-                            tenDichVu: chuoiTenDichVu, // 🌟 Chuỗi tên các dịch vụ sau khi đã nối lại với nhau
+                            tenDichVu: chuoiTenDichVu,
                             soTien: thongTinChung.Tong_tien,
                             tenPhongKham: thongTinChung.Ten_phong_kham,
-                            viTriPhongKham: thongTinChung.Vi_tri
+                            viTriPhongKham: thongTinChung.Vi_tri,
+                            Dien_thoai_phong_kham: thongTinChung.Dien_thoai_phong_kham,
+                            Email_phong_kham: thongTinChung.Email_phong_kham
                         };
 
                         console.log("👉 Chuẩn bị gửi hóa đơn cho các dịch vụ:", chuoiTenDichVu);

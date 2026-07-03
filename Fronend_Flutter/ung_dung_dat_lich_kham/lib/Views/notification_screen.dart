@@ -52,6 +52,13 @@ class _NotificationScreenState extends State<NotificationScreen> {
           'Thông báo',
           style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 20),
         ),
+        leading: IconButton(
+          onPressed: ()async{
+            await Provider.of<NotificationViewmodel>(context, listen: false).fetchUnreadCount();
+            Navigator.of(context).pop();
+          },
+          icon: Icon(Icons.arrow_back),
+        ),
       ),
       body: _buildBody(viewModel),
     );

@@ -3,7 +3,6 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ung_dung_dat_lich_kham/Config/BASE_URL.dart';
-import 'dart:io';
 import 'dart:typed_data';
 
 class AuthViewModel extends ChangeNotifier {
@@ -181,6 +180,7 @@ class AuthViewModel extends ChangeNotifier {
     await prefs.remove('userId');
     await prefs.remove('token');
     await prefs.remove('role');
+    await prefs.remove('doctorId');
     
     notifyListeners();
   }

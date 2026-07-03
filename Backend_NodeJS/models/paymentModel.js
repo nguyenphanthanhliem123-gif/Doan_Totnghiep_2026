@@ -97,6 +97,8 @@ export default class paymentModel{
                     lh.Tong_tien,
                     pk.Ten_phong_kham,
                     pk.Vi_tri,
+                    pk.Dien_thoai AS Dien_thoai_phong_kham,
+                    pk.Email AS Email_phong_kham,
                     kgk.Thoi_gian_Bdau AS Ngay_kham
                 FROM thanh_toan tt
                 JOIN lich_hen lh ON tt.Ma_lich_hen = lh.Ma_lich_hen

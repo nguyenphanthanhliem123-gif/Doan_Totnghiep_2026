@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../Constants/ui_constants.dart'; // 🌟 Đã sửa path chữ viết hoa đồng bộ
+import 'package:ung_dung_dat_lich_kham/viewmodels/notification_viewmodel.dart';
+import '../../Constants/ui_constants.dart';
 import 'package:ung_dung_dat_lich_kham/Views/doctor/doctor_profile_detail_screen.dart';
 import 'package:ung_dung_dat_lich_kham/Views/doctor/doctor_schedule_screen.dart';
 import 'package:ung_dung_dat_lich_kham/Views/doctor/review_doctor_screen.dart';
@@ -361,6 +362,7 @@ class DoctorMenuScreenState extends State<DoctorMenuScreen> {
                             }
                           }
                         } else {
+                          Provider.of<NotificationViewmodel>(context, listen: false).disconnectSocket();
                           await Provider.of<AuthViewModel>(context, listen: false).logout();
                           if (!context.mounted) return;
                           Navigator.pushAndRemoveUntil(
