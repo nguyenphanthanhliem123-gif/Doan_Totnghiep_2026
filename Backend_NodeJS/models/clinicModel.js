@@ -29,6 +29,7 @@ export default class clinicModel {
             const query = `
                 SELECT *
                 FROM phong_kham
+                ORDER BY Ma_phong_kham DESC
             `;
 
             const [rows] = await execute(query);
@@ -66,5 +67,41 @@ export default class clinicModel {
             await rollbackTransaction(conn);
             throw new Error("Lỗi cập nhật phòng khám bác sĩ: " + error.message);
         }
+    }
+
+    static async addClinic(data) {
+        const query = `
+            INSERT INTO phong_kham (Ten_phong_kham, Mo_ta_phong_kham, Vi_tri, Kinh_do, Vi_do, Dien_thoai, Email, Link_trang_web, Tien_ich)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `;
+        const values = [
+            data.Ten_phong_kham, data.Mo_ta_phong_kham || null, data.Vi_tri, 
+            data.Kinh_do || null, data.Vi_do || null, data.Dien_thoai || null, 
+            data.Email || null, data.Link_trang_web || null, data.Tien_ich || null
+        ];
+        const [result] = await execute(query, values);
+        return result.insertId;
+    }
+
+    // 3. Cập nhật phòng khám
+    static async updateClinic(id, data) {
+        const query = `
+            UPDATE phong_kham 
+            SET Ten_phong_kham = ?, Mo_ta_phong_kham = ?, Vi_tri = ?, Kinh_do = ?, Vi_do = ?, Dien_thoai = ?, Email = ?, Link_trang_web = ?, Tien_ich = ?
+            WHERE Ma_phong_kham = ?
+        `;
+        const values = [
+            data.Ten_phong_kham, data.Mo_ta_phong_kham || null, data.Vi_tri, 
+            data.Kinh_do || null, data.Vi_do || null, data.Dien_thoai || null, 
+            data.Email || null, data.Link_trang_web || null, data.Tien_ich || null, id
+        ];
+        const [result] = await execute(query, values);
+        return result.affectedRows > 0;
+    }
+
+    static async addClinicImage(maPhongKham, linkAnh) {
+        const query = `INSERT INTO anh_phong_kham (Ma_phong_kham, Link_anh) VALUES (?, ?)`;
+        const [result] = await execute(query, [maPhongKham, 'http://localhost:3001' + linkAnh]);
+        return result.insertId;
     }
 }

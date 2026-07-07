@@ -321,7 +321,7 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
                                           });
                                         },
                                         itemBuilder: (context, index) {
-                                          return Image.asset(
+                                          return Image.network(
                                             clinic.images[index],
                                             fit: BoxFit.cover,
                                             width: double.infinity,

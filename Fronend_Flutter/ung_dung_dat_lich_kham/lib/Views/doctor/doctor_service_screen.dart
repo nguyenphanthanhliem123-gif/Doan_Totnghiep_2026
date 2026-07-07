@@ -188,7 +188,7 @@ class _DoctorServiceManagementScreenState extends State<DoctorServiceManagementS
     return Scaffold(
       appBar: AppBar(
         backgroundColor: kPrimaryColor,
-        title: const Text('Quản lý Lịch hẹn', style: kHeaderTextStyle), // 🌟 Text Style chuẩn
+        title: const Text('Quản lý dịch vụ', style: kHeaderTextStyle), // 🌟 Text Style chuẩn
         centerTitle: true,
         actions: [
           IconButton(

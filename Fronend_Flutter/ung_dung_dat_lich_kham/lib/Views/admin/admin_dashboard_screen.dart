@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ung_dung_dat_lich_kham/Views/admin/admin_account_menu_screen.dart';
+import 'package:ung_dung_dat_lich_kham/Views/admin/admin_clinic_list_screen.dart';
 import 'package:ung_dung_dat_lich_kham/Views/admin/admin_doctor_list_screen.dart';
 import 'package:ung_dung_dat_lich_kham/Views/admin/admin_patient_list_screen.dart';
 import 'package:ung_dung_dat_lich_kham/Views/admin/admin_payment_screen.dart';
@@ -198,6 +199,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             _buildDrawerItem(icon: Icons.gavel, title: 'Xử Lý Khiếu Nại', onTap: () {
               Navigator.pop(context);
               Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminReportScreen()));
+            }),
+            _buildDrawerItem(icon: Icons.home_filled, title: 'Quản Lý Phòng Khám', onTap: () {
+              Navigator.pop(context);
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminClinicListScreen()));
             }),
             
           ],

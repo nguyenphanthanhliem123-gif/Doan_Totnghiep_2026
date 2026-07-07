@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:ung_dung_dat_lich_kham/viewmodels/admin_clinic_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/admin_payment_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/ViewModels/doctor_clinic_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/admin_report_viewmodel.dart';
@@ -64,6 +65,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AdminReportViewModel()),
         ChangeNotifierProvider(create: (_) => AdminServiceViewModel()),
         ChangeNotifierProvider(create: (_) => AdminPaymentViewModel()),
+        ChangeNotifierProvider(create: (_) => AdminClinicViewModel()),
         // --- ViewModel của chatbotAI ---
         ChangeNotifierProvider(create: (_) => ChatbotViewModel()),
       ],

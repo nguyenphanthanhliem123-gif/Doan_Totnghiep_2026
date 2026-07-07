@@ -145,9 +145,16 @@ class _AdminSpecialtyScreenState extends State<AdminSpecialtyScreen> {
     return Scaffold(
       backgroundColor: kLightCyanBg2,
       appBar: AppBar(
-        title: const Text('Danh Mục Chuyên Khoa', style: kHeaderTextStyle),
-        backgroundColor: kPrimaryColor,
+        backgroundColor: Colors.transparent,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black87, size: 20),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'Danh mục chuyên khoa',
+          style: TextStyle(color: Colors.black87, fontSize: 18, fontWeight: FontWeight.bold),
+        ),
         centerTitle: true,
       ),
       floatingActionButton: FloatingActionButton.extended(

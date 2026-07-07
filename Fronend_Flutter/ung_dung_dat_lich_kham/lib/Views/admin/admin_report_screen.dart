@@ -13,6 +13,9 @@ class AdminReportScreen extends StatefulWidget {
 }
 
 class _AdminReportScreenState extends State<AdminReportScreen> {
+
+  String _selectedStatus = 'all';
+
   @override
   void initState() {
     super.initState();
@@ -122,10 +125,72 @@ class _AdminReportScreenState extends State<AdminReportScreen> {
     );
   }
 
+  Widget _buildFilterBar() {
+    // Định nghĩa các trạng thái lọc
+    final List<Map<String, String>> statuses = [
+      {'key': 'all', 'label': 'Tất cả'},
+      {'key': 'open', 'label': 'Chưa xử lý (Open)'},
+      {'key': 'resolved', 'label': 'Đã giải quyết'},
+      {'key': 'dismissed', 'label': 'Đã bỏ qua'},
+    ];
+
+    return Container(
+      height: 55,
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: statuses.length,
+        itemBuilder: (context, index) {
+          final status = statuses[index];
+          final isSelected = _selectedStatus == status['key'];
+          
+          return Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: ChoiceChip(
+              label: Text(
+                status['label']!,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : Colors.black87,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  fontSize: 13,
+                ),
+              ),
+              selected: isSelected,
+              selectedColor: kPrimaryColor, // Sử dụng màu chủ đạo của app bạn
+              backgroundColor: Colors.grey.shade100,
+              checkmarkColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+                side: BorderSide(
+                  color: isSelected ? kPrimaryColor : Colors.grey.shade300,
+                ),
+              ),
+              onSelected: (bool selected) {
+                if (selected) {
+                  setState(() {
+                    _selectedStatus = status['key']!;
+                  });
+                }
+              },
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // Theo dõi trạng thái thay đổi từ ViewModel bằng context.watch
     final reportVM = context.watch<AdminReportViewModel>();
+
+    final allReports = reportVM.reports ?? [];
+
+    final filteredReports = allReports.where((item) {
+      if (_selectedStatus == 'all') return true;
+      
+      return item.status?.toLowerCase() == _selectedStatus; 
+    }).toList();
 
     return Scaffold(
       backgroundColor: kLightCyanBg2,
@@ -139,15 +204,25 @@ class _AdminReportScreenState extends State<AdminReportScreen> {
         ),
         centerTitle: true,
       ),
-      body: reportVM.isLoading
+      body: Column(
+        children: [
+          _buildFilterBar(),
+
+          Expanded(
+            child: reportVM.isLoading
           ? const Center(child: CircularProgressIndicator(color: kPrimaryColor))
-          : reportVM.reports.isEmpty 
-              ? const Center(child: Text('Không có khiếu nại nào', style: TextStyle(color: kGreyTextColor)))
+          : filteredReports.isEmpty
+              ? Center(
+                        child: Text(
+                          'Không có báo cáo nào ở trạng thái này.',
+                          style: TextStyle(color: Colors.grey.shade600),
+                        ),
+                      )
               : ListView.builder(
                   padding: const EdgeInsets.all(16),
-                  itemCount: reportVM.reports.length,
+                  itemCount: filteredReports.length,
                   itemBuilder: (context, index) {
-                    final item = reportVM.reports[index];
+                    final item = filteredReports[index];
                     final bool isPending = item.status == 'open';
                     
                     Color statusColor = Colors.orange;
@@ -215,6 +290,12 @@ class _AdminReportScreenState extends State<AdminReportScreen> {
                     );
                   },
                 ),
+          )
+          
+        ],
+
+      )
+      
     );
   }
 }

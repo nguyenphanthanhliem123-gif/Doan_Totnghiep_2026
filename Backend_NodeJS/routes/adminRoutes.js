@@ -2,6 +2,7 @@ import { Router } from "express";
 import adminController from "../controllers/adminController.js";
 import adminAuth from "../middleware/admin.js";
 import paymentController from "../controllers/paymentController.js";
+import clinicController from "../controllers/clinicController.js";
 
 const adminRoutes = Router();
 
@@ -48,5 +49,11 @@ adminRoutes.get('/today-appointments', adminAuth, adminController.getTodayAppoin
 //Quản lý thanh toán
 adminRoutes.get('/payment', adminAuth, paymentController.getAllPayment);
 adminRoutes.put('/payments/:id/status', adminAuth, paymentController.updatePaymentStatusForAdmin);
+
+//Quản lý phòng khám
+adminRoutes.get('/clinics', adminAuth, clinicController.getAllClinics);
+adminRoutes.post('/clinics', adminAuth, clinicController.createClinic);
+adminRoutes.put('/clinics/:id', adminAuth, clinicController.updateClinic);
+adminRoutes.post('/clinics/:id/images', adminAuth, clinicController.uploadClinicImage);
 
 export default adminRoutes;
