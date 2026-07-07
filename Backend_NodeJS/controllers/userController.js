@@ -427,7 +427,7 @@ export default class userController {
 
             // 1. Lưu vào bảng nguoi_dung KÈM THEO CỘT Anh_dai_dien
             const [userResult] = await execute(
-                'INSERT INTO nguoi_dung (Ten_nguoi_dung, Email, Dien_thoai, Mat_khau, Phan_quyen, Anh_dai_dien, Trang_thai) VALUES (?, ?, ?, ?, ?, 1)',
+                'INSERT INTO nguoi_dung (Ten_nguoi_dung, Email, Dien_thoai, Mat_khau, Phan_quyen, Anh_dai_dien, Trang_thai) VALUES (?, ?, ?, ?, ?, ?, 1)',
                 [userData.fullName, userData.email, userData.dienThoai, userData.hashedPassword, 'Bac_si', userData.anhDaiDien]
             );
             const newUserId = userResult.insertId;
