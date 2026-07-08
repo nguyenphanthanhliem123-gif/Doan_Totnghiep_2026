@@ -6,6 +6,7 @@ import VNPayServices from "../services/vnpayService.js";
 import { taoVaGuiHoaDonPDF } from "../utils/invoiceService.js";
 import appointmentModel from "../models/AppointmentModel.js";
 import bookingModel from "../models/bookingModel.js";
+import e from "express";
 
 // Hàm bắt buộc của VNPay dùng để sắp xếp các tham số theo bảng chữ cái trước khi mã hóa (Hash)
 function sortObject(obj) {
@@ -86,6 +87,7 @@ export default class paymentController {
             let secretKey = process.env.VNP_HASH_SECRET;
             let vnpUrl = process.env.VNP_URL;
             let returnUrl = process.env.VNP_RETURN_URL;
+            //let returnUrl = process.env.VNP_RETURN_URL_PHONE;
             
             let orderId = bookingId || moment(date).format('DDHHmmss');
 
@@ -101,7 +103,7 @@ export default class paymentController {
             vnp_Params['vnp_ReturnUrl'] = returnUrl;
             vnp_Params['vnp_IpAddr'] = ipAddr;
             vnp_Params['vnp_CreateDate'] = createDate;
-            vnp_Params['vnp_Amount'] = vnpayAmount; // ✅ Đã loại bỏ dòng gán "amount * 100" gây lỗi
+            vnp_Params['vnp_Amount'] = vnpayAmount;
 
             // Sắp xếp dữ liệu
             vnp_Params = sortObject(vnp_Params);
@@ -267,4 +269,20 @@ export default class paymentController {
             return res.status(500).json({ succeeded: false, message: error.message });
         }
     }
+
+    static async checkPaymentStatus(req, res) {
+    try {
+        const { bookingId } = req.params;
+        // Giả sử paymentModel có hàm lấy thông tin giao dịch theo bookingId
+        const rows = await paymentModel.checkPaymentStatus(bookingId); 
+        
+        if (rows && rows.length > 0) {
+            // Trả về trạng thái hiện tại (pending, paid, failed...)
+            return res.status(200).json({ succeeded: true, status: rows[0].Trang_thai_thanh_toan }); 
+        }
+        return res.status(404).json({ succeeded: false, message: "Không tìm thấy" });
+    } catch (error) {
+        return res.status(500).json({ succeeded: false, message: error.message });
+    }
+}
 }

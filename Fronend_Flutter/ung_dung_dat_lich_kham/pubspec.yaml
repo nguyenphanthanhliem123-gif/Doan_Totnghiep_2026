@@ -45,7 +45,7 @@ dependencies:
   intl: ^0.18.1
   add_2_calendar: ^3.0.1
   jitsi_meet_wrapper: ^0.2.0+1
-  webview_flutter: ^4.14.0
+  webview_flutter: ^4.10.0
   image_picker: ^1.1.2
   socket_io_client: ^2.0.3-beta
 

@@ -8,7 +8,8 @@ import '../viewmodels/booking_viewmodel.dart';
 import '../viewmodels/auth_viewmodel.dart';
 import '../models/doctor_detail_model.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../viewmodels/appointment_viewmodel.dart'; 
+import '../viewmodels/appointment_viewmodel.dart';
+import 'dart:async'; 
 
 class BookingScreen extends StatefulWidget {
   final DoctorDetailModel doctor; 
@@ -32,6 +33,7 @@ class _BookingScreenState extends State<BookingScreen> {
   HealthRecordModel? _selectedRelative; 
 
   final TextEditingController _symptomController = TextEditingController();
+  Timer? _pollingTimer;
 
   @override
   void initState() {
@@ -48,6 +50,7 @@ class _BookingScreenState extends State<BookingScreen> {
   @override
   void dispose() {
     _symptomController.dispose();
+    _pollingTimer?.cancel();
     super.dispose();
   }
 
@@ -570,6 +573,11 @@ class _BookingScreenState extends State<BookingScreen> {
     }
 
     if (mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
+      );
       List<int> serviceIds = _selectedServices.map((e) => e.id).toList();
 
       final result = await bookingVM.submitBooking(
@@ -582,6 +590,8 @@ class _BookingScreenState extends State<BookingScreen> {
         symptoms: _symptomController.text,
         paymentMethod: _paymentMethod, 
       );
+
+      if (mounted) Navigator.pop(context);
 
       if (mounted) {
         if (result['succeeded'] == true) {
@@ -596,14 +606,14 @@ class _BookingScreenState extends State<BookingScreen> {
           if (_paymentMethod == 'vnpay') {
             final vnpayResult = await bookingVM.createVnpayPayment(bookingCode: bookingCode);
             if (mounted) {
-              if (vnpayResult['succeeded'] == true) {
+              
+              if (vnpayResult['succeeded'] == true && vnpayResult['paymentUrl'] != null) {
                 _showVNPayDialog(bookingCode, amount, vnpayResult['paymentUrl']);
               } else {
-                // 🌟 ĐÃ SỬA: CƠ CHẾ ROLLBACK KHI VNPAY LỖI (CHƯA CÓ KEY)
                 if (!_isOffline) {
                   // ❌ NẾU ONLINE: VNPay lỗi -> Tự động gọi API hủy lịch và nhả Slot
                   await bookingVM.cancelUnpaidBooking(bookingCode);
-                  context.read<AppointmentViewModel>().loadMyAppointments(); // Load lại trang chủ
+                  context.read<AppointmentViewModel>().loadMyAppointments();
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text("Lỗi hệ thống thanh toán. Đã tự động hủy lịch Online."), backgroundColor: Colors.red)
                   );
@@ -618,6 +628,8 @@ class _BookingScreenState extends State<BookingScreen> {
             _showSuccessDialog(result['message'], bookingCode);
           }
         } else {
+          String bookingCode = result['data']['Ma_booking'];
+          await bookingVM.cancelUnpaidBooking(bookingCode);
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['message'] ?? "Đặt lịch thất bại")));
         }
       }
@@ -665,6 +677,8 @@ class _BookingScreenState extends State<BookingScreen> {
                     try {
                       bool launched = await launchUrl(url, mode: LaunchMode.externalApplication);
                       if (!launched) await launchUrl(url, mode: LaunchMode.inAppWebView);
+                      if (!mounted) return;
+                      _showAutoCheckPaymentDialog(bookingCode);
                     } catch (e) {
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Không thể mở cổng thanh toán. Lỗi: $e')));
                     }
@@ -674,18 +688,6 @@ class _BookingScreenState extends State<BookingScreen> {
               ),
               const SizedBox(height: 8),
               // 🌟 NÚT XÁC NHẬN THANH TOÁN XONG
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: () {
-                    Navigator.pop(ctx); 
-                    // Hiện thông báo chung chung, trạng thái thật sự sẽ do VNPay quyết định ở Backend
-                    _showSuccessDialog("Hệ thống đang ghi nhận giao dịch. Nếu thanh toán thành công, lịch Online của bạn sẽ được kích hoạt.", bookingCode);
-                  },
-                  style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12), side: BorderSide(color: kPrimaryColor), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                  child: Text("Tôi đã thanh toán xong", style: TextStyle(color: kPrimaryColor, fontWeight: FontWeight.bold)),
-                ),
-              ),
               const SizedBox(height: 8),
               SizedBox(
                 width: double.infinity,
@@ -731,6 +733,7 @@ class _BookingScreenState extends State<BookingScreen> {
             child: TextButton(
               onPressed: () { 
                 Navigator.pop(ctx); 
+                Navigator.pop(ctx); 
                 // 🌟 QUAN TRỌNG: Trả về kết quả true thay vì pop trống để trang DoctorDetail biết mà reload
                 Navigator.pop(context, true); 
               },
@@ -741,4 +744,85 @@ class _BookingScreenState extends State<BookingScreen> {
       ),
     );
   }
+
+  void _showAutoCheckPaymentDialog(String bookingCode) {
+    showDialog(
+      context: context,
+      barrierDismissible: false, // Không cho bấm ra ngoài để tắt
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: const Text("Đang chờ thanh toán...", textAlign: TextAlign.center),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 20),
+            Text(
+              "Vui lòng hoàn tất thanh toán trên trình duyệt web.\nHệ thống đang tự động kiểm tra kết quả...",
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        actions: [
+          Center(
+            child: TextButton(
+              onPressed: () {
+                // Người dùng chủ động bấm Hủy
+                _pollingTimer?.cancel();
+                Navigator.pop(ctx);
+                _showErrorDialog("Bạn đã hủy quá trình đợi thanh toán.");
+              },
+              child: const Text("Hủy bỏ", style: TextStyle(color: Colors.red)),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    final bookingVM = context.read<BookingViewModel>();
+
+    // 🌟 BẮT ĐẦU VÒNG LẶP: Cứ 3 giây hỏi Backend 1 lần
+    _pollingTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
+      final status = await bookingVM.checkPaymentStatus(bookingCode);
+
+      if (status == 'paid') {
+        // ✅ ĐÃ THANH TOÁN THÀNH CÔNG
+        timer.cancel(); // Dừng vòng lặp
+        if (mounted) {
+          Navigator.pop(context); // Tắt Dialog loading đi
+          _showSuccessDialog("Thanh toán thành công!", bookingCode); // Hiện thông báo thành công
+        }
+      } else if (status == 'failed' || status == 'cancelled') {
+        // ❌ THANH TOÁN THẤT BẠI
+        timer.cancel();
+        if (mounted) {
+          Navigator.pop(context); 
+          _showErrorDialog("Thanh toán thất bại hoặc đã bị từ chối.");
+        }
+      }
+      // Nếu status vẫn là 'pending', Timer sẽ tiếp tục chạy sau 3 giây nữa...
+    });
+  }
+
+  void _showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        icon: const Icon(Icons.error_outline, color: Colors.redAccent, size: 50),
+        title: const Text("Thanh toán không thành công", style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Text(message, textAlign: TextAlign.center),
+        actions: [
+          Center(
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text("Đóng", style: TextStyle(color: Colors.white)),
+            ),
+          )
+        ],
+      ),
+    );
+  }
+
 }
