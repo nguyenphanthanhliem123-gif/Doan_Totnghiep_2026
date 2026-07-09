@@ -33,10 +33,6 @@ class _LoginScreenState extends State<LoginScreen> {
         backgroundColor: kPrimaryColor, // Sử dụng màu chuẩn
         elevation: 0,
         centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
         title: const Text(
           'Đăng Nhập',
           style: kHeaderTextStyle, // Sử dụng style chuẩn

@@ -11,6 +11,9 @@ class BookingViewModel extends ChangeNotifier {
   List<String> _availableDates = [];
   List<String> get availableDates => _availableDates;
 
+  List<dynamic> _schedule = [];
+  List<dynamic> get schedule => _schedule;
+
   final String _baseUrl = "$BASE_URL/api/bookings";
 
   // Hàm gọi API lấy danh sách các ngày còn slot trống của bác sĩ
@@ -30,6 +33,33 @@ class BookingViewModel extends ChangeNotifier {
       }
     } catch (e) {
       print("Lỗi tải danh sách ngày trống: $e");
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Hàm gọi API lấy lịch khám của bác sĩ theo ngày
+  Future<void> fetchDoctorSchedule(String date) async {
+    _isLoading = true;
+    _schedule = [];
+    notifyListeners();
+
+    try {
+      // Gọi đúng API với query parameter ?q=yyyy-mm-dd
+      final url = Uri.parse('$_baseUrl/doctor-schedule?q=$date');
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        if (responseData['succeeded'] == true) {
+          _schedule = responseData['schedule'] ?? [];
+        } else {
+          _schedule = [];
+        }
+      }
+    } catch (e) {
+      print("Lỗi tải lịch bác sĩ: $e");
     } finally {
       _isLoading = false;
       notifyListeners();
