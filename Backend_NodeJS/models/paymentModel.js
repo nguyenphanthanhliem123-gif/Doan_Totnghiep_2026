@@ -195,4 +195,20 @@ export default class paymentModel{
             throw new Error("Lỗi updatePaymentStatusForAdmin: " + error.message);
         }
     }
+
+    static async checkPaymentStatus(bookingId){
+        try{
+            const [status] = await execute(`
+                    SELECT Trang_thai_thanh_toan
+                    FROM thanh_toan tt
+                    JOIN lich_hen lh ON tt.Ma_lich_hen = lh.Ma_lich_hen AND lh.Ma_booking = ?
+                `,[bookingId]);
+            
+            return status
+
+        }catch(error)
+        {
+            throw new Error("Lỗi lấy trạng thái thanh toán: " + error.message);
+        }
+    }
 }

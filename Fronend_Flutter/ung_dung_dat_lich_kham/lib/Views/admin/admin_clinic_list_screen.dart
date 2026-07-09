@@ -137,9 +137,17 @@ class _AdminClinicListScreenState extends State<AdminClinicListScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Quản lý Phòng khám'),
-        backgroundColor: kPrimaryColor,
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black87, size: 20),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'Quản lý phòng khám',
+          style: TextStyle(color: Colors.black87, fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
       ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: kPrimaryColor,

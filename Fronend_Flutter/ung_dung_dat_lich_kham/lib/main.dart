@@ -29,6 +29,7 @@ import 'package:ung_dung_dat_lich_kham/viewmodels/chatbot_viewmodel.dart';
 import 'views/admin/admin_login_screen.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
 }
 

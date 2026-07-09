@@ -161,4 +161,25 @@ class BookingViewModel extends ChangeNotifier {
       print("Lỗi khi hủy lịch chưa thanh toán: $e");
     }
   }
+
+  Future<String> checkPaymentStatus(String bookingCode) async {
+    try {
+      final url = Uri.parse('$_baseUrl/check-status/$bookingCode'); // Chỉnh lại theo đúng route API của bạn
+      final response = await http.get(url);
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['succeeded'] == true) {
+          return data['status']; // Trả về 'paid', 'pending', hoặc 'failed'
+        }
+      }
+      else{
+        final data = jsonDecode(response.body);
+        print("Lỗi check trạng thái thanh toán: ${data['message']}");
+      }
+      return 'pending'; 
+    } catch (e) {
+      return 'pending';
+    }
+  }
 }
