@@ -20,6 +20,9 @@ authAppointmentRoutes.put('/cancel/:id', appointmentController.cancel);
 // API Đổi lịch hẹn với điều kiện chặn đổi trước 2 giờ
 authAppointmentRoutes.put('/reschedule/:id', appointmentController.reschedule);
 
+// API xem đơn thuốc của bệnh nhân
+authAppointmentRoutes.get('/prescription/:id', appointmentController.getPatientPrescription);
+
 // --- KHU VỰC API CỦA BÁC SĨ ---
 // API Lấy dữ liệu trang chủ Bác sĩ
 authAppointmentRoutes.get('/doctor/dashboard', appointmentController.getDoctorDashboard);

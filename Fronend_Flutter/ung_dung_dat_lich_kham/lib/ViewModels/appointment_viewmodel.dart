@@ -26,46 +26,33 @@ class AppointmentViewModel extends ChangeNotifier {
   bool? _doneStatus;
   bool? get doneStatus => _doneStatus;
 
+  bool _isPrescriptionLoading = false;
+  bool get isPrescriptionLoading => _isPrescriptionLoading;
+
+  Map<String, dynamic>? _prescriptionData;
+  Map<String, dynamic>? get prescriptionData => _prescriptionData;
+
   // Cấu hình URL đồng bộ
   final String _baseUrl = "$BASE_URL/api/appointments";
 
   // --- Tự động lọc danh sách cho 3 Tab ---
   List<AppointmentModel> get upcomingList {
-    final now = DateTime.now();
     return _allAppointments.where((e) {
-      // Điều kiện: Đang chờ duyệt hoặc đã duyệt, VÀ thời gian hiện tại chưa vượt quá giờ kết thúc ca khám
-      if (e.status == 'pending' || e.status == 'confirmed') {
-        return now.isBefore(e.endTime); 
-      }
-      return false;
+      return e.status == 'pending' || e.status == 'confirmed';
     }).toList();
   }
 
   List<AppointmentModel> get completedList {
-    final now = DateTime.now();
     return _allAppointments.where((e) {
-      // 1. Lịch bác sĩ đã chủ động bấm Hoàn thành
-      if (e.status == 'done') return true;
-      
-      // 2. Lịch đã duyệt (confirmed) nhưng ĐÃ QUÁ GIỜ KẾT THÚC
-      // Tự động đẩy sang Tab Đã khám (Để bệnh nhân biết lịch này đã diễn ra ở quá khứ, đang chờ BS cập nhật kết luận)
-      if (e.status == 'confirmed' && now.isAfter(e.endTime)) return true;
-      
-      return false;
+      // Bác sĩ đã bấm hoàn thành thì mới được vào đây
+      return e.status == 'done';
     }).toList();
   }
 
   List<AppointmentModel> get cancelledList {
-    final now = DateTime.now();
     return _allAppointments.where((e) {
-      // 1. Lịch đã bị hủy hoặc vắng mặt
-      if (e.status == 'cancelled' || e.status == 'absent') return true;
-      
-      // 2. Lịch chờ duyệt (pending) nhưng ĐÃ QUÁ GIỜ BẮT ĐẦU
-      // Tự động đẩy sang Tab Đã hủy (Xem như ca này bị hết hạn duyệt)
-      if (e.status == 'pending' && now.isAfter(e.startTime)) return true;
-      
-      return false;
+      // Đã bị hủy hoặc bác sĩ đánh dấu vắng mặt
+      return e.status == 'cancelled' || e.status == 'absent';
     }).toList();
   }
 
@@ -226,7 +213,6 @@ class AppointmentViewModel extends ChangeNotifier {
     }
   }
 
-
   Future<void> updateDoneStatus(appointmentID) async {
     _isLoading = true;
     _errorMessage ='';
@@ -238,6 +224,40 @@ class AppointmentViewModel extends ChangeNotifier {
       _errorMessage = e.toString();
     }finally{
       _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> fetchPrescription(int appointmentId) async {
+    _isPrescriptionLoading = true;
+    _prescriptionData = null; 
+    notifyListeners();
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      if (token == null) return;
+
+      // Gọi đúng Endpoint bảo mật mới của Bệnh nhân
+      final url = Uri.parse('$_baseUrl/prescription/$appointmentId');
+      final response = await http.get(url, headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $token",
+      });
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['succeeded'] == true) {
+          _prescriptionData = data['data'];
+        }
+      } else {
+        // ✨ THÊM DÒNG NÀY ĐỂ DEBUG TRÊN TERMINAL
+        print("🔥 LỖI TẢI ĐƠN THUỐC: HTTP ${response.statusCode} - ${response.body}");
+      }
+    } catch (e) {
+      print("Lỗi tải đơn thuốc phía Bệnh nhân: $e");
+    } finally {
+      _isPrescriptionLoading = false;
       notifyListeners();
     }
   }

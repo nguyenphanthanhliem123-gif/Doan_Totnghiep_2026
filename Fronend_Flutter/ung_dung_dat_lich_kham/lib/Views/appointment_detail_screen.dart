@@ -69,6 +69,123 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
     }
   }
 
+  void _showViewPrescriptionBottomSheet(BuildContext context) {
+    context.read<AppointmentViewModel>().fetchPrescription(widget.appointmentId);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(kBorderRadiusLarge))),
+      builder: (context) {
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.5,
+          minChildSize: 0.4,
+          maxChildSize: 0.8,
+          builder: (context, scrollController) {
+            return Consumer<AppointmentViewModel>(
+              builder: (context, vm, child) {
+                final data = vm.prescriptionData;
+
+                return Column(
+                  children: [
+                    Container(
+                      margin: const EdgeInsets.only(top: 12, bottom: 15),
+                      height: 5, width: 50,
+                      decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10)),
+                    ),
+                    const Text("Chi tiết Đơn Thuốc", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: kPrimaryColor)),
+                    const Divider(height: 20, color: kBorderCyan),
+                    
+                    Expanded(
+                      child: vm.isPrescriptionLoading
+                          ? const Center(child: CircularProgressIndicator(color: kPrimaryColor))
+                          : data == null
+                              ? const Center(child: Text("Không tìm thấy đơn thuốc cho ca khám này.", style: TextStyle(color: kGreyTextColor)))
+                              : SingleChildScrollView(
+                                  controller: scrollController,
+                                  padding: const EdgeInsets.symmetric(horizontal: kDefaultPadding, vertical: 10),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text("Kết luận bệnh lý", style: TextStyle(color: kGreyTextColor, fontSize: 13)),
+                                      const SizedBox(height: 5),
+                                      Text(data['Chuan_doan_benh'] ?? 'Chưa cập nhật', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.redAccent)),
+                                      const SizedBox(height: 15),
+
+                                      if (data['Ngay_tai_kham'] != null) ...[
+                                        const Text("Ngày tái khám", style: TextStyle(color: kGreyTextColor, fontSize: 13)),
+                                        const SizedBox(height: 5),
+                                        Text(
+                                          () {
+                                            try {
+                                              final date = DateTime.parse(data['Ngay_tai_kham']);
+                                              return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+                                            } catch (e) {
+                                              return data['Ngay_tai_kham'].toString();
+                                            }
+                                          }(), 
+                                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: kPrimaryColor)
+                                        ),
+                                        const SizedBox(height: 20),
+                                      ],
+
+                                      const Divider(color: kBorderCyan),
+                                      const SizedBox(height: 10),
+                                      const Text("Danh sách thuốc", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: kTextColor)),
+                                      const SizedBox(height: 10),
+
+                                      if (data['Danh_sach_thuoc'] != null && (data['Danh_sach_thuoc'] as List).isNotEmpty)
+                                        ...List.generate((data['Danh_sach_thuoc'] as List).length, (index) {
+                                          final thuoc = data['Danh_sach_thuoc'][index];
+                                          return Container(
+                                            margin: const EdgeInsets.only(bottom: 10),
+                                            padding: const EdgeInsets.all(12),
+                                            decoration: BoxDecoration(
+                                              color: kLightCyanBg2,
+                                              borderRadius: BorderRadius.circular(kBorderRadiusSmall),
+                                              border: Border.all(color: kBorderCyan)
+                                            ),
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Row(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text("${index + 1}.", style: const TextStyle(fontWeight: FontWeight.bold, color: kPrimaryColor)),
+                                                    const SizedBox(width: 10),
+                                                    Expanded(child: Text(thuoc['Ten_thuoc'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: kTextColor))),
+                                                    Text("SL: ${thuoc['So_luong']}", style: const TextStyle(fontWeight: FontWeight.bold, color: kTextColor)),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 8),
+                                                Padding(
+                                                  padding: const EdgeInsets.only(left: 25),
+                                                  child: Text("Cách dùng: ${thuoc['Lieu_dung'] ?? ''}", style: const TextStyle(color: kGreyTextColor, fontSize: 13)),
+                                                )
+                                              ],
+                                            ),
+                                          );
+                                        })
+                                      else
+                                        const Text("Không có thuốc nào được kê.", style: TextStyle(color: kGreyTextColor, fontStyle: FontStyle.italic)),
+                                        
+                                      const SizedBox(height: 20),
+                                    ],
+                                  ),
+                                ),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final appVM = context.watch<AppointmentViewModel>();
@@ -514,13 +631,27 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
         ],
       );
     } else if (generalStatus == 'completed') {
-      return Row(
+      return Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(child: _buildOutlinedButton('Đặt lại lịch', kPrimaryColor, navigateToDoctorDetail)),
-          const SizedBox(width: 15),
-          Expanded(child: _buildSolidButton('Đánh giá', Icons.star_border, Colors.green, () { Navigator.of( context ).push(
-                MaterialPageRoute(builder: (context) => ReviewScreen(appointmentId: appointment.id))
-              ); })),
+          SizedBox(
+            width: double.infinity,
+            child: _buildSolidButton('Xem lại đơn thuốc', Icons.receipt_long, kPrimaryColor, () {
+              _showViewPrescriptionBottomSheet(context);
+            })
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(child: _buildOutlinedButton('Đặt lại lịch', kPrimaryColor, navigateToDoctorDetail)),
+              const SizedBox(width: 15),
+              Expanded(child: _buildSolidButton('Đánh giá', Icons.star_border, Colors.green, () { 
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (context) => ReviewScreen(appointmentId: appointment.id))
+                ); 
+              })),
+            ],
+          ),
         ],
       );
     } else {
@@ -537,7 +668,7 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
         foregroundColor: color, 
         side: BorderSide(color: color), 
         padding: const EdgeInsets.symmetric(vertical: 12), 
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusSmall)) // 🌟 Bo 12
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusSmall)) // Bo 12
       ),
       onPressed: onTap,
       child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),

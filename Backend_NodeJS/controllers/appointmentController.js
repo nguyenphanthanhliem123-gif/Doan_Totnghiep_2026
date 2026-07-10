@@ -146,6 +146,31 @@ export default class AppointmentController {
         }
     }
 
+    // Hàm Bệnh nhân lấy chi tiết đơn thuốc (Có bảo mật chống xem trộm)
+    static async getPatientPrescription(req, res) {
+        try {
+            const appointmentID = req.params.id; // Ma_lich_hen
+            const userID = req.Ma_nguoi_dung; // Ma_nguoi_dung từ token bệnh nhân
+
+            if (!appointmentID) return res.status(400).json({ succeeded: false, message: "Thiếu mã lịch hẹn." });
+
+            // 1. Kiểm tra xác thực ngầm: Lịch hẹn này có phải của bệnh nhân này không
+            const checkDetail = await appointmentModel.getAppointmentDetails(appointmentID);
+            if (!checkDetail || checkDetail.Ma_nguoi_dung !== userID) {
+                return res.status(403).json({ succeeded: false, message: "Truy cập bị từ chối. Bạn không có quyền xem đơn thuốc này." });
+            }
+
+            // 2. Nếu đúng là chủ sở hữu, tiến hành lấy đơn thuốc
+            const data = await appointmentModel.getPrescriptionByAppointmentId(appointmentID);
+            
+            if (!data) return res.status(404).json({ succeeded: false, message: "Chưa có đơn thuốc cho ca khám này." });
+
+            return res.status(200).json({ succeeded: true, data: data });
+        } catch (error) {
+            return res.status(500).json({ succeeded: false, message: "Lỗi hệ thống: " + error.message });
+        }
+    }
+
     // =====================================================================
     // CÁC HÀM DÀNH CHO BÁC SĨ (DOCTOR PORTAL)
     // =====================================================================
