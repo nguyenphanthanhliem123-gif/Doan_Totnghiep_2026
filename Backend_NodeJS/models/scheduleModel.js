@@ -3,14 +3,14 @@ import { beginTransaction, commitTransaction, execute, rollbackTransaction } fro
 
 export default class ScheduleModel {
     // Lưu hoặc cập nhật cấu hình thời gian
-    static async saveConfig(doctorId, slotTime, breakTime, maxPatients) {
+    static async saveConfig(doctorId, slotTime, breakTime) {
         try{
             const sql = `
-                INSERT INTO cau_hinh_lich_kham (Ma_bac_si, Thoi_gian_slot, Thoi_gian_nghi, So_benh_nhan_max)
-                VALUES (?, ?, ?, ?)
-                ON DUPLICATE KEY UPDATE Thoi_gian_slot = ?, Thoi_gian_nghi = ?, So_benh_nhan_max = ?
+                INSERT INTO cau_hinh_lich_kham (Ma_bac_si, Thoi_gian_slot, Thoi_gian_nghi)
+                VALUES (?, ?, ?)
+                ON DUPLICATE KEY UPDATE Thoi_gian_slot = ?, Thoi_gian_nghi = ?
             `;
-            await execute(sql, [doctorId, slotTime, breakTime, maxPatients, slotTime, breakTime, maxPatients]);
+            await execute(sql, [doctorId, slotTime, breakTime, slotTime, breakTime]);
         }catch(error){
             throw new Error('Lỗi lưu cấu hình thời gian: ' + error.message);
         }
@@ -43,7 +43,7 @@ export default class ScheduleModel {
             const [config] = await execute(`SELECT * FROM cau_hinh_lich_kham WHERE Ma_bac_si = ?`, [doctorId]);
             const [weekly] = await execute(`SELECT * FROM lich_lam_viec_co_dinh WHERE Ma_bac_si = ?`, [doctorId]);
             return {
-                config: config[0] || { Thoi_gian_slot: 20, Thoi_gian_nghi: 5, So_benh_nhan_max: 30 },
+                config: config[0] || { Thoi_gian_slot: 20, Thoi_gian_nghi: 5 },
                 weeklySchedule: weekly
             };
         }catch(error){

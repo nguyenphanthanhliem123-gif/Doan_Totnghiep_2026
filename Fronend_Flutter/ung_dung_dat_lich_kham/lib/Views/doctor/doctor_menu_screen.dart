@@ -101,8 +101,13 @@ class DoctorMenuScreenState extends State<DoctorMenuScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Xin chào, ${user.fullName}!', 
+                                'Xin chào,', 
                                 style: kHeaderTextStyle.copyWith(fontSize: 22),
+                              ),
+                              const SizedBox(height: 5),
+                              Text(
+                                user.fullName,
+                                style: TextStyle(fontSize: 16, color: Colors.white),
                               ),
                               const SizedBox(height: 5),
                               const Text(

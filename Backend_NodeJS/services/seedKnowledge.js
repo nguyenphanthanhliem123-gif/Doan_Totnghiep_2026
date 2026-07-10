@@ -13,7 +13,7 @@ async function seed() {
     - Hướng xử lý: Nghỉ ngơi hoàn toàn tại phòng thoáng khí, uống nhiều nước ấm, súc họng bằng nước muối sinh lý 0.9%. Nếu sốt cao trên 38.5 độ C thì sử dụng thuốc hạ sốt Paracetamol (liều 10-15mg/kg).
     - Khuyến cáo khẩn cấp: Đến ngay cơ sở y tế nếu xuất hiện dấu hiệu khó thở, thở rít, đau tức ngực khi ho hoặc sốt cao liên tục trên 3 ngày không đáp ứng thuốc hạ sốt.`;
 
-    await ChromaService.addDataToCollection("medical_knowledge", "group_respiratory_001", hoHapCap, { loai: "Nhom_Benh", ten: "Nhiễm trùng đường hô hấp cấp tính" });
+    await ChromaService.addDataToCollection("medical_knowledge_v2", "group_respiratory_001", hoHapCap, { loai: "Nhom_Benh", ten: "Nhiễm trùng đường hô hấp cấp tính" });
 
 
     // =========================================================================
@@ -25,7 +25,7 @@ async function seed() {
     - Hướng xử lý: Tránh xa không gian ồn ào và ánh sáng gắt, nằm nghỉ ngơi ở nơi yên tĩnh. Bổ sung các thực phẩm giàu magie, giảm căng thẳng bằng cách thiền hoặc massage nhẹ da đầu. Có thể dùng thuốc giảm đau thông thường dưới hướng dẫn dược sĩ.
     - Khuyến cáo khẩn cấp: Cần đi cấp cứu ngay lập tức nếu đau đầu đột ngột, dữ dội nhất từ trước đến nay, hoặc kèm theo méo miệng, nói ngọng, yếu liệt tay chân một bên cơ thể (dấu hiệu đột quỵ).`;
 
-    await ChromaService.addDataToCollection("medical_knowledge", "group_neurological_001", thầnKinhNội, { loai: "Nhom_Benh", ten: "Hội chứng đau đầu nội thần kinh" });
+    await ChromaService.addDataToCollection("medical_knowledge_v2", "group_neurological_001", thầnKinhNội, { loai: "Nhom_Benh", ten: "Hội chứng đau đầu nội thần kinh" });
 
 
     // =========================================================================
@@ -37,7 +37,7 @@ async function seed() {
     - Hướng xử lý: Bù nước và điện giải liên tục bằng dung dịch Oresol pha đúng tỷ lệ. Chỉ được dùng Paracetamol để hạ sốt. Tuyệt đối KHÔNG dùng Ibuprofen hoặc Aspirin vì sẽ làm trầm trọng hơn tình trạng xuất huyết.
     - Khuyến cáo khẩn cấp: Nhập viện ngay nếu có các "dấu hiệu cảnh báo" bao gồm: Đau bụng cấp dữ dội vùng gan, nôn ói liên tục trên 3 lần/giờ, lờ đờ, vật vã, hoặc chảy máu chân răng, đi ngoài phân đen.`;
 
-    await ChromaService.addDataToCollection("medical_knowledge", "group_viral_fever_001", sotVirus, { loai: "Nhom_Benh", ten: "Sốt cấp tính do Virus" });
+    await ChromaService.addDataToCollection("medical_knowledge_v2", "group_viral_fever_001", sotVirus, { loai: "Nhom_Benh", ten: "Sốt cấp tính do Virus" });
 
 
     // =========================================================================
@@ -49,7 +49,7 @@ async function seed() {
     - Hướng xử lý: Ưu tiên hàng đầu là bù nước bằng Oresol sau mỗi lần đi ngoài hoặc nôn ói. Ăn thức ăn lỏng, dễ tiêu như cháo trắng nấu muối, thịt nạc băm, tránh đồ ăn nhiều dầu mỡ, sữa hoặc nước ngọt có ga. Sử dụng men vi sinh hỗ trợ.
     - Khuyến cáo khẩn cấp: Đi khám ngay nếu đi ngoài ra máu (phân có nhầy máu), sốt cao trên 39 độ, hoặc có biểu hiện mất nước nặng như môi khô khốc, mắt trũng sâu, khát nước dữ dội, không tiểu tiện trong vòng 6 tiếng.`;
 
-    await ChromaService.addDataToCollection("medical_knowledge", "group_digestive_001", tieuHoa, { loai: "Nhom_Benh", ten: "Rối loạn tiêu hóa và Nhiễm trùng đường ruột" });
+    await ChromaService.addDataToCollection("medical_knowledge_v2", "group_digestive_001", tieuHoa, { loai: "Nhom_Benh", ten: "Rối loạn tiêu hóa và Nhiễm trùng đường ruột" });
 
 
     // =========================================================================
@@ -61,7 +61,7 @@ async function seed() {
     - Hướng xử lý: Cho người bệnh dừng ngay mọi hoạt động, ngồi hoặc nằm nghỉ ngơi hoàn toàn nơi thoáng mát, nới lỏng quần áo. Tiến hành đo huyết áp ngay lập tức. Nếu có tiền sử bệnh tim, hãy dùng thuốc ngậm dưới lưỡi theo đơn sẵn có của bác sĩ.
     - Khuyến cáo khẩn cấp: Gọi xe cấp cứu 115 ngay nếu cơn đau thắt ngực kéo dài trên 15 phút không thuyên giảm, hoặc khó thở dữ dội, vã mồ hôi lạnh, ngất xỉu.`;
 
-    await ChromaService.addDataToCollection("medical_knowledge", "group_cardio_001", timMach, { loai: "Nhom_Benh", ten: "Bệnh lý Tim mạch và Cơn tăng huyết áp cấp" });
+    await ChromaService.addDataToCollection("medical_knowledge_v2", "group_cardio_001", timMach, { loai: "Nhom_Benh", ten: "Bệnh lý Tim mạch và Cơn tăng huyết áp cấp" });
 
 
     // =========================================================================
@@ -73,7 +73,7 @@ async function seed() {
     - Hướng xử lý: Hạn chế di chuyển, để khớp đau được nghỉ ngơi. Cơn gout cấp hoặc sưng viêm nóng đỏ thì nên chườm lạnh để giảm sưng (không chườm nóng). Hạn chế ăn thực phẩm giàu purin như hải sản, thịt đỏ (thịt bò, chó), không uống rượu bia.
     - Khuyến cáo khẩn cấp: Đi khám ngay nếu khớp sưng to kèm sốt cao, rét run (dấu hiệu của Viêm khớp nhiễm khuẩn, cần dùng kháng sinh gấp để tránh hỏng khớp).`;
 
-    await ChromaService.addDataToCollection("medical_knowledge", "group_joints_001", xuongKhop, { loai: "Nhom_Benh", ten: "Bệnh lý Cơ xương khớp" });
+    await ChromaService.addDataToCollection("medical_knowledge_v2", "group_joints_001", xuongKhop, { loai: "Nhom_Benh", ten: "Bệnh lý Cơ xương khớp" });
 
     console.log("✅ Đã nạp thành công toàn bộ kho tri thức phân loại nhóm bệnh vào ChromaDB!");
 }

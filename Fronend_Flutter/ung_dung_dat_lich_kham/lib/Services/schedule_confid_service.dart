@@ -57,7 +57,6 @@ class APIScheduleConfig{
           return DoctorScheduleConfigModel(
             slotTime: configData?['Thoi_gian_slot'] ?? 20,
             breakTime: configData?['Thoi_gian_nghi'] ?? 5,
-            maxPatients: configData?['So_benh_nhan_max'] ?? 30,
             weeklySchedule: weeklyData.map((e) => WeeklyScheduleItem(
               thu: e['Thu_trong_tuan'],
               buoi: e['Buoi'],

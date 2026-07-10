@@ -1,19 +1,45 @@
 import { execute } from "../config/db.js";
+import moment from 'moment';
 
 export default class bookingModel {
     // Lấy danh sách các ngày CÒN Slot trống của 1 bác sĩ
     static async getAvailableDates(ma_bac_si) {
-        const query = `
-            SELECT DISTINCT DATE(kg.Thoi_gian_Bdau) AS Ngay_trong 
-            FROM khung_gio_kham kg
-            JOIN bac_si bs ON kg.Ma_bac_si = bs.Ma_bac_si
-            WHERE kg.Ma_bac_si = ? 
-              AND kg.Trang_thai = 'available'
-              AND bs.Trang_thai_hoat_dong = 'active' -- 🌟 CHỈ HIỂN THỊ KHI BÁC SĨ RẢNH
-            ORDER BY Ngay_trong ASC
-        `;
-        const [rows] = await execute(query, [ma_bac_si]);
-        return rows.map(row => row.Ngay_trong.toISOString().split('T')[0]);
+        try {
+            const todayStr = moment().utcOffset('+07:00').format('YYYY-MM-DD');
+            const currentHHmm = moment().utcOffset('+07:00').format('HH:mm');
+            
+            const query = `
+                SELECT DISTINCT 
+                    DATE(kg.Thoi_gian_Bdau) AS Ngay_trong
+                FROM khung_gio_kham kg
+                JOIN bac_si bs ON kg.Ma_bac_si = bs.Ma_bac_si
+                WHERE kg.Ma_bac_si = ? 
+                AND kg.Trang_thai = 'available'
+                AND bs.Trang_thai_hoat_dong = 'active'
+                AND DATE(kg.Thoi_gian_Bdau) >= ?
+                ORDER BY Ngay_trong ASC
+            `;
+            const [rows] = await execute(query, [ma_bac_si, todayStr]);
+
+            const validDates = new Set();
+            rows.forEach(row => {
+                const slotDate = moment(row.Ngay_trong).format('YYYY-MM-DD');
+                const slotTime = row.Gio_Kham; // Chuỗi "15:55" an toàn tuyệt đối
+
+                if (slotDate === todayStr) {
+                    if (slotTime > currentHHmm) {
+                        validDates.add(slotDate);
+                    }
+                } else {
+                    validDates.add(slotDate);
+                }
+            });
+
+            return Array.from(validDates).sort();
+        } catch (error) {
+            console.error(">>> [LỖI SQL AvailableDates]:", error);
+            throw new Error('Lỗi bookingModel.getAvailableDates: ' + error.message);
+        }
     }
 
     // Kiểm tra trạng thái khung giờ
@@ -116,20 +142,37 @@ export default class bookingModel {
     // Lấy lịch làm việc chi tiết trong 1 ngày
     static async getDoctorSchedule(date){
         try{
+            // Trở về SQL an toàn của bạn, lấy thêm Gio_Kham dạng chuỗi
             const query = `
-                SELECT * FROM khung_gio_kham kgk 
+                SELECT kgk.*, 
+                    DATE_FORMAT(kgk.Thoi_gian_Bdau, '%H:%i') AS Gio_Kham 
+                FROM khung_gio_kham kgk 
                 JOIN bac_si bs ON bs.Ma_bac_si = kgk.Ma_bac_si
                 JOIN nguoi_dung nd ON nd.Ma_nguoi_dung = bs.Ma_nguoi_dung
                 JOIN phong_kham pk ON pk.Ma_phong_kham = kgk.Ma_phong_kham
                 WHERE DATE(kgk.Thoi_gian_Bdau) = ? 
-                  AND kgk.Trang_thai = 'available'
-                  AND bs.Trang_thai_hoat_dong = 'active' -- 🌟 CHỈ LẤY SLOT KHI BÁC SĨ RẢNH
+                AND kgk.Trang_thai = 'available'
+                AND bs.Trang_thai_hoat_dong = 'active'
+                ORDER BY kgk.Thoi_gian_Bdau ASC
             `;
 
             const [rows] = await execute(query, [date]);
-            return rows.length ? rows : null;
+            if (!rows || rows.length === 0) return [];
+
+            const todayStr = moment().utcOffset('+07:00').format('YYYY-MM-DD');
+            
+            if (date === todayStr) {
+                const currentHHmm = moment().utcOffset('+07:00').format('HH:mm');
+                return rows.filter(row => {
+                    // row.Gio_Kham không bao giờ bị lệch múi giờ
+                    return row.Gio_Kham > currentHHmm; 
+                });
+            }
+
+            return rows;
         }
         catch(error){
+            console.error(">>> [LỖI SQL Schedule]:", error);
             throw new Error('Lỗi bookingModel.getDoctorSchedule: ' + error.message);
         }
     }

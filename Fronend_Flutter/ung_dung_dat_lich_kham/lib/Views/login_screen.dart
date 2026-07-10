@@ -8,6 +8,7 @@ import 'forgot_password_screen.dart';
 import 'doctor/doctor_main_screen.dart';
 import 'signup_screen.dart';
 import 'doctor/doctor_signup_screen.dart'; 
+import 'admin/admin_login_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -33,10 +34,6 @@ class _LoginScreenState extends State<LoginScreen> {
         backgroundColor: kPrimaryColor, // Sử dụng màu chuẩn
         elevation: 0,
         centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
         title: const Text(
           'Đăng Nhập',
           style: kHeaderTextStyle, // Sử dụng style chuẩn
@@ -192,6 +189,24 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: TextStyle(color: kPrimaryColor, fontWeight: FontWeight.bold, fontSize: 15)),
                 ),
               ],
+            ),
+            const SizedBox(height: 25),
+            const Divider(color: kBorderCyan, height: 1),
+            const SizedBox(height: 15),
+            Center(
+              child: TextButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const AdminLoginScreen()),
+                  );
+                },
+                icon: const Icon(Icons.admin_panel_settings_outlined, color: kPrimaryColor, size: 18),
+                label: const Text(
+                  'Cổng đăng nhập dành cho Quản trị viên',
+                  style: TextStyle(color: kPrimaryColor, fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+              ),
             ),
             const SizedBox(height: 20),
           ],

@@ -126,6 +126,8 @@ class _AdminTodayAppointmentsScreenState extends State<AdminTodayAppointmentsScr
                   padding: EdgeInsets.symmetric(vertical: 12),
                   child: Divider(height: 1, color: kBorderCyan),
                 ),
+                _buildInfoRow(Icons.confirmation_number_outlined, "Mã booking:", item['Ma_booking'] ?? 'Chưa rõ', textColor: Colors.black87),
+                const SizedBox(height: 8),
                 _buildInfoRow(Icons.person, "Bệnh nhân:", item['Ten_benh_nhan'] ?? 'Chưa rõ'),
                 const SizedBox(height: 8),
                 _buildInfoRow(Icons.medical_information, "Bác sĩ phụ trách:", "BS. ${item['Ten_bac_si'] ?? 'Chưa rõ'}"),

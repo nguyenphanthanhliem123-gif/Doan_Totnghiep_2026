@@ -11,13 +11,13 @@ export default class ScheduleController {
     static async updateScheduleConfig(req, res) {
         try {
             const userId = req.Ma_nguoi_dung;
-            const { slotTime, breakTime, maxPatients, weeklySchedule } = req.body;
+            const { slotTime, breakTime, weeklySchedule } = req.body;
 
             const doctor = await doctorModel.getDoctorDetailByUserID(userId);
             if (!doctor) return res.status(404).json({ succeeded: false, message: "Không tìm thấy thông tin bác sĩ" });
 
             // 1. Lưu cấu hình chung
-            await ScheduleModel.saveConfig(doctor.Ma_bac_si, slotTime, breakTime, maxPatients);
+            await ScheduleModel.saveConfig(doctor.Ma_bac_si, slotTime, breakTime);
 
             // 2. Lưu lịch các buổi tuần (Thứ 2 -> Thứ 7)
             if (weeklySchedule && weeklySchedule.length > 0) {

@@ -25,20 +25,17 @@ class WeeklyScheduleItem {
 class DoctorScheduleConfigModel {
   final int slotTime;
   final int breakTime;
-  final int maxPatients;
   final List<WeeklyScheduleItem> weeklySchedule;
 
   DoctorScheduleConfigModel({
     required this.slotTime,
     required this.breakTime,
-    required this.maxPatients,
     required this.weeklySchedule,
   });
 
   Map<String, dynamic> toJson() => {
     'slotTime': slotTime,
     'breakTime': breakTime,
-    'maxPatients': maxPatients,
     'weeklySchedule': weeklySchedule.map((e) => e.toJson()).toList(),
   };
 }

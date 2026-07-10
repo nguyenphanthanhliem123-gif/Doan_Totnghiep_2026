@@ -35,12 +35,18 @@ class _BookingScreenState extends State<BookingScreen> {
   final TextEditingController _symptomController = TextEditingController();
   Timer? _pollingTimer;
 
+  List<DoctorScheduleModel> _activeSchedules = [];
+  List<DoctorTimeSlotModel> _currentDaySlots = [];
+  bool _isLoadingSlots = false;
+
   @override
   void initState() {
     super.initState();
     if (widget.doctor.services.isNotEmpty) {
       _selectedServices.add(widget.doctor.services.first);
     }
+
+    _activeSchedules = List.from(widget.doctor.schedules);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<HealthRecordViewModel>().loadHealthRecord();
@@ -66,15 +72,7 @@ class _BookingScreenState extends State<BookingScreen> {
   Widget build(BuildContext context) {
     List<String> availableDateStrings = widget.doctor.schedules.map((s) => s.date).toList();
 
-    List<DoctorTimeSlotModel> activeSlots = [];
-    if (_selectedDate != null) {
-      String selectedDateStr = _formatDate(_selectedDate!);
-      final scheduleForDay = widget.doctor.schedules.firstWhere(
-        (s) => s.date == selectedDateStr,
-        orElse: () => DoctorScheduleModel(date: '', slots: []),
-      );
-      activeSlots = scheduleForDay.slots;
-    }
+    // 🌟 ĐÃ XÓA đoạn activeSlots cũ ở đây đi vì chúng ta dùng _currentDaySlots của State
 
     double totalPrice = _calculateTotalPrice();
     String formattedTotalPrice = "${totalPrice.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')} VNĐ";
@@ -153,15 +151,22 @@ class _BookingScreenState extends State<BookingScreen> {
                     ],
                   ),
                   const SizedBox(height: 10),
-                  if (_selectedDate == null)
+                  
+                  // 🌟 ĐOẠN XỬ LÝ KHUNG GIỜ MỚI
+                  if (_isLoadingSlots)
+                    const Center(child: Padding(
+                      padding: EdgeInsets.all(20.0),
+                      child: CircularProgressIndicator(color: kPrimaryColor),
+                    ))
+                  else if (_selectedDate == null)
                     const Text("Vui lòng chọn một ngày trên lịch.", style: TextStyle(color: kGreyTextColor))
-                  else if (activeSlots.isEmpty)
-                    const Text("Không có lịch khám vào ngày này.", style: TextStyle(color: kGreyTextColor))
+                  else if (_currentDaySlots.isEmpty)
+                    const Text("Không có lịch khám vào ngày này hoặc các ca đã qua giờ đăng ký.", style: TextStyle(color: kGreyTextColor))
                   else
                     Wrap(
                       spacing: 10,
                       runSpacing: 10,
-                      children: activeSlots.map((slot) {
+                      children: _currentDaySlots.map((slot) {
                         bool isAvailable = slot.status == 'available';
                         bool isBooked = slot.status == 'booked';
                         bool isSelected = _selectedSlotId == slot.id;
@@ -187,8 +192,9 @@ class _BookingScreenState extends State<BookingScreen> {
                         );
                       }).toList(),
                     ),
-                  const SizedBox(height: kSpacingLarge),
+                  // 🌟 KẾT THÚC ĐOẠN KHUNG GIỜ MỚI
 
+                  const SizedBox(height: kSpacingLarge),
                   _buildSectionTitle("Khám cho"),
                   Row(
                     children: [
@@ -343,7 +349,8 @@ class _BookingScreenState extends State<BookingScreen> {
                     ],
                   ),
                   ElevatedButton(
-                    onPressed: (_selectedSlotId == null || _selectedServices.isEmpty) ? null : () => _showSummaryBottomSheet(context, activeSlots),
+                    // 🌟 ĐÃ SỬA: Đổi activeSlots thành _currentDaySlots ở đây
+                    onPressed: (_selectedSlotId == null || _selectedServices.isEmpty) ? null : () => _showSummaryBottomSheet(context, _currentDaySlots),
                     style: ElevatedButton.styleFrom(backgroundColor: kPrimaryColor, disabledBackgroundColor: Colors.grey.shade300, padding: const EdgeInsets.symmetric(horizontal: 35, vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusSmall))),
                     child: const Text("Xác nhận", style: kButtonTextStyle), 
                   )
@@ -377,7 +384,39 @@ class _BookingScreenState extends State<BookingScreen> {
         bool isDisabled = isPast || !availableDateStrings.contains(currentGridDate);
 
         return GestureDetector(
-          onTap: isDisabled ? null : () => setState(() { _selectedDate = cellDate; _selectedSlotId = null; }),
+          onTap: isDisabled ? null : () async {
+            setState(() { 
+              _selectedDate = cellDate; 
+              _selectedSlotId = null; 
+              _isLoadingSlots = true; // Bật vòng xoay loading
+            });
+
+            String formattedDate = _formatDate(cellDate);
+            
+            // 1. Gọi API
+            await context.read<BookingViewModel>().fetchDoctorSchedule(formattedDate);
+            
+            // 2. Chuyển đổi dữ liệu siêu an toàn
+            List<DoctorTimeSlotModel> fetchedSlots = [];
+            final rawList = context.read<BookingViewModel>().schedule;
+
+            for (var s in rawList) {
+                // Lấy trực tiếp trường 'Gio_Kham'
+                String displayTime = s['Gio_Kham']?.toString() ?? "Lỗi"; 
+                
+                fetchedSlots.add(DoctorTimeSlotModel(
+                    id: s['Ma_khung_gio'], 
+                    time: displayTime,
+                    status: s['Trang_thai'] ?? 'available'
+                ));
+            }
+
+            // 3. Cập nhật giao diện
+            setState(() {
+              _currentDaySlots = fetchedSlots;
+              _isLoadingSlots = false; // Tắt loading, hiện giờ ra
+            });
+          },
           child: Container(
             decoration: BoxDecoration(color: isSelected ? kPrimaryColor : Colors.transparent, shape: BoxShape.circle),
             alignment: Alignment.center,

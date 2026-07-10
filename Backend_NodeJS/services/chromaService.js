@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { ChromaClient } from 'chromadb';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { pipeline } from '@xenova/transformers';
 
 // 🌐 SỬA LỖI ENV: Ép Node.js tìm file .env bằng đường dẫn tuyệt đối độc lập
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -12,61 +12,30 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 const chromaClient = new ChromaClient({ host: "localhost", port: 8000 });
 
 // 🧠 FIX LỖI DefaultEmbeddingFunction: Hàm dummy để bypass kiểm tra của ChromaDB
-// Vì chúng ta đã tự tính toán Vector bằng Gemini nên hàm này chỉ mang tính chất khai báo thủ tục
 const dummyEmbeddingFunction = {
     generate: async (texts) => Array(texts.length).fill([])
 };
 
-// Lấy danh sách 3 API Key của bạn từ file .env
-const API_KEYS = [
-    process.env.GEMINI_API_KEY_1,
-    process.env.GEMINI_API_KEY_2,
-    process.env.GEMINI_API_KEY_3,
-    process.env.GEMINI_API_KEY_4,
-    process.env.GEMINI_API_KEY_5,
-].filter(Boolean);
+// Biến toàn cục để lưu trữ model sau khi nạp vào RAM (Singleton Pattern)
+let embeddingPipeline = null;
 
-let currentKeyIndex = 0;
-
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-// HÀM BỔ TRỢ: Đổi văn bản thuần thành mảng số Vector có chống sập bằng xoay vòng Key
-async function getEmbedding(text) {
-    if (API_KEYS.length === 0) {
-        throw new Error("❌ CẢNH BÁO TỐI NGUY HIỂM: Hệ thống vẫn không thể đọc được file .env của bạn.");
-    }
-
-    let attempts = 0;
-    while (attempts < API_KEYS.length) {
-        try {
-            const genAI = new GoogleGenerativeAI(API_KEYS[currentKeyIndex]);
-            const embeddingModel = genAI.getGenerativeModel({ model: "gemini-embedding-001" });
-            
-            const result = await embeddingModel.embedContent(text);
-            
-            // 🕒 Giãn cách an toàn: Sau khi tạo công thành công 1 cụm, nghỉ 350ms 
-            // giúp luồng chạy seed không bị đẩy tốc độ lên quá cao dẫn đến dính 429
-            await sleep(350); 
-            
-            return result.embedding.values; 
-
-        } catch (error) {
-            // 🛑 HIỂN THỊ LỖI THẬT: In ra lý do chính xác từ Google (error.message) để dễ debug
-            const errMsg = error.message || String(error);
-            console.warn(`⚠️ [XỬ LÝ LỖI KEY] API Key số ${currentKeyIndex + 1} thất bại. Chi tiết: ${errMsg}`);
-            
-            // Nếu dính lỗi 429 hoặc lỗi cạn kiệt tài nguyên tạm thời từ Google
-            if (errMsg.includes('429') || errMsg.includes('ResourceExhausted') || errMsg.includes('Quota')) {
-                console.log(`⏳ Phát hiện giới hạn tốc độ (429/Quota). Tạm dừng luồng 2 giây để giãn cách trước khi đổi sang Key tiếp theo...`);
-                await sleep(2000); // Nghỉ 2 giây nhằm đánh lừa bộ quét spam của Google
-            }
-            
-            currentKeyIndex = (currentKeyIndex + 1) % API_KEYS.length;
-            attempts++;
+// HÀM TÍNH VECTOR LOCAL: Đổi văn bản thuần thành mảng số Vector (Chạy Offline 100%)
+async function getLocalEmbedding(text) {
+    try {
+        if (!embeddingPipeline) {
+            console.log("⏳ Lần đầu khởi chạy: Đang nạp model Embedding Local vào RAM (Khoảng ~120MB)...");
+            // Tải bản nén quantized tối ưu tuyệt đối cho CPU máy yếu
+            embeddingPipeline = await pipeline('feature-extraction', 'Xenova/paraphrase-multilingual-MiniLM-L12-v2');
+            console.log("✅ Nạp model Embedding thành công! Sẵn sàng xử lý.");
         }
+        
+        const output = await embeddingPipeline(text, { pooling: 'mean', normalize: true });
+        // Chuyển kết quả từ Tensor thành mảng Array thông thường để nạp vào ChromaDB
+        return Array.from(output.data);
+    } catch (error) {
+        console.error("❌ Lỗi tính toán Embedding Local:", error);
+        throw error;
     }
-    
-    throw new Error(`❌ CẠN KIỆT TOÀN BỘ KEY: Đã thử xoay vòng qua tất cả ${API_KEYS.length} keys nhưng đều bị Google từ chối do spam tốc độ cao hoặc hết sạch quota ngày.`);
 }
 
 export default class ChromaService {
@@ -76,10 +45,10 @@ export default class ChromaService {
     // =========================================================================
     static async searchMedicalKnowledge(userSymptom) {
         const collection = await chromaClient.getOrCreateCollection({ 
-            name: "medical_knowledge",
-            embeddingFunction: dummyEmbeddingFunction // 👈 Ép dùng hàm dummy để sửa lỗi Instantiate
+            name: "medical_knowledge_v2", // 🌟 LƯU Ý: Thêm _v2 để phân biệt với dữ liệu Gemini cũ
+            embeddingFunction: dummyEmbeddingFunction 
         });
-        const queryVector = await getEmbedding(userSymptom);
+        const queryVector = await getLocalEmbedding(userSymptom); // 👈 Đã sửa thành getLocalEmbedding
 
         const results = await collection.query({
             queryEmbeddings: [queryVector],
@@ -93,16 +62,16 @@ export default class ChromaService {
     // =========================================================================
     static async checkDrugInteraction(drugName, patientAllergyHistory) {
         const collection = await chromaClient.getOrCreateCollection({ 
-            name: "drug_database",
+            name: "drug_database_v2", // 🌟 Thêm _v2
             embeddingFunction: dummyEmbeddingFunction
         });
-        const queryVector = await getEmbedding(`${drugName} ${patientAllergyHistory}`);
+        const queryVector = await getLocalEmbedding(`${drugName} ${patientAllergyHistory}`); // 👈 Đã sửa
 
-        const results = await collection.query({
+        const __results = await collection.query({
             queryEmbeddings: [queryVector],
             nResults: 1
         });
-        return results.documents[0];
+        return __results.documents[0];
     }
 
     // =========================================================================
@@ -110,10 +79,10 @@ export default class ChromaService {
     // =========================================================================
     static async searchDoctorSemantic(searchQuery) {
         const collection = await chromaClient.getOrCreateCollection({ 
-            name: "doctor_profiles_vec",
+            name: "doctor_profiles_vec_v2", // 🌟 Thêm _v2
             embeddingFunction: dummyEmbeddingFunction
         });
-        const queryVector = await getEmbedding(searchQuery);
+        const queryVector = await getLocalEmbedding(searchQuery); // 👈 Đã sửa
 
         const results = await collection.query({
             queryEmbeddings: [queryVector],
@@ -128,10 +97,10 @@ export default class ChromaService {
     // =========================================================================
     static async getAftercareInstructions(diseaseNameOrTreatment) {
         const collection = await chromaClient.getOrCreateCollection({ 
-            name: "aftercare_knowledge",
+            name: "aftercare_knowledge_v2", // 🌟 Thêm _v2
             embeddingFunction: dummyEmbeddingFunction
         });
-        const queryVector = await getEmbedding(diseaseNameOrTreatment);
+        const queryVector = await getLocalEmbedding(diseaseNameOrTreatment); // 👈 Đã sửa
 
         const results = await collection.query({
             queryEmbeddings: [queryVector],
@@ -146,9 +115,9 @@ export default class ChromaService {
     static async addDataToCollection(collectionName, id, textContent, metadata = {}) {
         const collection = await chromaClient.getOrCreateCollection({ 
             name: collectionName,
-            embeddingFunction: dummyEmbeddingFunction // 👈 Ép dùng hàm dummy để sửa lỗi Instantiate
+            embeddingFunction: dummyEmbeddingFunction 
         });
-        const vector = await getEmbedding(textContent);
+        const vector = await getLocalEmbedding(textContent); // 👈 Đã sửa
 
         await collection.add({
             ids: [id],
@@ -156,6 +125,6 @@ export default class ChromaService {
             metadatas: [metadata],
             documents: [textContent]
         });
-        console.log(`[ChromaDB] Đã nạp thành công: ${id}`);
+        console.log(`[ChromaDB] Đã nạp thành công dữ liệu local: ${id}`);
     }
 }

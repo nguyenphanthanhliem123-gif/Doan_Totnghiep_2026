@@ -165,7 +165,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   ),
                   const SizedBox(height: 10),
                   const Text('Hệ Thống Quản Trị', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                  const Text('admin@healthcare.com', style: TextStyle(color: Colors.white70, fontSize: 13)),
                 ],
               ),
             ),

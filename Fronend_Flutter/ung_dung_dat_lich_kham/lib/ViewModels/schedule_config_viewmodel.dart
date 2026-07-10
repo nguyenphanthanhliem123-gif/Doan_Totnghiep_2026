@@ -26,7 +26,7 @@ class ScheduleConfigViewmodel extends ChangeNotifier{
       
       // Nếu chưa có cấu hình nào trong DB, khởi tạo giá trị rỗng mặc định
       _currentConfig ??= DoctorScheduleConfigModel(
-          slotTime: 20, breakTime: 5, maxPatients: 30, weeklySchedule: []);
+          slotTime: 20, breakTime: 5, weeklySchedule: []);
     } catch (e) {
       _errorMessage = e.toString();
     } finally {

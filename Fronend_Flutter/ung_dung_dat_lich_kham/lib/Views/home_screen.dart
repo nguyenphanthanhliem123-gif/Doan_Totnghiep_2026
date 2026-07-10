@@ -95,6 +95,8 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  
+
   String _getWeekdayName(int weekday) {
     switch (weekday) {
       case DateTime.monday: return 'T2';
@@ -106,6 +108,15 @@ class _HomeScreenState extends State<HomeScreen> {
       case DateTime.sunday: return 'CN';
       default: return '';
     }
+  }
+
+  String getShortName(String fullName) {
+    if (fullName.isEmpty) return "";
+    List<String> parts = fullName.trim().split(' ');
+    if (parts.length > 1) {
+      return "${parts[parts.length - 2]} ${parts.last}";
+    }
+    return fullName;
   }
 
   Future<void> _loadUserIdThenFetch() async {
@@ -180,16 +191,25 @@ class _HomeScreenState extends State<HomeScreen> {
       userSection = const CircularProgressIndicator();
     } else {
       userSection = Row(
+        mainAxisAlignment: MainAxisAlignment.end, // Căn các phần tử sang sát lề phải
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text('Xin Chào', style: TextStyle(color: primaryCyan, fontSize: 13, fontWeight: FontWeight.w500)),
-              Text(
-                user.fullName, 
-                style: const TextStyle(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.bold)
-              ),
-            ],
+          Flexible( // 1. Bọc Flexible để giới hạn chiều rộng của Column
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Xin Chào', 
+                  style: TextStyle(color: primaryCyan, fontSize: 13, fontWeight: FontWeight.w500)
+                ),
+                Text(
+                  getShortName(user.fullName), // Kết quả sẽ là "Thanh Liêm"
+                  style: const TextStyle(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.bold),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
           ),
           const SizedBox(width: 10),
           CircleAvatar(
@@ -223,7 +243,8 @@ class _HomeScreenState extends State<HomeScreen> {
               }),
             ],
           ),
-          userSection,
+          const SizedBox(width: 20), // Tạo khoảng cách tối thiểu giữa cụm Icon trái và cụm User phải
+          Expanded(child: userSection), // 4. Bọc Expanded để báo cho Flutter biết userSection chỉ được phép chiếm phần không gian còn lại
         ],
       ),
     );

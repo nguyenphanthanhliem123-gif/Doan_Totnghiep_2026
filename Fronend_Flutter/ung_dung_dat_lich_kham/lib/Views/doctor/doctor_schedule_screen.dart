@@ -85,7 +85,6 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
             children: [
               _buildInfoItem(Icons.timelapse, "${config.slotTime} phút", "TG Khám/Ca"),
               _buildInfoItem(Icons.coffee, "${config.breakTime} phút", "Nghỉ giữa ca"),
-              _buildInfoItem(Icons.people_alt, "${config.maxPatients} người", "Tối đa/Ngày"),
             ],
           ),
           const SizedBox(height: 12),
@@ -260,7 +259,6 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
   void _showGlobalConfigBottomSheet(BuildContext context, DoctorScheduleConfigModel config, ScheduleConfigViewmodel viewModel) {
     final slotController = TextEditingController(text: config.slotTime.toString());
     final breakController = TextEditingController(text: config.breakTime.toString());
-    final maxPatientsController = TextEditingController(text: config.maxPatients.toString());
     final formKey = GlobalKey<FormState>();
 
     showModalBottomSheet(
@@ -305,18 +303,6 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
                   ),
                   validator: (val) => (val == null || int.tryParse(val) == null) ? "Vui lòng nhập số phút hợp lệ" : null,
                 ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: maxPatientsController,
-                  keyboardType: TextInputType.number,
-                  style: const TextStyle(color: kTextColor),
-                  decoration: const InputDecoration(
-                    labelText: "Số lượng bệnh nhân tối đa/ngày",
-                    prefixIcon: Icon(Icons.people_alt, color: kPrimaryColor),
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (val) => (val == null || int.tryParse(val) == null) ? "Vui lòng nhập số lượng hợp lệ" : null,
-                ),
                 const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
@@ -333,7 +319,6 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
                         DoctorScheduleConfigModel newConfig = DoctorScheduleConfigModel(
                           slotTime: int.parse(slotController.text),
                           breakTime: int.parse(breakController.text),
-                          maxPatients: int.parse(maxPatientsController.text),
                           weeklySchedule: config.weeklySchedule, 
                         );
 
@@ -520,7 +505,6 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
     DoctorScheduleConfigModel newConfig = DoctorScheduleConfigModel(
       slotTime: currentConfig.slotTime,
       breakTime: currentConfig.breakTime,
-      maxPatients: currentConfig.maxPatients,
       weeklySchedule: newWeekly,
     );
 
