@@ -50,7 +50,7 @@ class _AdminOtpScreenState extends State<AdminOtpScreen> {
               children: [
                 const Icon(Icons.security, size: 80, color: kPrimaryColor),
                 const SizedBox(height: kSpacingLarge),
-                const Text('Bảo mật 2 Lớp', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: kTextColor)),
+                const Text('Xác thực tài khoản', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: kTextColor)),
                 const SizedBox(height: 12),
                 Text('Nhập mã OTP gửi tới ${widget.email}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 15, color: kGreyTextColor, height: 1.5)),
                 const SizedBox(height: 40),

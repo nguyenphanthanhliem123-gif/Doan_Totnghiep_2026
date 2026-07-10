@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../Constants/ui_constants.dart';
 import '../../viewmodels/admin_viewmodel.dart';
 import 'admin_otp_screen.dart';
+import '../login_screen.dart';
 
 class AdminLoginScreen extends StatefulWidget {
   const AdminLoginScreen({super.key});
@@ -93,6 +94,23 @@ class _AdminLoginScreenState extends State<AdminLoginScreen> {
                     child: authVM.isLoading
                         ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                         : const Text('Đăng Nhập', style: kButtonTextStyle),
+                  ),
+                  const SizedBox(height: 25),
+                  Center(
+                    child: TextButton.icon(
+                      onPressed: () {
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(builder: (_) => const LoginScreen()),
+                          (route) => false, // Xóa sạch lịch sử điều hướng cũ
+                        );
+                      },
+                      icon: const Icon(Icons.arrow_back, color: kGreyTextColor, size: 16),
+                      label: const Text(
+                        'Quay lại cổng Bệnh nhân & Bác sĩ',
+                        style: TextStyle(color: kGreyTextColor, fontWeight: FontWeight.w600, fontSize: 13),
+                      ),
+                    ),
                   ),
                 ],
               ),
