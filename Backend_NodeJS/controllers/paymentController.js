@@ -86,7 +86,7 @@ export default class paymentController {
             let tmnCode = process.env.VNP_TMN_CODE;
             let secretKey = process.env.VNP_HASH_SECRET;
             let vnpUrl = process.env.VNP_URL;
-            let returnUrl = process.env.VNP_RETURN_URL;
+            let returnUrl = process.env.VNP_RETURN_URL_PHONE;
             //let returnUrl = process.env.VNP_RETURN_URL_PHONE;
             
             let orderId = bookingId || moment(date).format('DDHHmmss');

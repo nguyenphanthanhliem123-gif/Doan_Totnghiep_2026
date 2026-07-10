@@ -586,12 +586,19 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
   }
 
   Widget _buildServiceRow(String name, String price) {
+    String tempName = '';
+    if(name.length > 27){
+      tempName = '${name.substring(0,26)}...';
+    }
+    else{
+      tempName = name;
+    }
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(name, style: const TextStyle(color: kTextColor)),
+          Text(tempName, style: const TextStyle(color: kTextColor)),
           Text(price, style: const TextStyle(fontWeight: FontWeight.bold, color: kTextColor)),
         ],
       ),

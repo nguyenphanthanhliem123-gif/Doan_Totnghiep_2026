@@ -20,7 +20,6 @@ export default class VNPayServices{
             
             // Định dạng ngày giao dịch gốc và ngày tạo lệnh hoàn: YYYYMMDDHHmmss
             const vnp_TransactionDate = moment(thongTinGiaoDich.ngayThanhToan).format('YYYYMMDDHHmmss'); 
-            //const vnp_CreateDate = moment(date).format('YYYYMMDDHHmmss');
             // Tạm thời cộng thêm 5 phút để né việc lệch múi giờ với VNPay Sandbox
             const vnp_CreateDate = moment(date).add(5, 'minutes').format('YYYYMMDDHHmmss');
             
