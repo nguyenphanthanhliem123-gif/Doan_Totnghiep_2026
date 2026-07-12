@@ -165,6 +165,7 @@ class _AdminPaymentScreenState extends State<AdminPaymentScreen> {
               children: [
                 DropdownButtonFormField<String>(
                   value: selectedStatus,
+                  isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: "Trạng thái mới",
                     border: OutlineInputBorder(),

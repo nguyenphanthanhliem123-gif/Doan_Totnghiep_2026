@@ -244,7 +244,7 @@ class TransactionCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        dateFormat.format(transaction.thoiGianGiaoDich),
+                        dateFormat.format(transaction.thoiGianGiaoDich.toLocal()),
                         style: TextStyle(
                           fontSize: 13,
                           color: Colors.grey[600],

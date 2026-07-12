@@ -107,6 +107,8 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Future<void> _checkAuthAndNavigate() async {
     // Chờ 1.5 giây tạo hiệu ứng mượt mà
+    await Provider.of<AuthViewModel>(context, listen: false).verifyToken();
+
     await Future.delayed(const Duration(milliseconds: 1500));
     if (!mounted) return;
 

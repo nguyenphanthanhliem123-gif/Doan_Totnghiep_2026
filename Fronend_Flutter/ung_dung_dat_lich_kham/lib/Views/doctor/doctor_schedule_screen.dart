@@ -570,6 +570,7 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
                     ),
                     DropdownButtonFormField<String>(
                       value: selectedBuoi,
+                      isExpanded: true,
                       decoration: const InputDecoration(labelText: 'Khung thời gian nghỉ', prefixIcon: Icon(Icons.timelapse, color: kPrimaryColor)),
                       items: const [
                         DropdownMenuItem(value: 'ca_ngay', child: Text('Cả ngày hôm đó')),

@@ -447,7 +447,7 @@ class AuthViewModel extends ChangeNotifier {
       
       request.fields['fullName'] = fullName;
       request.fields['email'] = email;
-      request.fields['dienThoai'] = phone; // 🌟 THÊM DÒNG NÀY ĐỂ GỬI LÊN BACKEND
+      request.fields['dienThoai'] = phone;
       request.fields['password'] = password;
       request.fields['maChuyenKhoa'] = maChuyenKhoa.toString();
       request.fields['hocVi'] = hocVi;
@@ -521,6 +521,35 @@ class AuthViewModel extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return {"success": false, "message": "Lỗi kết nối máy chủ. Vui lòng thử lại!"};
+    }
+  }
+
+  Future<bool?> verifyToken() async {
+    try{
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+
+      if (token == null) {
+        print("Lỗi: Không tìm thấy token đăng nhập");
+        return null;
+      }
+
+      final res = await http.get(
+        Uri.parse('$_baseUrl/verify-token'),
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token",
+        },
+      );
+
+      if(res.statusCode != 200){
+        await logout();
+        print('Lỗi: Token đã hết hạn');
+        return false;
+      }
+      return true;
+    }catch(error){
+      throw Exception('Lỗi xác thực token: ${error.toString()}');
     }
   }
 }

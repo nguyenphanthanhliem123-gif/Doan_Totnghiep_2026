@@ -9,8 +9,8 @@ export const startReminderCron = (io) => {
     // =========================================================================
     // TIẾN TRÌNH 1: Nhắc nhở lịch hẹn khám sắp diễn ra (Chạy mỗi phút)
     // =========================================================================
-    cron.schedule('* * * * *', async () => {
-        console.log("⏳ [Hệ thống] Các tiến trình tự động nhắc nhở đã được kích hoạt.");
+    cron.schedule('*/15 * * * *', async () => {
+        console.log("⏳ [Hệ thống] Tiến trình nhắc nhở lịch hẹn sắp diễn ra.");
         try {
             const findQuery = `
                 SELECT lh.Ma_lich_hen, bn.Ma_nguoi_dung, kg.Thoi_gian_Bdau, lh.Ma_booking

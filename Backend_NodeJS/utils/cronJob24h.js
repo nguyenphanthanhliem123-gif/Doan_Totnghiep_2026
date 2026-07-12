@@ -5,14 +5,11 @@ import sendNotification from './notificationHelper.js';
 
 const cron = nodeCron;
 
-// Thiết lập lịch chạy: Chạy vào phút thứ 0 của MỖI GIỜ (Ví dụ: 7:00, 8:00, 9:00...)
 export const startReminderCron24h = (io) =>{
-    console.log("⏳ [Hệ thống] Tiến trình tự động nhắc nhở lịch hẹn 24 giờ đã được kích hoạt.");
     cron.schedule('0 * * * *', async () => {
         console.log("[Cron Job 24h] Bắt đầu quét lịch hẹn...");
         try {
             // 1. Quét tìm các lịch hẹn đã xác nhận (confirmed) sắp diễn ra trong vòng 24 giờ tới
-            // Có JOIN để lấy đầy đủ email, tên bác sĩ, địa chỉ phục vụ việc gửi mail
             const findQuery = `
                 SELECT lh.Ma_lich_hen, bn.Ma_nguoi_dung, kg.Thoi_gian_Bdau, lh.Ma_booking, 
                     nd.Email, bs_nd.Ten_nguoi_dung AS TenBacSi, pk.Vi_tri AS DiaChi
@@ -74,8 +71,11 @@ export const startReminderCron24h = (io) =>{
                         await execute(insertNotificationQuery, [Ma_nguoi_dung, loai, noiDung]);*/
                         await sendNotification(Ma_nguoi_dung, loai, noiDung, io);
                     } 
+
                 }
             }
+            if(appointments) console.log(`[Tiến trình 24h] Có ${appointments.length} lịch trong 24 giờ sắp tới.`);
+            else console.log(`[Tiến trình 24h] Lỗi không tìm thấy lịch hẹn.`);
         } catch (error) {
             console.error("[Cron Job 24h] Lỗi tiến trình tự động: " + error.message);
         }

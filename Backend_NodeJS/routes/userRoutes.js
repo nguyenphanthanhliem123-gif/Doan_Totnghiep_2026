@@ -39,6 +39,8 @@ authUserRoutes.post('/delete-account', userController.deleteAccount);
 userRoutes.post('/register-doctor', userController.registerDoctor);
 userRoutes.post('/verify-doctor-otp', userController.verifyDoctorOTP);
 
+userRoutes.get('/verify-token', auth);
+
 
 userRoutes.use('/', authUserRoutes);
 

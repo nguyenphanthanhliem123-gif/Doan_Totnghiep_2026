@@ -36,7 +36,7 @@ export default class paymentModel{
                 // Chuẩn hóa trạng thái thanh toán theo yêu cầu
                 let statusDisplay = "Chờ xử lý";
                 if (row.status === 'paid') statusDisplay = "Thành công";
-                if (row.status === 'refunded') statusDisplay = " Đã hoàn tiền";
+                if (row.status === 'refunded') statusDisplay = "Đã hoàn tiền";
                 if (row.status === 'failed') statusDisplay = "Thất bại";
                 if (row.status === 'pending') statusDisplay = "Đang chờ";
                 if (row.status === 'refund_fail') statusDisplay = "Hoàn tiền thất bại";

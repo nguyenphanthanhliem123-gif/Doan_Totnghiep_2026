@@ -168,39 +168,7 @@ class DoctorDashboardScreen extends StatelessWidget {
           ),
 
           NotificationBadge(),
-          const SizedBox(width: 12),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Switch(
-                value: doctorVM.isDoctorActive,
-                activeColor: kPrimaryColor,
-                onChanged: (val) async {
-                  final result = await context.read<DoctorAppointmentViewModel>().toggleActiveStatus(val);
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: Text(result['message']),
-                      backgroundColor: result['success'] 
-                          ? (val ? Colors.green : Colors.orange) 
-                          : Colors.red,
-                      duration: const Duration(seconds: 2),
-                    ));
-                  }
-                },
-              ),
-              Transform.translate(
-                offset: const Offset(0, -5),
-                child: Text(
-                  doctorVM.isDoctorActive ? 'Sẵn sàng' : 'Đang bận', 
-                  style: TextStyle(
-                    fontSize: 12, 
-                    fontWeight: FontWeight.bold,
-                    color: doctorVM.isDoctorActive ? kPrimaryColor : Colors.redAccent
-                  )
-                ),
-              ),
-            ],
-          )
+    
         ],
       ),
     );
