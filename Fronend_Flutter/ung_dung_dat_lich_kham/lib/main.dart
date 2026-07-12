@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import 'package:ung_dung_dat_lich_kham/viewmodels/admin_clinic_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/admin_payment_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/ViewModels/doctor_clinic_viewmodel.dart';
@@ -105,6 +106,34 @@ class _SplashScreenState extends State<SplashScreen> {
     _checkAuthAndNavigate();
   }
 
+  // --- HÀM KIỂM TRA HẠN SỬ DỤNG CỦA TOKEN (JWT) ---
+  bool _isTokenExpired(String? token) {
+    
+    if (token == null || token.isEmpty) return true;
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return true; // Token không hợp lệ
+
+      final payload = parts[1];
+      final normalized = base64Url.normalize(payload);
+      final resp = utf8.decode(base64Url.decode(normalized));
+      final payloadMap = json.decode(resp);
+
+      if (payloadMap.containsKey('exp')) {
+        final exp = payloadMap['exp'] is int
+            ? payloadMap['exp']
+            : int.parse(payloadMap['exp'].toString());
+        // Chuyển exp thành DateTime (x1000 vì exp tính bằng giây)
+        final expirationDate = DateTime.fromMillisecondsSinceEpoch(exp * 1000);
+        // Trả về true nếu thời gian hiện tại đã vượt qua thời gian hết hạn
+        return DateTime.now().isAfter(expirationDate);
+      }
+      return false; // Nếu không có trường exp, mặc định cho qua (hoặc tùy logic)
+    } catch (e) {
+      return true; // Nếu có lỗi giải mã, coi như token hỏng/hết hạn
+    }
+  }
+
   Future<void> _checkAuthAndNavigate() async {
     // Chờ 1.5 giây tạo hiệu ứng mượt mà
     await Future.delayed(const Duration(milliseconds: 1500));
@@ -112,11 +141,16 @@ class _SplashScreenState extends State<SplashScreen> {
 
     final prefs = await SharedPreferences.getInstance();
     
-    // 1. Kiểm tra xem có phiên đăng nhập cũ của Admin không
+    // 1. Kiểm tra Admin Token
     final adminToken = prefs.getString('admin_token');
     if (adminToken != null && adminToken.isNotEmpty) {
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const AdminDashboardScreen()));
-      return;
+      if (!_isTokenExpired(adminToken)) {
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const AdminDashboardScreen()));
+        return;
+      } else {
+        // Token hết hạn -> Xóa token cũ
+        await prefs.remove('admin_token');
+      }
     }
 
     // 2. Kiểm tra phiên đăng nhập cũ của Bác sĩ / Bệnh nhân
@@ -124,15 +158,22 @@ class _SplashScreenState extends State<SplashScreen> {
     final role = prefs.getString('role'); // Đọc quyền từ cục bộ
 
     if (userToken != null && userToken.isNotEmpty) {
-      if (role == 'Bac_si') {
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const DoctorMainScreen()));
+      if (!_isTokenExpired(userToken)) {
+        if (role == 'Bac_si') {
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const DoctorMainScreen()));
+        } else {
+          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const MainScreen()));
+        }
+        return;
       } else {
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const MainScreen()));
+        // Token hết hạn -> Xóa trắng dữ liệu đăng nhập
+        await prefs.remove('token');
+        await prefs.remove('role');
+        await prefs.remove('ma_nguoi_dung');
       }
-      return;
     }
 
-    // 3. Nếu chưa đăng nhập ai hết thì đá về trang Login của User mặc định
+    // 3. Nếu chưa đăng nhập hoặc token đã chết -> Đá về trang Login
     Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
   }
 
