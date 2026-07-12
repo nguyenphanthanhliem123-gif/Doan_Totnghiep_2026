@@ -85,7 +85,6 @@ export default class doctorController {
         try {
             const userId = req.Ma_nguoi_dung; // Lấy từ token
             
-            // Cứ ném toàn bộ req.body vào Model, Model sẽ tự chọn lọc
             const updateData = {
                 Ma_chuyen_khoa: req.body.ma_chuyen_khoa,
                 Mo_ta_ban_than: req.body.mo_ta,
@@ -107,8 +106,6 @@ export default class doctorController {
     static async getDoctorByUserId(req, res) {
         try {
             const id  = req.Ma_nguoi_dung;
-
-            console.log('=== userId: ' + id);
 
             if (!id) {
                 return res.status(400).json({ succeeded: false, message: "Thiếu mã người dùng" });
@@ -133,7 +130,7 @@ export default class doctorController {
     // API Lấy nơi làm việc chính và hiện tại của bác sĩ
     static async getSelectedClinics(req, res) {
         try {
-            const userId = req.Ma_nguoi_dung; // Lấy từ token qua Middleware
+            const userId = req.Ma_nguoi_dung;
             
             const clinics = await doctorModel.getDoctorClinicsByUserId(userId);
 

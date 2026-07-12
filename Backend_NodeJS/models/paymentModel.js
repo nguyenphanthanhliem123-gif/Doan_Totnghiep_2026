@@ -4,7 +4,6 @@ import { beginTransaction, commitTransaction, execute, rollbackTransaction } fro
 export default class paymentModel{
     static async getPaymentHistory(userID){
         try{
-                // Câu lệnh SQL JOIN 3 bảng dựa trên cấu trúc DB của bạn
             const query = `
                 SELECT 
                     tt.Ma_thanh_toan AS paymentId,
@@ -84,7 +83,7 @@ export default class paymentModel{
 
     static async getPayment(bookingCode) {
         try {
-            // 1. Câu SQL lấy thông tin thanh toán chung (Đã bỏ JOIN dich_vu)
+            // 1. Câu SQL lấy thông tin thanh toán chung
             const queryData = `
                 SELECT 
                     tt.Ma_thanh_toan,
@@ -128,7 +127,7 @@ export default class paymentModel{
             `;
             const [services] = await execute(queryServices, [thongTinChung.Ma_lich_hen]);
 
-            // 3. Trả về đúng cấu trúc mảng 2 phần tử theo yêu cầu
+            // 3. Trả về đúng cấu trúc mảng 2 phần tử
             return [
                 thongTinChung,                         // Phần tử 0: Đối tượng thông tin chung
                 { Danh_sach_dich_vu: services || [] }  // Phần tử 1: Đối tượng chứa mảng dịch vụ

@@ -310,7 +310,7 @@ export default class adminController {
         }
     }
 
-    // API: Tạo chuyên khoa mới (Có upload ảnh Icon)
+    // API: Tạo chuyên khoa mới
     static async createSpecialty(req, res) {
         try {
             const { tenChuyenKhoa, moTa } = req.body;
@@ -458,7 +458,6 @@ export default class adminController {
             await ServiceModel.deleteMasterService(id);
             return res.status(200).json({ success: true, message: "Đã xóa dịch vụ!" });
         } catch (error) {
-            // Xử lý lỗi nếu bị vướng khóa ngoại (Foreign Key)
             if(error.message.includes('foreign key constraint')) {
                 return res.status(400).json({ success: false, message: "Không thể xóa vì đã có bác sĩ đăng ký dịch vụ này."});
             }

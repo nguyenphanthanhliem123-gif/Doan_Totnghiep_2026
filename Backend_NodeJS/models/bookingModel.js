@@ -1,4 +1,5 @@
-import { execute } from "../config/db.js";
+import { cat } from "@xenova/transformers";
+import { beginTransaction, commitTransaction, execute, rollbackTransaction } from "../config/db.js";
 import moment from 'moment';
 
 export default class bookingModel {
@@ -76,40 +77,48 @@ export default class bookingModel {
 
     // Tạo lịch hẹn mới vào Database
     static async createAppointment(data) {
-        const query = `
-            INSERT INTO lich_hen 
-            (Ma_booking, Ma_bac_si, Ma_benh_nhan, Ma_nguoi_than, Ma_khung_gio, Hinh_thuc, Trieu_chung, Trang_thai_lich_hen, Tong_tien, Link_video_call) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `;
+        let conn = await beginTransaction();
+        try{
+            const query = `
+                INSERT INTO lich_hen 
+                (Ma_booking, Ma_bac_si, Ma_benh_nhan, Ma_nguoi_than, Ma_khung_gio, Hinh_thuc, Trieu_chung, Trang_thai_lich_hen, Tong_tien, Link_video_call) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `;
 
-        // Nếu hình thức là online thì tạo link, nếu không thì để null
-        const linkJitsi = data.Hinh_thuc === 'online' ? `https://meet.ffmuc.net/${data.Ma_booking}` : null;
-        
-        // ✨ ĐÃ SỬA: Đủ 10 tham số theo đúng thứ tự của câu lệnh SQL trên
-        const params = [
-            data.Ma_booking,       // 1. Ma_booking
-            data.Ma_bac_si,        // 2. Ma_bac_si
-            data.Ma_benh_nhan,     // 3. Ma_benh_nhan
-            data.Ma_nguoi_than,    // 4. Ma_nguoi_than
-            data.Ma_khung_gio,     // 5. Ma_khung_gio
-            data.Hinh_thuc,        // 6. Hinh_thuc
-            data.Trieu_chung,      // 7. Trieu_chung
-            'pending',             // 8. Trang_thai_lich_hen (Thêm giá trị mặc định ở đây)
-            data.Tong_tien,        // 9. Tong_tien
-            linkJitsi              // 10. Link_video_call
-        ];
+            // Nếu hình thức là online thì tạo link, nếu không thì để null
+            const linkJitsi = data.Hinh_thuc === 'online' ? `https://meet.ffmuc.net/${data.Ma_booking}` : null;
+            
+            // ✨ ĐÃ SỬA: Đủ 10 tham số theo đúng thứ tự của câu lệnh SQL trên
+            const params = [
+                data.Ma_booking,       // 1. Ma_booking
+                data.Ma_bac_si,        // 2. Ma_bac_si
+                data.Ma_benh_nhan,     // 3. Ma_benh_nhan
+                data.Ma_nguoi_than,    // 4. Ma_nguoi_than
+                data.Ma_khung_gio,     // 5. Ma_khung_gio
+                data.Hinh_thuc,        // 6. Hinh_thuc
+                data.Trieu_chung,      // 7. Trieu_chung
+                'pending',             // 8. Trang_thai_lich_hen
+                data.Tong_tien,        // 9. Tong_tien
+                linkJitsi              // 10. Link_video_call
+            ];
 
-        const [result] = await execute(query, params);
-        const insertId = result.insertId;
+            const [result] = await conn.execute(query, params);
+            const insertId = result.insertId;
 
-        // Ghi nhận lịch sử tạo mới
-        await execute(
-            `INSERT INTO lich_su_trang_thai_lich_hen (Ma_lich_hen, Trang_thai_cu, Trang_thai_moi, Nguoi_thay_doi) 
-            VALUES (?, NULL, 'pending', 'patient')`,
-            [insertId]
-        );
+            // Ghi nhận lịch sử tạo mới
+            await conn.execute(
+                `INSERT INTO lich_su_trang_thai_lich_hen (Ma_lich_hen, Trang_thai_cu, Trang_thai_moi, Nguoi_thay_doi) 
+                VALUES (?, NULL, 'pending', 'patient')`,
+                [insertId]
+            );
 
-        return insertId;
+            await commitTransaction(conn);
+
+            return insertId;
+        }catch(error){
+            await rollbackTransaction(conn);
+            throw new Error('Lỗi tạo lịch hẹn: ' + error.message);
+        }
     }
 
     // Tạo chi tiết lịch hẹn vào Database

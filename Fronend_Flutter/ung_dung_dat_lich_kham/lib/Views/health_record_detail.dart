@@ -64,7 +64,7 @@ class _HealthRecordMenuScreenState extends State<HealthRecordMenuScreen> {
           backgroundColor: kPrimaryColor,
           elevation: 0,
           title: const Text(
-            'Hồ sơ cá nhân',
+            'Hồ sơ sức khỏe',
             style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
           ),
           leading: IconButton(
@@ -172,23 +172,6 @@ class _HealthRecordMenuScreenState extends State<HealthRecordMenuScreen> {
                     _buildMedicalRow(Icons.warning_amber_rounded, 'Dị ứng', record.allergy, Colors.orange),
                     _buildMedicalRow(Icons.monitor_heart_rounded, 'Bệnh nền', record.underlyingDisease, Colors.redAccent),
                   ]),
-                  /*const SizedBox(height: 25),
-                  _buildSectionTitle('Chức năng mở rộng'),
-                  const SizedBox(height: 15),
-                  GridView.count(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 15,
-                    mainAxisSpacing: 15,
-                    childAspectRatio: 1.2,
-                    children: [
-                      /*_buildFeatureCard(Icons.medication_rounded, 'Lịch sử khám', 'Xem đơn thuốc, bệnh án', Colors.blue, () {}),
-                      _buildFeatureCard(Icons.analytics_rounded, 'Chỉ số cơ thể', 'BMI, Huyết áp, Tim mạch', Colors.teal, () {}),
-                      _buildFeatureCard(Icons.vaccines_rounded, 'Tiêm chủng', 'Theo dõi mũi tiêm', Colors.purple, () {}),
-                      _buildFeatureCard(Icons.assignment_rounded, 'Ghi chú y khoa', 'Nhắc nhở từ bác sĩ', Colors.amber, () {}),*/
-                    ],
-                  ),*/
                   const SizedBox(height: 30),
                 ],
               ),
@@ -224,8 +207,6 @@ class _HealthRecordMenuScreenState extends State<HealthRecordMenuScreen> {
                       border: Border.all(color: kPrimaryColor, width: 3),
                       image: DecorationImage(
                         fit: BoxFit.cover, 
-                        // 💡 Kiểm tra nếu trong model user có link ảnh từ DB thì hiển thị, nếu không thì lấy ảnh mặc định
-                        // Chú ý: Hãy kiểm tra lại chính xác tên thuộc tính chứa ảnh trong UserModel của bạn (Vd: user.avatar hoặc user.anhDaiDien)
                         image: (user.avatar != null && user.avatar!.isNotEmpty)
                             ? NetworkImage(user.avatar!)
                             : const NetworkImage('https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_1280.png'),
@@ -331,41 +312,6 @@ class _HealthRecordMenuScreenState extends State<HealthRecordMenuScreen> {
       ),
     );
   }
-
-  /*Widget _buildFeatureCard(IconData icon, String title, String subtitle, Color color, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
-          boxShadow: [BoxShadow(color: color.withOpacity(0.06), blurRadius: 12, offset: const Offset(0, 6))],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(color: color.withOpacity(0.12), shape: BoxShape.circle),
-              child: Icon(icon, color: color, size: 26),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF1A202C))),
-                const SizedBox(height: 2),
-                Text(subtitle, style: const TextStyle(fontSize: 11, color: kGreyTextColor), maxLines: 1, overflow: TextOverflow.ellipsis),
-              ],
-            )
-          ],
-        ),
-      ),
-    );
-  }*/
 
   // Hàm hiển thị Dialog Xác nhận xóa từng hồ sơ
   void _showDeleteSingleDialog(BuildContext context, int id, String name, String relationship) {

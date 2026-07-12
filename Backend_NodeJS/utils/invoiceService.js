@@ -21,18 +21,14 @@ export const taoVaGuiHoaDonPDF = async (data) => {
             
             doc.on('data', buffers.push.bind(buffers));
             
-            // ==========================================
-            // THIẾT KẾ GIAO DIỆN HÓA ĐƠN (VIP PRO)
-            // ==========================================
             const __filename = fileURLToPath(import.meta.url);
             const __dirname = path.dirname(__filename);
             
-            // 🌟 1. Cấu hình Font chữ (Sửa đường dẫn cho đúng với nơi bạn lưu font)
-            // Nếu bạn chưa có file font, hãy tạm thời đổi tên biến này thành 'Helvetica' và 'Helvetica-Bold' (sẽ không gõ được dấu tiếng việt)
+            // 1. Cấu hình Font chữ
             const fontRegular = path.join(__dirname, 'Roboto-Regular.ttf');
             const fontBold = path.join(__dirname, 'Roboto-Bold.ttf');
 
-            // Hàm vẽ đường kẻ ngang chuyên nghiệp
+            // Hàm vẽ đường kẻ ngang
             const generateHr = (y) => {
                 doc.strokeColor('#e0e0e0').lineWidth(1).moveTo(50, y).lineTo(545, y).stroke();
             };
@@ -42,7 +38,7 @@ export const taoVaGuiHoaDonPDF = async (data) => {
                 return new Intl.NumberFormat('vi-VN').format(money) + ' đ';
             };
 
-            // 🌟 2. HEADER: Thông tin phòng khám & Tiêu đề Hóa đơn
+            // 2. HEADER: Thông tin phòng khám & Tiêu đề Hóa đơn
             doc.fillColor('#005983') // Màu xanh y tế
                .font(fontBold)
                .fontSize(20)
@@ -69,7 +65,7 @@ export const taoVaGuiHoaDonPDF = async (data) => {
 
             generateHr(145);
 
-            // 🌟 3. THÔNG TIN KHÁCH HÀNG & DỊCH VỤ (Chia 2 cột)
+            // 3. THÔNG TIN KHÁCH HÀNG & DỊCH VỤ
             doc.fillColor('#333333')
                .font(fontBold)
                .fontSize(12)
@@ -91,7 +87,7 @@ export const taoVaGuiHoaDonPDF = async (data) => {
 
             generateHr(240);
 
-            // 🌟 4. BẢNG CHI TIẾT THANH TOÁN (TABLE)
+            // 4. BẢNG CHI TIẾT THANH TOÁN
             const tableTop = 270;
             
             // Tiêu đề bảng
@@ -113,14 +109,14 @@ export const taoVaGuiHoaDonPDF = async (data) => {
 
             generateHr(335);
 
-            // 🌟 5. TỔNG CỘNG
+            // 5. TỔNG CỘNG
             doc.font(fontBold)
                .fontSize(14)
                .text('TỔNG THANH TOÁN:', 200, 360, { width: 150, align: 'right' })
                .fillColor('#D32F2F') // Chữ màu đỏ nổi bật
                .text(formatMoney(data.soTien), 360, 360, { width: 185, align: 'right' });
 
-            // 🌟 6. FOOTER (Chân trang)
+            // 6. FOOTER
             doc.font(fontRegular)
                .fontSize(10)
                .fillColor('#888888')
@@ -136,7 +132,7 @@ export const taoVaGuiHoaDonPDF = async (data) => {
                 const pdfData = Buffer.concat(buffers);
 
                 const mailOptions = {
-                    from: '"MedCare - Ứng dụng đặt lịch khám online" <process.env.EMAIL_USER>',
+                    from: `"MedCare - Ứng dụng đặt lịch khám online" <${process.env.EMAIL_USER}>`,
                     to: data.emailNguoiDung,
                     subject: `[MedCare] Biên lai thanh toán thành công - Lịch hẹn ${data.maBooking}`,
                     html: `

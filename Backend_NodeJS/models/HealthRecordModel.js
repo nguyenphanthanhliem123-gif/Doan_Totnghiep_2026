@@ -199,6 +199,7 @@ export default class healthRecordModel{
                 [maBenhNhan, userID]
             );
 
+
             if (checkRows.length === 0) {
                 throw new Error("Không tìm thấy hồ sơ hoặc bạn không có quyền xóa hồ sơ này.");
             }
@@ -207,7 +208,7 @@ export default class healthRecordModel{
                 throw new Error("Không thể xóa hồ sơ của bản thân");
             }
 
-            // 2. Xóa dữ liệu trong bảng nguoi_than trước (Vì bạn đã lưu cả "bản thân" vào đây)
+            // 2. Xóa dữ liệu trong bảng nguoi_than trước
             await conn.execute(
                 'DELETE FROM nguoi_than WHERE Ma_benh_nhan = ?', 
                 [maBenhNhan]
@@ -225,7 +226,7 @@ export default class healthRecordModel{
             if (conn) {
                 await rollbackTransaction(conn);
             }
-            throw new Error('Lỗi model deleteHealthRecord: ' + error.message);
+            throw new Error(error.message);
         }
     }
 

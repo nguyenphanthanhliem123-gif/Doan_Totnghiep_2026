@@ -39,15 +39,6 @@ class _HealthRecordListScreenState extends State<HealthRecordListScreen> {
           ),
           title: const Text('Hồ Sơ Sức Khỏe', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           centerTitle: true,
-          actions: [
-            // ✅ Nút Xóa toàn bộ
-            if (healthVM.listRecord != null && healthVM.listRecord!.isNotEmpty)
-              IconButton(
-                icon: const Icon(Icons.delete_forever_rounded, color: Colors.redAccent, size: 28),
-                tooltip: 'Xóa toàn bộ hồ sơ',
-                onPressed: () => _showDeleteConfirmationDialog(context),
-              ),
-          ],
         ),
       ),
       // Xử lý Logic hiển thị UI

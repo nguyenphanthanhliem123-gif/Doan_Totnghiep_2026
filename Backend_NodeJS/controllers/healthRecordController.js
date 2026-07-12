@@ -156,7 +156,7 @@ export default class healthRecordController{
         } catch (error) {
             return res.status(500).json({
                 succeeded: false,
-                message: "Lỗi khi xóa hồ sơ: " + error.message
+                message: error.message
             });
         }
     }

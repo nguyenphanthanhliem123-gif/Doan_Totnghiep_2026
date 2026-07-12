@@ -7,7 +7,7 @@ const cron = nodeCron;
 export const startReminderCron = (io) => {
 
     // =========================================================================
-    // TIẾN TRÌNH 1: Nhắc nhở lịch hẹn khám sắp diễn ra (Chạy mỗi phút)
+    // TIẾN TRÌNH 1: Nhắc nhở lịch hẹn khám sắp diễn ra (mỗi 15 phút)
     // =========================================================================
     cron.schedule('*/15 * * * *', async () => {
         console.log("⏳ [Hệ thống] Tiến trình nhắc nhở lịch hẹn sắp diễn ra.");

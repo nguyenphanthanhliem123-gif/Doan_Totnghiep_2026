@@ -1,4 +1,4 @@
-import { execute } from "../config/db.js"; // Đường dẫn tới file kết nối MySQL của bạn
+import { execute } from "../config/db.js";
 
 /**
  * Hàm gửi thông báo chung cho hệ thống

@@ -24,7 +24,7 @@ export default class VNPayServices{
             const vnp_CreateDate = moment(date).add(5, 'minutes').format('YYYYMMDDHHmmss');
             
             const vnp_CreateBy = 'System_Auto_Refund'; // Tác nhân tạo lệnh
-            const vnp_IpAddr = '127.0.0.1'; // IP Server của bạn
+            const vnp_IpAddr = '127.0.0.1'; // IP Server
             const vnp_OrderInfo = `Hoan tien tu dong cho lich hen ${thongTinGiaoDich.maBooking}`;
 
             // 2. Tạo chuỗi ký bảo mật (Hash) theo quy định nghiêm ngặt của VNPay bằng dấu |
@@ -77,7 +77,6 @@ export default class VNPayServices{
             // 5. Kiểm tra kết quả phản hồi từ VNPay
             if (response.data && response.data.vnp_ResponseCode === '00') {
                 console.log(`✅ [VNPay Refund] Hoàn tiền THÀNH CÔNG cho Booking ${vnp_TxnRef}. Mã phản hồi: ${response.data.vnp_ResponseCode}`);
-                // TODO: Bạn có thể viết thêm model cập nhật trạng thái bảng thanh toán thành "Đã hoàn tiền" tại đây
                 return true;
             } else {
                 console.error(`❌ [VNPay Refund] Thất bại. Mã lỗi VNPay: ${response.data ? response.data.vnp_ResponseCode : 'Không rõ'}`);

@@ -174,8 +174,6 @@ class HealthRecordViewModel extends ChangeNotifier {
       final isSuccess = await _apiHealRecordService.deleteHealthRecord(maBenhNhan);
       
       if (isSuccess) {
-        // ✅ CÁCH SỬA: Xóa trực tiếp hồ sơ khỏi RAM thay vì gọi API tải lại từ đầu.
-        // Tránh tình trạng độ trễ của Database khiến danh sách tải về vẫn còn dữ liệu cũ.
         _listRecord?.removeWhere((element) => element.id == maBenhNhan);
         return true;
       }
@@ -185,7 +183,7 @@ class HealthRecordViewModel extends ChangeNotifier {
       return false;
     } finally {
       _isLoading = false;
-      notifyListeners(); // Gọi hàm này để UI danh sách cập nhật ngay lập tức
+      notifyListeners();
     }
   }
 }

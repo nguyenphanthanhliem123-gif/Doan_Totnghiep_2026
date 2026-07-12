@@ -204,7 +204,7 @@ class _AdminPaymentScreenState extends State<AdminPaymentScreen> {
             ),
             ElevatedButton(
               onPressed: () async {
-                // Kiểm tra Validate: Nếu đã nhập Lý do thì mới cho chạy
+                // Kiểm tra Validate
                 if (_formKey.currentState!.validate()) {
                   Navigator.pop(context); // Đóng Dialog trước
                   

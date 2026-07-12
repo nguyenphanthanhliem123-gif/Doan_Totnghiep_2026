@@ -141,19 +141,17 @@ export default class doctorModel {
                 params.push(filters.specialtyId);
             }
 
-            // 2. Lọc theo khu vực (Sử dụng pk.Vi_tri)
+            // 2. Lọc theo khu vực
             if (filters.location) {
                 conditions.push("pk.Vi_tri LIKE ?");
                 params.push(`%${filters.location}%`);
             }
 
-            // 3. SỬA TẠI ĐÂY: Lọc theo ngày còn lịch (Dùng bảng khung_gio_kham)
+            // 3. Lọc theo ngày còn lịch
             let dateJoin = "";
             if (filters.availableDate) {
-                // Join với bảng khung_gio_kham
                 dateJoin = "JOIN khung_gio_kham kgk ON b.Ma_bac_si = kgk.Ma_bac_si";
                 
-                // Dùng DATE(kgk.Thoi_gian_Bdau) để cắt lấy phần Ngày từ DATETIME, và trạng thái 'available'
                 conditions.push("DATE(kgk.Thoi_gian_Bdau) = ? AND kgk.Trang_thai = 'available'");
                 params.push(filters.availableDate);
             }
@@ -225,7 +223,7 @@ export default class doctorModel {
             const [rows] = await execute(query, params);
             return rows;
         } catch (error) {
-            console.error("Lỗi chi tiết SQL:", error.message); // In lỗi ra terminal backend để dễ debug
+            console.error("Lỗi chi tiết SQL:", error.message);
             throw new Error('Lỗi DB getDoctorsFilter: ' + error.message);
         }
     }
@@ -262,7 +260,7 @@ export default class doctorModel {
                 return { affectedRows: 0, message: "Không có dữ liệu nào cần thay đổi." };
             }
 
-            // 4. Ghép mảng setClauses thành chuỗi (VD: "Ma_chuyen_khoa = ?, Mo_ta_ban_than = ?")
+            // 4. Ghép mảng setClauses thành chuỗi
             const sql = `
                 UPDATE bac_si
                 SET ${setClauses.join(', ')}

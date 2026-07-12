@@ -2,9 +2,7 @@ import nodemailer from 'nodemailer';
 import QRCode from 'qrcode';
 import { configDotenv } from 'dotenv';
 
-/**
- * Hàm tạo mã QR dưới dạng chuỗi Base64
- */
+
 const generateQRCodeBase64 = async (text) => {
     try {
         // Tạo QR chứa mã Booking

@@ -1,4 +1,3 @@
-// Backend_NodeJS/utils/timeSlotHelper.js
 export function generateSlotsFromInterval(startTime, endTime, slotDuration, breakTime) {
     let slots = [];
     

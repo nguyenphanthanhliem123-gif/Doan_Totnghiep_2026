@@ -4,14 +4,14 @@ import { fileURLToPath } from 'url';
 import { ChromaClient } from 'chromadb';
 import { pipeline } from '@xenova/transformers';
 
-// 🌐 SỬA LỖI ENV: Ép Node.js tìm file .env bằng đường dẫn tuyệt đối độc lập
+// Ép Node.js tìm file .env bằng đường dẫn tuyệt đối độc lập
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
-// 🛠️ SỬA CẢNH BÁO PATH DEPRECATED: Chuyển sang dùng host và port chuẩn cấu trúc mới
+// Chuyển sang dùng host và port chuẩn cấu trúc mới
 const chromaClient = new ChromaClient({ host: "localhost", port: 8000 });
 
-// 🧠 FIX LỖI DefaultEmbeddingFunction: Hàm dummy để bypass kiểm tra của ChromaDB
+// Hàm dummy để bypass kiểm tra của ChromaDB
 const dummyEmbeddingFunction = {
     generate: async (texts) => Array(texts.length).fill([])
 };
@@ -24,7 +24,7 @@ async function getLocalEmbedding(text) {
     try {
         if (!embeddingPipeline) {
             console.log("⏳ Lần đầu khởi chạy: Đang nạp model Embedding Local vào RAM (Khoảng ~120MB)...");
-            // Tải bản nén quantized tối ưu tuyệt đối cho CPU máy yếu
+            // Tải bản nén quantized tối ưu tuyệt đối
             embeddingPipeline = await pipeline('feature-extraction', 'Xenova/paraphrase-multilingual-MiniLM-L12-v2');
             console.log("✅ Nạp model Embedding thành công! Sẵn sàng xử lý.");
         }
@@ -45,10 +45,10 @@ export default class ChromaService {
     // =========================================================================
     static async searchMedicalKnowledge(userSymptom) {
         const collection = await chromaClient.getOrCreateCollection({ 
-            name: "medical_knowledge_v2", // 🌟 LƯU Ý: Thêm _v2 để phân biệt với dữ liệu Gemini cũ
+            name: "medical_knowledge_v2",
             embeddingFunction: dummyEmbeddingFunction 
         });
-        const queryVector = await getLocalEmbedding(userSymptom); // 👈 Đã sửa thành getLocalEmbedding
+        const queryVector = await getLocalEmbedding(userSymptom);
 
         const results = await collection.query({
             queryEmbeddings: [queryVector],
@@ -62,10 +62,10 @@ export default class ChromaService {
     // =========================================================================
     static async checkDrugInteraction(drugName, patientAllergyHistory) {
         const collection = await chromaClient.getOrCreateCollection({ 
-            name: "drug_database_v2", // 🌟 Thêm _v2
+            name: "drug_database_v2",
             embeddingFunction: dummyEmbeddingFunction
         });
-        const queryVector = await getLocalEmbedding(`${drugName} ${patientAllergyHistory}`); // 👈 Đã sửa
+        const queryVector = await getLocalEmbedding(`${drugName} ${patientAllergyHistory}`);
 
         const __results = await collection.query({
             queryEmbeddings: [queryVector],
@@ -79,10 +79,10 @@ export default class ChromaService {
     // =========================================================================
     static async searchDoctorSemantic(searchQuery) {
         const collection = await chromaClient.getOrCreateCollection({ 
-            name: "doctor_profiles_vec_v2", // 🌟 Thêm _v2
+            name: "doctor_profiles_vec_v2",
             embeddingFunction: dummyEmbeddingFunction
         });
-        const queryVector = await getLocalEmbedding(searchQuery); // 👈 Đã sửa
+        const queryVector = await getLocalEmbedding(searchQuery);
 
         const results = await collection.query({
             queryEmbeddings: [queryVector],
@@ -97,10 +97,10 @@ export default class ChromaService {
     // =========================================================================
     static async getAftercareInstructions(diseaseNameOrTreatment) {
         const collection = await chromaClient.getOrCreateCollection({ 
-            name: "aftercare_knowledge_v2", // 🌟 Thêm _v2
+            name: "aftercare_knowledge_v2",
             embeddingFunction: dummyEmbeddingFunction
         });
-        const queryVector = await getLocalEmbedding(diseaseNameOrTreatment); // 👈 Đã sửa
+        const queryVector = await getLocalEmbedding(diseaseNameOrTreatment);
 
         const results = await collection.query({
             queryEmbeddings: [queryVector],
@@ -117,7 +117,7 @@ export default class ChromaService {
             name: collectionName,
             embeddingFunction: dummyEmbeddingFunction 
         });
-        const vector = await getLocalEmbedding(textContent); // 👈 Đã sửa
+        const vector = await getLocalEmbedding(textContent);
 
         await collection.add({
             ids: [id],
