@@ -11,12 +11,23 @@ class AdminTodayAppointmentsScreen extends StatefulWidget {
 }
 
 class _AdminTodayAppointmentsScreenState extends State<AdminTodayAppointmentsScreen> {
+  // 🌟 KHAI BÁO CÁC BIẾN QUẢN LÝ TÌM KIẾM VÀ LỌC CA
+  String _searchQuery = "";
+  String _selectedShift = "All"; // "All", "Morning", "Afternoon", "Evening"
+  final TextEditingController _searchController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<AdminViewModel>().fetchTodayAppointments();
     });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   String _formatTime(String? dateStr) {
@@ -29,22 +40,63 @@ class _AdminTodayAppointmentsScreenState extends State<AdminTodayAppointmentsScr
     }
   }
 
+  // 🌟 THUẬT TOÁN LỌC DỮ LIỆU (TÌM KIẾM + CA KHÁM)
+  List<dynamic> _applyFilters(List<dynamic> rawList) {
+    return rawList.where((item) {
+      // 1. Lọc theo tìm kiếm (Mã booking hoặc Tên bác sĩ)
+      final doctorName = (item['Ten_bac_si'] ?? '').toString().toLowerCase();
+      final bookingCode = (item['Ma_booking'] ?? '').toString().toLowerCase();
+      final query = _searchQuery.toLowerCase();
+      
+      final matchSearch = query.isEmpty || doctorName.contains(query) || bookingCode.contains(query);
+
+      // 2. Lọc theo ca khám
+      bool matchShift = true;
+      if (_selectedShift != "All") {
+        final timeStr = item['Thoi_gian_Bdau'];
+        if (timeStr != null) {
+          try {
+            final hour = DateTime.parse(timeStr).toLocal().hour;
+            if (_selectedShift == "Morning") {
+              matchShift = (hour >= 8 && hour < 12); // Ca sáng: 8h - 11h59
+            } else if (_selectedShift == "Afternoon") {
+              matchShift = (hour >= 12 && hour < 18); // Ca chiều: 12h - 17h59 (Bao gồm cả 13h)
+            } else if (_selectedShift == "Evening") {
+              matchShift = (hour >= 18); // Ca tối: Từ 18h trở đi
+            }
+          } catch (e) {
+            matchShift = false;
+          }
+        } else {
+          matchShift = false;
+        }
+      }
+
+      // Trả về true nếu thỏa mãn cả 2 điều kiện
+      return matchSearch && matchShift;
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     final adminVM = context.watch<AdminViewModel>();
-    final allList = adminVM.todayAppointments;
+    final rawList = adminVM.todayAppointments;
 
-    // Phân loại danh sách theo trạng thái thực tế trong DB của bạn
-    final pendingList = allList.where((item) => item['Trang_thai_lich_hen'] == 'confirmed' || item['Trang_thai_lich_hen'] == 'pending').toList();
-    final doneList = allList.where((item) => item['Trang_thai_lich_hen'] == 'done').toList();
-    final cancelledList = allList.where((item) => item['Trang_thai_lich_hen'] == 'cancelled' || item['Trang_thai_lich_hen'] == 'absent').toList();
+    // 🌟 BƯỚC 1: LỌC DANH SÁCH TỔNG THEO TỪ KHÓA VÀ CA KHÁM TRƯỚC
+    final filteredList = _applyFilters(rawList);
+
+    // 🌟 BƯỚC 2: PHÂN LOẠI DANH SÁCH ĐÃ LỌC THEO TAB (TRẠNG THÁI)
+    final pendingList = filteredList.where((item) => item['Trang_thai_lich_hen'] == 'confirmed' || item['Trang_thai_lich_hen'] == 'pending').toList();
+    final doneList = filteredList.where((item) => item['Trang_thai_lich_hen'] == 'done').toList();
+    final cancelledList = filteredList.where((item) => item['Trang_thai_lich_hen'] == 'cancelled' || item['Trang_thai_lich_hen'] == 'absent').toList();
 
     return DefaultTabController(
       length: 4,
       child: Scaffold(
-        backgroundColor: kLightCyanBg2, // Nền sáng mịn đồng bộ hệ thống
+        backgroundColor: kLightCyanBg2,
         appBar: AppBar(
           backgroundColor: kPrimaryColor,
+          elevation: 0,
           title: const Text('Lịch Hẹn Hôm Nay', style: kHeaderTextStyle),
           centerTitle: true,
           bottom: const TabBar(
@@ -62,15 +114,115 @@ class _AdminTodayAppointmentsScreenState extends State<AdminTodayAppointmentsScr
         ),
         body: adminVM.isLoading
             ? const Center(child: CircularProgressIndicator(color: kPrimaryColor))
-            : TabBarView(
+            : Column(
                 children: [
-                  _buildAppointmentListView(allList),
-                  _buildAppointmentListView(pendingList),
-                  _buildAppointmentListView(doneList),
-                  _buildAppointmentListView(cancelledList),
+                  // 🌟 KHU VỰC TÌM KIẾM VÀ LỌC CA
+                  _buildFilterSection(),
+
+                  // KHU VỰC HIỂN THỊ DANH SÁCH
+                  Expanded(
+                    child: TabBarView(
+                      children: [
+                        _buildAppointmentListView(filteredList),
+                        _buildAppointmentListView(pendingList),
+                        _buildAppointmentListView(doneList),
+                        _buildAppointmentListView(cancelledList),
+                      ],
+                    ),
+                  ),
                 ],
               ),
       ),
+    );
+  }
+
+  // 🌟 WIDGET: THANH TÌM KIẾM VÀ CHỌN CA
+  Widget _buildFilterSection() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Thanh tìm kiếm
+          TextField(
+            controller: _searchController,
+            onChanged: (value) {
+              setState(() {
+                _searchQuery = value;
+              });
+            },
+            decoration: InputDecoration(
+              hintText: 'Tìm theo Mã booking hoặc Tên bác sĩ...',
+              hintStyle: const TextStyle(color: kGreyTextColor, fontSize: 14),
+              prefixIcon: const Icon(Icons.search, color: kPrimaryColor),
+              suffixIcon: _searchQuery.isNotEmpty 
+                  ? IconButton(
+                      icon: const Icon(Icons.clear, color: Colors.grey),
+                      onPressed: () {
+                        _searchController.clear();
+                        setState(() { _searchQuery = ""; });
+                      },
+                    ) 
+                  : null,
+              filled: true,
+              fillColor: kLightCyanBg1,
+              contentPadding: const EdgeInsets.symmetric(vertical: 0),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          
+          // Bộ lọc Ca khám (Chip)
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _buildShiftChip("Tất cả ca", "All"),
+                const SizedBox(width: 8),
+                _buildShiftChip("Sáng (8h-12h)", "Morning"),
+                const SizedBox(width: 8),
+                _buildShiftChip("Chiều (13h-17h)", "Afternoon"),
+                const SizedBox(width: 8),
+                _buildShiftChip("Tối (18h-21h)", "Evening"),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // WIDGET HỖ TRỢ: Nút bấm (Chip) chọn ca
+  Widget _buildShiftChip(String label, String shiftValue) {
+    final isSelected = _selectedShift == shiftValue;
+    return ChoiceChip(
+      label: Text(
+        label, 
+        style: TextStyle(
+          color: isSelected ? Colors.white : kTextColor,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          fontSize: 13
+        )
+      ),
+      selected: isSelected,
+      selectedColor: kPrimaryColor,
+      backgroundColor: Colors.grey.shade100,
+      side: BorderSide(color: isSelected ? kPrimaryColor : Colors.grey.shade300),
+      showCheckmark: false,
+      onSelected: (bool selected) {
+        setState(() {
+          _selectedShift = shiftValue;
+        });
+      },
     );
   }
 
@@ -78,7 +230,7 @@ class _AdminTodayAppointmentsScreenState extends State<AdminTodayAppointmentsScr
     if (list.isEmpty) {
       return const Center(
         child: Text(
-          'Không có ca khám nào trong danh mục này.',
+          'Không có ca khám nào khớp với tìm kiếm.',
           style: TextStyle(color: kGreyTextColor, fontSize: 15),
         ),
       );
@@ -94,12 +246,19 @@ class _AdminTodayAppointmentsScreenState extends State<AdminTodayAppointmentsScr
           final item = list[index];
           final String status = item['Trang_thai_lich_hen'] ?? 'pending';
           
+          // 🌟 XỬ LÝ GHÉP HỌC VỊ VÀ TÊN BÁC SĨ
+          final String hocVi = (item['Hoc_vi'] != null && item['Hoc_vi'].toString().isNotEmpty) 
+              ? item['Hoc_vi'] 
+              : 'BS.'; // Nếu DB không có học vị thì mặc định để chữ BS.
+          final String tenBacSi = item['Ten_bac_si'] ?? 'Chưa rõ';
+          final String fullNameDoctor = "$hocVi $tenBacSi"; // Ghép lại thành "ThS.BS Nguyễn Văn A"
+
           return Container(
             margin: const EdgeInsets.only(bottom: 15),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(kBorderRadiusLarge), // Bo tròn 20 chuẩn UI nhóm
+              borderRadius: BorderRadius.circular(kBorderRadiusLarge),
               border: Border.all(color: kBorderCyan),
               boxShadow: [
                 BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 6, offset: const Offset(0, 2))
@@ -130,7 +289,10 @@ class _AdminTodayAppointmentsScreenState extends State<AdminTodayAppointmentsScr
                 const SizedBox(height: 8),
                 _buildInfoRow(Icons.person, "Bệnh nhân:", item['Ten_benh_nhan'] ?? 'Chưa rõ'),
                 const SizedBox(height: 8),
-                _buildInfoRow(Icons.medical_information, "Bác sĩ phụ trách:", "BS. ${item['Ten_bac_si'] ?? 'Chưa rõ'}"),
+                
+                // 🌟 GỌI BIẾN ĐÃ GHÉP VÀO ĐÂY THAY VÌ HARDCODE "BS."
+                _buildInfoRow(Icons.medical_information, "Bác sĩ phụ trách:", fullNameDoctor),
+                
                 const SizedBox(height: 8),
                 _buildInfoRow(
                   item['Hinh_thuc'] == 'online' ? Icons.videocam : Icons.location_on, 
@@ -139,7 +301,7 @@ class _AdminTodayAppointmentsScreenState extends State<AdminTodayAppointmentsScr
                   textColor: item['Hinh_thuc'] == 'online' ? Colors.blue : Colors.redAccent
                 ),
                 const SizedBox(height: 8),
-                _buildInfoRow(Icons.medical_services_outlined, "Dịch vụ chỉ định:", item['Ten_dich_vu'] ?? 'Khám tổng quát khám lâm sàng'),
+                _buildInfoRow(Icons.medical_services_outlined, "Dịch vụ chỉ định:", item['Ten_dich_vu'] ?? 'Khám tổng quát / khám lâm sàng'),
               ],
             ),
           );

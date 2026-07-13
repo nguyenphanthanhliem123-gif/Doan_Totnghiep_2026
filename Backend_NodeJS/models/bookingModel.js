@@ -90,7 +90,7 @@ export default class bookingModel {
     // Lấy lịch làm việc chi tiết trong 1 ngày
     static async getDoctorSchedule(date){
         try{
-            // Trở về SQL an toàn của bạn, lấy thêm Gio_Kham dạng chuỗi
+            // Lấy toàn bộ lịch khả dụng trong ngày
             const query = `
                 SELECT kgk.*, 
                     DATE_FORMAT(kgk.Thoi_gian_Bdau, '%H:%i') AS Gio_Kham 
@@ -105,19 +105,10 @@ export default class bookingModel {
             `;
 
             const [rows] = await execute(query, [date]);
-            if (!rows || rows.length === 0) return [];
-
-            const todayStr = moment().utcOffset('+07:00').format('YYYY-MM-DD');
             
-            if (date === todayStr) {
-                const currentHHmm = moment().utcOffset('+07:00').format('HH:mm');
-                return rows.filter(row => {
-                    // row.Gio_Kham không bao giờ bị lệch múi giờ
-                    return row.Gio_Kham > currentHHmm; 
-                });
-            }
-
-            return rows;
+            // Trả về toàn bộ danh sách. 
+            return rows || [];
+            
         }
         catch(error){
             console.error(">>> [LỖI SQL Schedule]:", error);

@@ -41,14 +41,19 @@ function getActiveModel() {
         này chỉ mang tính tham khảo, vui lòng liên hệ trực tiếp bác sĩ 
         điều trị nếu có triệu chứng bất thường." ở cuối câu.
         7. TƯ VẤN TRIỆU CHỨNG & SÀNG LỌC BỆNH: 
-        - Khi bệnh nhân mô tả các triệu chứng tự nhiên (Ví dụ: "Tôi bị đau đầu và sốt nhẹ 2 ngày", "Tôi ho dữ dội"...), bạn BẮT BUỘC phải gọi hàm "suggestSpecialtyBySymptom" để hệ thống lấy cẩm nang nhóm bệnh tương ứng từ kho dữ liệu Vector (ChromaDB).
+        - Khi bệnh nhân mô tả các triệu chứng tự nhiên, bạn BẮT BUỘC phải gọi hàm "suggestSpecialtyBySymptom".
         - Tuyệt đối KHÔNG tự phán đoán hay kết luận vo khi chưa gọi hàm này.
 
-        QUY TẮC BẮT BUỘC (Trường hợp thiếu thông tin): 
-        Nếu người dùng yêu cầu 'Đặt lịch', 'Tìm lịch' chung chung mà không nói rõ
-        tên bác sĩ hoặc chuyên khoa nào, bạn TUYỆT ĐỐI KHÔNG ĐƯỢC gọi bất kỳ 
-        hàm (Tool) nào. Hãy chủ động nhắn tin hỏi lại người dùng một cách lịch sự 
-        để họ cung cấp rõ tên chuyên khoa hoặc bác sĩ mà họ mong muốn thăm khám.`,
+        8. QUY TRÌNH ĐẶT LỊCH (CHỦ ĐỘNG & RÕ RÀNG):
+        - LUỒNG 1 (YÊU CẦU SỚM NHẤT/TÌM MỚI): Khi người dùng yêu cầu "đặt lịch sớm nhất", "đổi bác sĩ", "đổi sang giờ khác" -> BỎ QUA TOÀN BỘ MÃ ẨN CŨ, BẮT BUỘC gọi tool 'shortcut_book_earliest' hoặc 'check_doctor_schedule' để lấy dữ liệu mới.
+        - LUỒNG 2 (XEM LỊCH & CHỌN GIỜ): 
+            + KHI LIỆT KÊ LỊCH: BẮT BUỘC chèn mã ẩn sau mỗi khung giờ: [Mã giờ: X, Mã BS: Y].
+            + CHỦ ĐỘNG ĐẶT CÂU HỎI CHỐT sau khi liệt kê lịch.
+
+        9. QUY TẮC CHỐT LỊCH (CỰC KỲ QUAN TRỌNG):
+        - CHỈ GỌI tool 'confirm_and_book_appointment' KHI VÀ CHỈ KHI người dùng XÁC NHẬN CHỌN MỘT GIỜ CỤ THỂ từ danh sách bạn VỪA MỚI LIỆT KÊ ở tin nhắn ngay phía trên.
+        - Tuyệt đối KHÔNG tái sử dụng các mã ẩn [Mã giờ: X] từ những cuộc hội thoại cũ tít phía trên nếu người dùng thay đổi luồng trò chuyện sang "đặt sớm nhất".
+        - Nếu không có dịch vụ nào được chọn, tự truyền {ma_dich_vu: 25, gia_tien: 150000}.`,
 
         // Dạy cho AI biết khi nào thì cần gọi hàm (Function Calling)
         tools: [{
@@ -84,7 +89,7 @@ function getActiveModel() {
                 // TOOL: KIẾM TRA LỊCH TRỐNG CỦA BÁC SĨ
                 {
                     name: "check_doctor_schedule",
-                    description: "Dùng để kiểm tra lịch khám còn trống của một bác sĩ cụ thể khi nhắc tên đích danh bác sĩ.",
+                    description: "Dùng để kiểm tra lịch khám còn trống của một bác sĩ cụ thể.",
                     parameters: {
                         type: "OBJECT",
                         properties: { 
@@ -106,14 +111,41 @@ function getActiveModel() {
                         required: ["doctor_name"]
                     }
                 },
-                // TOOL: ĐẶT LỊCH NHANH CÓ CHUYÊN KHOA
+                // TOOL: ĐẶT LỊCH THẲNG KHI CÓ ĐỦ THÔNG TIN
                 {
-                    name: "shortcut_book_with_specialty",
-                    description: "Dùng khi người dùng muốn ĐẶT LỊCH NHANH/SỚM NHẤT và có nói rõ tên chuyên khoa (VD: 'Đặt lịch bác sĩ nội khoa sớm nhất', 'Tìm lịch khoa nhi sớm nhất').",
+                    name: "direct_book_specific_time",
+                    description: "Dùng khi người dùng ngay từ đầu đã cung cấp ĐẦY ĐỦ Tên bác sĩ + Ngày + Giờ cụ thể. AI không cần biết Mã ID, chỉ cần truyền text.",
                     parameters: {
                         type: "OBJECT",
-                        properties: { specialty: { type: "STRING", description: "Tên chuyên khoa (VD: Nội tổng quát)" } },
-                        required: ["specialty"]
+                        properties: { 
+                            doctor_name: { type: "STRING", description: "Tên bác sĩ (VD: Alery)" },
+                            target_date: { type: "STRING", description: "Ngày khám định dạng YYYY-MM-DD. Nếu không nhắc ngày, dùng: " + vnTime },
+                            target_time: { type: "STRING", description: "Giờ khám định dạng HH:mm (VD: 08:00)" },
+                            danh_sach_dich_vu: { 
+                                type: "ARRAY", 
+                                description: "Danh sách các dịch vụ người dùng chọn. Bỏ trống nếu không chọn dịch vụ nào.",
+                                items: {
+                                    type: "OBJECT",
+                                    properties: {
+                                        ma_dich_vu: { type: "INTEGER", description: "Mã dịch vụ tự bốc từ [Mã DV: X]" },
+                                        gia_tien: { type: "NUMBER", description: "Giá tiền của dịch vụ đó" }
+                                    }
+                                }
+                            }
+                        },
+                        required: ["doctor_name", "target_date", "target_time"]
+                    }
+                },
+                // TOOL: ĐẶT LỊCH SỚM NHẤT THEO TÊN BÁC SĨ HOẶC CHUYÊN KHOA
+                {
+                    name: "shortcut_book_earliest",
+                    description: "Dùng khi người dùng muốn ĐẶT LỊCH SỚM NHẤT. Hỗ trợ tìm theo tên bác sĩ HOẶC chuyên khoa.",
+                    parameters: {
+                        type: "OBJECT",
+                        properties: { 
+                            doctor_name: { type: "STRING", description: "Tên bác sĩ nếu người dùng nhắc đến (VD: Alery)" },
+                            specialty: { type: "STRING", description: "Tên chuyên khoa nếu người dùng nhắc đến (VD: Nội khoa)" }
+                        }
                     }
                 },
                 // TOOL: XÁC NHẬN CHỐT LỊCH
@@ -300,23 +332,71 @@ export default class chatbotController {
                     có tên gần giống hoặc cùng chuyên khoa cho bệnh nhân.`;
                 }
 
-                else if (call.name === "shortcut_book_with_specialty") {
-                    console.log("AI GỌI HÀM: Đặt lịch sớm nhất CÓ Khoa ->", call.args.specialty);
-                    dbData = await ChatbotModel.findEarliestSlotWithSpecialty(call.args.specialty);
+                else if (call.name === "direct_book_specific_time") {
+                    console.log("AI GỌI HÀM: direct_book_specific_time ->", call.args.doctor_name, call.args.target_date, call.args.target_time);
+                    
+                    // 1. Lấy danh sách dịch vụ AI trích xuất được (nếu có)
+                    let danhSachDichVu = call.args.danh_sach_dich_vu || [];
+
+                    // 2. LOGIC MẶC ĐỊNH: Nếu mảng rỗng (khách không nói dịch vụ gì), tự động thêm Khám lâm sàng (Mã 25, 150k)
+                    if (danhSachDichVu.length === 0) {
+                        danhSachDichVu = [{ ma_dich_vu: 25, gia_tien: 150000 }];
+                    }
+
+                    // 3. Backend ngầm dịch Text thành ID
+                    const exactSlot = await ChatbotModel.findExactSlotId(call.args.doctor_name, call.args.target_date, call.args.target_time);
+                    
+                    if (exactSlot) {
+                        try {
+                            // Tiến hành chốt lịch
+                            const bookingCode = await ChatbotModel.createNewAppointment(userId, exactSlot.Ma_khung_gio, exactSlot.Ma_bac_si, danhSachDichVu);
+                            
+                            // Tính tổng tiền dựa trên mảng dịch vụ cuối cùng
+                            const tongChiPhi = danhSachDichVu.reduce((sum, item) => sum + (item.gia_tien || 0), 0);
+                            
+                            prompt = `Bạn đã tìm thấy khung giờ phù hợp và Backend đã tự động đặt lịch thành công. Mã Booking là: ${bookingCode}.
+                            Hãy đóng vai lễ tân báo tin vui, nhắc lại ngày giờ (${call.args.target_time} ngày ${call.args.target_date}) do bác sĩ ${call.args.doctor_name} khám. 
+                            Báo tổng chi phí dự kiến là ${tongChiPhi} VNĐ và dặn họ đến trước 15 phút.`;
+                        } catch (err) {
+                            prompt = `Hệ thống backend báo lỗi khi lưu lịch. Hãy xin lỗi người dùng và báo hệ thống đang bận.`;
+                        }
+                    } else {
+                        // 4. Nếu giờ đó BS không có lịch hoặc đã bị người khác đặt
+                        console.log("-> Khung giờ đã kín/không tồn tại. Đang tìm lịch thay thế để gợi ý...");
+                        
+                        // Chủ động quét DB lấy các giờ còn trống của bác sĩ đó trong cùng ngày
+                        const lichGoiY = await ChatbotModel.checkDoctorSchedule(call.args.doctor_name, call.args.target_date);
+                        
+                        prompt = `Khung giờ ${call.args.target_time} ngày ${call.args.target_date} của bác sĩ ${call.args.doctor_name} hiện không khả dụng hoặc đã có người đặt. 
+                        Hãy lịch sự xin lỗi người dùng vì sự bất tiện này.
+                        
+                        Tiếp theo, hãy dựa vào danh sách các khung giờ còn trống khác trong ngày: ${JSON.stringify(lichGoiY)}.
+                        - Nếu có lịch trống khác ([] không rỗng): Hãy chủ động gợi ý các giờ này cho người dùng chọn. ⚠️ NHỚ BẮT BUỘC CHÈN MÃ ẨN [Mã giờ: X, Mã BS: Y] sau mỗi giờ gợi ý để họ có thể chốt.
+                        - Nếu rỗng ([]): Hãy báo là bác sĩ đã kín lịch toàn bộ trong ngày hôm đó và gợi ý họ chọn ngày khác hoặc bác sĩ khác.`;
+                    }
+                }
+
+                else if (call.name === "shortcut_book_earliest") {
+                    let dbData = [];
+                    // Xét xem người dùng gọi tên BS hay tên khoa
+                    if (call.args.doctor_name) {
+                        console.log("AI GỌI HÀM: Đặt lịch sớm nhất Bác Sĩ ->", call.args.doctor_name);
+                        dbData = await ChatbotModel.findEarliestSlot(call.args.doctor_name, true);
+                    } else if (call.args.specialty) {
+                        console.log("AI GỌI HÀM: Đặt lịch sớm nhất Chuyên Khoa ->", call.args.specialty);
+                        dbData = await ChatbotModel.findEarliestSlot(call.args.specialty, false);
+                    } else {
+                        // Tránh lỗi nếu AI không bóc được cả 2
+                        dbData = [];
+                    }
                     
                     prompt = `Dựa vào kết quả lịch trống sớm nhất: ${JSON.stringify(dbData)}. 
-                    - Nếu có lịch ([] không rỗng): Hãy thông báo đây là lịch sớm nhất của 
-                    chuyên khoa ${call.args.specialty}, nêu rõ giờ khám, ngày khám và tên bác sĩ. 
-                      ⚠️ QUAN TRỌNG: Bạn BẮT BUỘC phải viết kèm mã ẩn theo 
-                      cú pháp chính xác là [Mã giờ: X, Mã BS: Y] ở cuối câu. 
-                      Sau đó HỎI người dùng có ĐỒNG Ý đặt lịch này không.
-                      Ví dụ: ... do Bác sĩ Nguyễn Văn A khám [Mã giờ: 1, Mã BS: 13]. 
-                      Bạn có đồng ý đặt lịch này không?
+                    - Nếu có lịch ([] không rỗng): Hãy thông báo đây là lịch sớm nhất, nêu rõ giờ khám, ngày khám và tên bác sĩ. 
+                      ⚠️ QUAN TRỌNG: Bạn BẮT BUỘC phải viết kèm mã ẩn theo cú pháp chính xác là [Mã giờ: X, Mã BS: Y] ở cuối câu. 
+                      Sau đó HỎI người dùng có ĐỒNG Ý chốt lịch này không.
+                      Ví dụ: Bác sĩ Nguyễn Thị Alery còn lịch trống sớm nhất vào lúc 08:00 - 08:30 ngày 14-07-2026 [Mã giờ: 1, Mã BS: 13]. Bạn có muốn tôi chốt lịch này không?
                       
-                    - Trường hợp Hết chỗ (nếu kết quả trả về rỗng []): Hãy xin lỗi người dùng 
-                    một cách lịch sự vì chuyên khoa ${call.args.specialty} hiện tại đã kín lịch 
-                    hoặc không có khung giờ khả dụng. Hãy chủ động đề xuất họ đổi sang đặt lịch 
-                    vào một ngày khác, hoặc gợi ý họ tham khảo các chuyên khoa liên quan gần nhất.`;
+                    - Trường hợp Hết chỗ (nếu kết quả trả về rỗng []): Hãy xin lỗi và báo rằng hiện tại bác sĩ/chuyên khoa này đã kín lịch.`;
                 }
 
                 else if (call.name === "confirm_and_book_appointment") {
@@ -324,30 +404,25 @@ export default class chatbotController {
                     let maBacSi = call.args.ma_bac_si;
                     let danhSachDichVu = call.args.danh_sach_dich_vu || [];
 
-                    // Nếu danh sách dịch vụ trống, tự động thêm dịch vụ khám ban đầu với giá 150k
                     if (danhSachDichVu.length === 0) {
-                        danhSachDichVu = [
-                            { ma_dich_vu: 25, gia_tien: 150000 }
-                        ];
+                        danhSachDichVu = [{ ma_dich_vu: 25, gia_tien: 150000 }];
                     }
                     console.log(`AI ĐANG TỰ TRUY CẬP MÃ -> Giờ: ${maKhungGio}, BS: ${maBacSi}, Dịch Vụ:`, JSON.stringify(danhSachDichVu));
                     
                     try {
-                        const bookingCode = await ChatbotModel.createNewAppointment(userId, maKhungGio, maBacSi, danhSachDichVu);
+                        const bookingResult = await ChatbotModel.createNewAppointment(userId, maKhungGio, maBacSi, danhSachDichVu);
                         const tongChiPhi = danhSachDichVu.reduce((sum, item) => sum + (item.gia_tien || 0), 0);
 
-                        prompt = `Hệ thống vừa đặt lịch thành công với Mã Booking là: ${bookingCode}. 
-                        Hãy đóng vai lễ tân báo tin vui, nhắc lại ngày giờ họ đã đặt, 
-                        đọc mã Booking và dặn họ đến trước 15 phút để làm thủ tục.
-                        - Nếu tổng chi phí lớn hơn 0 (tongChiPhi = ${tongChiPhi}): 
-                        Hãy báo tổng chi phí là ${tongChiPhi} VNĐ và dặn bệnh nhân thanh toán tại quầy.
-                        - Nếu tổng chi phí = 0: Hãy dặn chi phí dịch vụ sẽ được tính 
-                        và tư vấn sau khi bác sĩ thăm khám trực tiếp.`;
+                        prompt = `Hệ thống vừa đặt lịch thành công với Mã Booking là: ${bookingResult.maBooking}. 
+                        Hãy báo tin vui cho bệnh nhân.
+                        ⚠️ BẮT BUỘC ĐỌC ĐÚNG THỜI GIAN NÀY: Khám vào lúc ${bookingResult.gioKham} ngày ${bookingResult.ngayKham}.
+                        Báo tổng chi phí là ${tongChiPhi} VNĐ và dặn họ đến trước 15 phút.`;
                     } catch (error) {
                         console.error("LỖI SQL KHI ĐẶT LỊCH:", error.message);
-                        prompt = `Hãy xin lỗi bệnh nhân một cách lịch sự, 
-                        thông báo rằng khung giờ này vừa có người khác đặt 
-                        hoặc hệ thống đang bận, vui lòng chọn một khung giờ khác.`;
+                        
+                        // Truyền thẳng nguyên nhân lỗi cho AI để AI giải thích với khách hàng
+                        prompt = `Việc đặt lịch bị thất bại do lỗi hệ thống trả về như sau: "${error.message}". 
+                        Hãy giải thích lỗi này một cách lịch sự, thấu hiểu và gợi ý hướng giải quyết cho bệnh nhân (Ví dụ: Chọn một khung giờ khác).`;
                     }
                 }
                 

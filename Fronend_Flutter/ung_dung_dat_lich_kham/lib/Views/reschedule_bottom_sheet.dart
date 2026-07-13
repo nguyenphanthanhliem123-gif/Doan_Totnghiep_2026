@@ -122,27 +122,57 @@ class _RescheduleBottomSheetState extends State<RescheduleBottomSheet> {
                 spacing: 10,
                 runSpacing: 10,
                 children: activeSlots.map((slot) {
-                  bool isAvailable = slot.status == 'available';
+                  // 🌟 Thêm logic so sánh thời gian thực tế
+                  String timeString = slot.time.split('-')[0].trim();
+                  List<String> timeParts = timeString.split(':');
+                  int hour = int.parse(timeParts[0]);
+                  int minute = int.parse(timeParts[1]);
+
+                  DateTime slotDateTime = DateTime(
+                    _selectedDate!.year,
+                    _selectedDate!.month,
+                    _selectedDate!.day,
+                    hour,
+                    minute,
+                  );
+
+                  DateTime now = DateTime.now();
+                  bool isPast = slotDateTime.isBefore(now); // Đã qua giờ hiện tại
                   bool isBooked = slot.status == 'booked';
+                  
+                  // Chỉ cho phép bấm khi trạng thái available VÀ chưa qua giờ
+                  bool isAvailable = slot.status == 'available' && !isPast;
                   bool isSelected = _selectedSlotId == slot.id;
 
-                  Color bgColor; Color borderColor = Colors.transparent; Color textColor; TextDecoration? textDecoration;
-                  if (isAvailable) {
+                  Color bgColor; 
+                  Color borderColor = Colors.transparent; 
+                  Color textColor; 
+
+                  if (isPast || isBooked) {
+                    // Bôi xám, vô hiệu hóa, không gạch ngang chữ
+                    bgColor = Colors.grey.shade300; 
+                    textColor = Colors.grey.shade600; 
+                  } else if (isAvailable) {
                     bgColor = isSelected ? kPrimaryColor : kPrimaryColor.withOpacity(0.1);
                     borderColor = isAvailable ? kPrimaryColor.withOpacity(0.4) : Colors.transparent;
                     textColor = isSelected ? Colors.white : kPrimaryColor;
-                  } else if (isBooked) {
-                    bgColor = Colors.grey.shade300; textColor = Colors.grey.shade600; textDecoration = TextDecoration.lineThrough;
                   } else { 
-                    bgColor = Colors.white; borderColor = Colors.grey.shade300; textColor = Colors.grey.shade400;
+                    bgColor = Colors.white; 
+                    borderColor = Colors.grey.shade300; 
+                    textColor = Colors.grey.shade400;
                   }
 
                   return GestureDetector(
                     onTap: isAvailable ? () => setState(() => _selectedSlotId = slot.id) : null,
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(15), border: Border.all(color: borderColor)),
-                      child: Text(slot.time, style: TextStyle(color: textColor, fontWeight: FontWeight.bold, decoration: textDecoration)),
+                      decoration: BoxDecoration(
+                        color: bgColor, 
+                        borderRadius: BorderRadius.circular(15), 
+                        border: Border.all(color: borderColor)
+                      ),
+                      // 🌟 Xóa bỏ TextDecoration.lineThrough
+                      child: Text(slot.time, style: TextStyle(color: textColor, fontWeight: FontWeight.bold)),
                     ),
                   );
                 }).toList(),
@@ -190,7 +220,13 @@ class _RescheduleBottomSheetState extends State<RescheduleBottomSheet> {
           child: Container(
             decoration: BoxDecoration(color: isSelected ? kPrimaryColor : Colors.transparent, shape: BoxShape.circle),
             alignment: Alignment.center,
-            child: Text(day.toString(), style: TextStyle(color: isDisabled ? Colors.grey.shade300 : (isSelected ? Colors.white : kTextColor), fontWeight: isSelected ? FontWeight.bold : FontWeight.normal, decoration: isDisabled ? TextDecoration.lineThrough : null)),
+            child: Text(
+              day.toString(), 
+              style: TextStyle(
+                color: isDisabled ? Colors.grey.shade300 : (isSelected ? Colors.white : kTextColor), 
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              )
+            ),
           ),
         );
       },

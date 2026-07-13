@@ -279,6 +279,7 @@ export default class adminModel {
                     kg.Thoi_gian_Bdau, 
                     kg.Thoi_gian_Kthuc,
                     nd_bs.Ten_nguoi_dung AS Ten_bac_si,
+                    bs.Hoc_vi,
                     nd_bn.Ten_nguoi_dung AS Ten_benh_nhan,
                     -- Gom tất cả dịch vụ của 1 ca khám thành 1 chuỗi cách nhau bởi dấu phẩy
                     GROUP_CONCAT(dv.Ten_dich_vu SEPARATOR ', ') AS Ten_dich_vu
