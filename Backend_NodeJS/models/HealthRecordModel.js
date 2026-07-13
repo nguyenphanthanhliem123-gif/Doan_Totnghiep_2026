@@ -14,7 +14,7 @@ export default class healthRecordModel{
                 COALESCE(nt.Ten_nguoi_than, nd.Ten_nguoi_dung) AS Ten_ho_so,
                 
                 -- Xử lý Vai trò / Mối quan hệ để dễ phân biệt trên giao diện
-                COALESCE(nt.Quan_he, 'Chủ tài khoản') AS Vai_tro,
+                COALESCE(nt.Quan_he, 'Bản thân') AS Vai_tro,
                 
                 bn.Ngay_sinh, 
                 bn.Gioi_tinh, 
@@ -45,13 +45,24 @@ export default class healthRecordModel{
         let conn;
         try{
             conn = await beginTransaction();
+
+            if (moiQuanHe === 'Bản thân') {
+                const [checkExist] = await conn.execute(
+                    `SELECT 1 FROM benh_nhan bn 
+                     LEFT JOIN nguoi_than nt ON bn.Ma_benh_nhan = nt.Ma_benh_nhan 
+                     WHERE bn.Ma_nguoi_dung = ? 
+                     AND (nt.Quan_he = 'Bản thân' OR nt.Ma_nguoi_than IS NULL) 
+                     AND (nt.Trang_thai = 1 OR nt.Trang_thai IS NULL)`,
+                    [userID]
+                );
+                if (checkExist.length > 0) {
+                    throw new Error("Tài khoản đã có hồ sơ bản thân, không thể thêm mới hồ sơ bản thân nữa.");
+                }
+            }
+
             const encryptedNhomMau = encrypt(nhomMau);
             const encryptedDiUng = encrypt(diUng);
             const encryptedBenhNen = encrypt(benhNen);
-
-            /*if(moiQuanHe == 'Bản thân'){
-                const sql
-            }*/
 
 
             const sqlBenhNhan = `
@@ -83,7 +94,7 @@ export default class healthRecordModel{
         }
         catch(error){
             await rollbackTransaction(conn);
-            throw new Error('Lỗi thêm hồ sơ sức khỏe(healthRecordModel.addRelativeProfile): ' + error.message);
+            throw new Error(error.message);
         }
     }
 
@@ -91,6 +102,40 @@ export default class healthRecordModel{
         let conn;
         try {
             conn = await beginTransaction();
+
+            const [currentRecord] = await conn.execute(
+                `SELECT nt.Quan_he, nt.Ma_nguoi_than 
+                 FROM benh_nhan bn 
+                 LEFT JOIN nguoi_than nt ON bn.Ma_benh_nhan = nt.Ma_benh_nhan 
+                 WHERE bn.Ma_benh_nhan = ? AND bn.Ma_nguoi_dung = ?`,
+                [maBenhNhan, userID]
+            );
+
+            if (currentRecord.length === 0) {
+                throw new Error("Không tìm thấy hồ sơ hoặc bạn không có quyền chỉnh sửa.");
+            }
+
+
+            const isCurrentBanThan = currentRecord[0].Ma_nguoi_than === null || currentRecord[0].Quan_he === 'Bản thân';
+
+            if (isCurrentBanThan && moiQuanHe !== 'Bản thân') {
+                throw new Error("Không thể thay đổi vai trò của hồ sơ bản thân sang quan hệ khác.");
+            }
+
+            if (!isCurrentBanThan && moiQuanHe === 'Bản thân') {
+                const [checkExist] = await conn.execute(
+                    `SELECT 1 FROM benh_nhan bn 
+                     LEFT JOIN nguoi_than nt ON bn.Ma_benh_nhan = nt.Ma_benh_nhan 
+                     WHERE bn.Ma_nguoi_dung = ? 
+                     AND (nt.Quan_he = 'Bản thân' OR nt.Ma_nguoi_than IS NULL) 
+                     AND bn.Ma_benh_nhan != ? 
+                     AND (nt.Trang_thai = 1 OR nt.Trang_thai IS NULL)`,
+                    [userID, maBenhNhan]
+                );
+                if (checkExist.length > 0) {
+                    throw new Error("Tài khoản đã tồn tại hồ sơ bản thân, không thể chuyển hồ sơ người thân thành bản thân.");
+                }
+            }
 
             // 1. Mã hóa thông tin y tế bằng AES-256 trước khi lưu
             const encryptedNhomMau = encrypt(nhomMau);
@@ -142,7 +187,7 @@ export default class healthRecordModel{
             if (conn) {
                 await rollbackTransaction(conn);
             }
-            throw new Error('Lỗi cập nhật hồ sơ (healthRecordModel.updateHealthRecord): ' + error.message);
+            throw new Error(error.message);
         }
     }
 

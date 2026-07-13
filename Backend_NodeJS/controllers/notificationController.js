@@ -61,4 +61,28 @@ export default class NotificationController{
             });
         }
     }
+
+    static async saveFCMToken(req,res){
+        try{
+            const userID = req.Ma_nguoi_dung;
+            const FCMToken = req.body.FCMToken;
+
+            const result = await NotificationModel.saveFCMToken(FCMToken, userID);
+
+            if(result > 0){
+                return res.status(200).json({
+                    succeeded: true
+                });
+            }
+            return res.status(500).json({
+                succeeded:false,
+                message: "Lỗi server: Không thể lưu FCMToken"
+            });
+        }catch(error){
+            return res.status(500).json({
+                succeeded:false,
+                message: error.message
+            });
+        }
+    }
 }

@@ -11,6 +11,23 @@ async function sendNotification(maNguoiDung, loai, noiDung, io) {
         // 1. Lưu thông báo vào Database trước
         const sql = `INSERT INTO thong_bao (Ma_nguoi_dung, Loai, Noi_dung, Trang_thai_doc, Ngay_gui) VALUES (?, ?, ?, 0, NOW())`;
         const [result] = await execute(sql, [maNguoiDung, loai, noiDung]);
+
+        // 2. Lấy FCM Token của người dùng từ Database
+        const [user] = await execute(`SELECT fcm_token FROM nguoi_dung WHERE Ma_nguoi_dung = ?`, [maNguoiDung]);
+        
+        if (user.length > 0 && user[0].fcm_token) {
+            // 3. Đẩy Push Notification qua Firebase (Hoạt động cả khi app bị tắt)
+            const message = {
+                notification: {
+                    title: loai === 'Dat_lich' ? 'Đặt lịch thành công' : 'Thông báo hệ thống',
+                    body: noiDung,
+                },
+                token: user[0].fcm_token
+            };
+            
+            await admin.messaging().send(message);
+            console.log(`Đã gửi FCM Push Notification cho User ${maNguoiDung}`);
+        }
         
         const newNotification = {
             Ma_thong_bao: result.insertId,

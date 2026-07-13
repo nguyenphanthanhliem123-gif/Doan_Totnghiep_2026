@@ -1,3 +1,4 @@
+import { cat } from "@xenova/transformers";
 import { execute } from "../config/db.js";
 
 export default class NotificationModel{
@@ -56,6 +57,16 @@ export default class NotificationModel{
         }
         catch(error){
             throw new Error('Lỗi NotificationModel.updateStatus: ' + error.message);
+        }
+    }
+
+    static async saveFCMToken(FCMToken, userID){
+        try{
+            const [result] = await execute("UPDATE nguoi_dung SET fcm_token = ? WHERE Ma_nguoi_dung = ?",[FCMToken, userID]);
+
+            return result.affectedRows;
+        }catch(error){
+            throw new Error(error.message);
         }
     }
 }
