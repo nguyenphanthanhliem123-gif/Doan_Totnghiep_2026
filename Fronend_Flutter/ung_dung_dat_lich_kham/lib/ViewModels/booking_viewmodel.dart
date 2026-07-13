@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
 import 'package:ung_dung_dat_lich_kham/Config/BASE_URL.dart';
@@ -78,10 +79,21 @@ class BookingViewModel extends ChangeNotifier {
     required String paymentMethod,
   }) async {
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+
+      if (token == null) {
+        print("Lỗi: Không tìm thấy token đăng nhập");
+        return {"succeeded": false, "message": "Phiên đăng nhập hết hạn!"};
+      }
+
       final url = Uri.parse(_baseUrl);
       final response = await http.post(
         url,
-        headers: {"Content-Type": "application/json"},
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token",
+        },
         body: jsonEncode({
           "Ma_bac_si": doctorId,
           "Ma_benh_nhan": patientId,

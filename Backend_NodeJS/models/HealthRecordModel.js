@@ -49,9 +49,9 @@ export default class healthRecordModel{
             const encryptedDiUng = encrypt(diUng);
             const encryptedBenhNen = encrypt(benhNen);
 
-            if(moiQuanHe == 'Bản thân'){
+            /*if(moiQuanHe == 'Bản thân'){
                 const sql
-            }
+            }*/
 
 
             const sqlBenhNhan = `

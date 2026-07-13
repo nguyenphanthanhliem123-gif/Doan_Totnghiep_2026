@@ -38,15 +38,13 @@ export default class doctorModel {
     // Hàm lấy danh sách dịch vụ của bác sĩ
     static async getDoctorServices(ma_bac_si) {
         try {
-            // Lấy dịch vụ dành riêng cho bác sĩ này
+            // Chỉ lấy dịch vụ của chính bác sĩ đó HOẶC các dịch vụ chung (Ma_bac_si IS NULL)
             const query = `
-                SELECT Ma_dich_vu, Ten_dich_vu, Gia_tien, ck.Ma_chuyen_khoa, ck.Ten_chuyen_khoa
+                SELECT Ma_dich_vu, Ten_dich_vu, Gia_tien
                 FROM dich_vu
-                LEFT JOIN chuyen_khoa ck ON dich_vu.Ma_chuyen_khoa = ck.Ma_chuyen_khoa
-                WHERE Ma_bac_si = ?
-                   OR ck.Ma_chuyen_khoa = (SELECT Ma_chuyen_khoa FROM bac_si WHERE Ma_bac_si = ?)
+                WHERE Ma_bac_si = ? OR Ma_bac_si IS NULL
             `;
-            const [rows] = await execute(query, [ma_bac_si, ma_bac_si]);
+            const [rows] = await execute(query, [ma_bac_si]);
             return rows;
         } catch (error) {
             throw new Error("Lỗi lấy danh sách dịch vụ: " + error.message);
