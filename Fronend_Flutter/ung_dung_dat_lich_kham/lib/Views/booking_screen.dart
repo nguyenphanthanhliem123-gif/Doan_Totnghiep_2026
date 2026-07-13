@@ -726,27 +726,26 @@ class _BookingScreenState extends State<BookingScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              // 🌟 NÚT XÁC NHẬN THANH TOÁN XONG
-              const SizedBox(height: 8),
               SizedBox(
                 width: double.infinity,
                 child: TextButton(
                   onPressed: () async {
-                    Navigator.pop(ctx); // Đóng hộp thoại VNPay
+                    Navigator.pop(ctx); // Đóng hộp thoại hiển thị VNPay hiện tại
                     
-                    if (!_isOffline) {
-                      // ❌ NẾU ONLINE: Gọi API Hủy lịch ngay lập tức để nhả slot cho người khác
-                      await context.read<BookingViewModel>().cancelUnpaidBooking(bookingCode);
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Đã hủy lịch khám Online do chưa hoàn tất thanh toán.'), backgroundColor: Colors.red),
-                        );
-                        // Reload lại trang chủ để cập nhật lại Slot trống
-                        context.read<AppointmentViewModel>().loadMyAppointments();
-                      }
-                    } else {
-                      // ✅ NẾU OFFLINE: Vẫn lưu lịch, thông báo bệnh nhân đến trả tiền mặt
-                      _showSuccessDialog("Đã ghi nhận lịch hẹn. Vui lòng thanh toán tiền mặt hoặc VNPay tại quầy lễ tân khi đến khám.", bookingCode);
+                    // ✨ ĐÃ SỬA CHỮA ĐỒNG BỘ LOGIC: Khi người dùng nhấn nút hủy bỏ thanh toán VNPay,
+                    // bất kể hình thức là online hay offline, tiến hành kích hoạt API giải phóng slot trống lập tức trên Server.
+                    showDialog(
+                      context: context, 
+                      barrierDismissible: false, 
+                      builder: (context) => const Center(child: CircularProgressIndicator(color: kPrimaryColor))
+                    );
+                    
+                    await context.read<BookingViewModel>().cancelUnpaidBooking(bookingCode);
+                    if (mounted) Navigator.pop(context); // Tắt hiệu ứng vòng xoay Loading
+
+                    if (mounted) {
+                      context.read<AppointmentViewModel>().loadMyAppointments(); // Làm mới lịch sử cuộc hẹn ở trang chính
+                      _showErrorDialog("Giao dịch VNPay đã bị hủy. Lịch hẹn tạm thời của bạn đã được giải phóng để người khác chọn. Vui lòng thực hiện đặt lại lịch mới và chọn thanh toán 'Tiền mặt' nếu có nhu cầu!");
                     }
                   },
                   child: const Text("Hủy bỏ giao dịch", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w600)),
@@ -787,14 +786,14 @@ class _BookingScreenState extends State<BookingScreen> {
   void _showAutoCheckPaymentDialog(String bookingCode) {
     showDialog(
       context: context,
-      barrierDismissible: false, // Không cho bấm ra ngoài để tắt
+      barrierDismissible: false, 
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         title: const Text("Đang chờ thanh toán...", textAlign: TextAlign.center),
         content: const Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            CircularProgressIndicator(),
+            CircularProgressIndicator(color: kPrimaryColor),
             SizedBox(height: 20),
             Text(
               "Vui lòng hoàn tất thanh toán trên trình duyệt web.\nHệ thống đang tự động kiểm tra kết quả...",
@@ -805,13 +804,25 @@ class _BookingScreenState extends State<BookingScreen> {
         actions: [
           Center(
             child: TextButton(
-              onPressed: () {
-                // Người dùng chủ động bấm Hủy
-                _pollingTimer?.cancel();
-                Navigator.pop(ctx);
-                _showErrorDialog("Bạn đã hủy quá trình đợi thanh toán.");
+              onPressed: () async {
+                // ✨ ĐÃ SỬA CHỮA LOGIC TREO SLOT: Người dùng chủ động huỷ khi đang chờ kiểm tra trạng thái
+                _pollingTimer?.cancel(); // Ngắt luồng Polling tự động kiểm tra trạng thái
+                Navigator.pop(ctx); // Đóng hộp thoại Polling hiện tại
+                
+                // Hiển thị vòng quay xử lý giải phóng ô dữ liệu bên dưới Server
+                showDialog(
+                  context: context, 
+                  barrierDismissible: false, 
+                  builder: (context) => const Center(child: CircularProgressIndicator(color: kPrimaryColor))
+                );
+                
+                await context.read<BookingViewModel>().cancelUnpaidBooking(bookingCode);
+                if (mounted) Navigator.pop(context); // Tắt vòng xoay xử lý
+                
+                context.read<AppointmentViewModel>().loadMyAppointments();
+                _showErrorDialog("Bạn đã hủy quá trình đợi phản hồi thanh toán. Khung giờ khám hiện tại đã được giải phóng thành công.");
               },
-              child: const Text("Hủy bỏ", style: TextStyle(color: Colors.red)),
+              child: const Text("Hủy bỏ", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
             ),
           ),
         ],
@@ -820,26 +831,22 @@ class _BookingScreenState extends State<BookingScreen> {
 
     final bookingVM = context.read<BookingViewModel>();
 
-    // 🌟 BẮT ĐẦU VÒNG LẶP: Cứ 3 giây hỏi Backend 1 lần
     _pollingTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
       final status = await bookingVM.checkPaymentStatus(bookingCode);
 
       if (status == 'paid') {
-        // ✅ ĐÃ THANH TOÁN THÀNH CÔNG
-        timer.cancel(); // Dừng vòng lặp
+        timer.cancel(); 
         if (mounted) {
-          Navigator.pop(context); // Tắt Dialog loading đi
-          _showSuccessDialog("Thanh toán thành công!", bookingCode); // Hiện thông báo thành công
+          Navigator.pop(context); // Đóng giao diện thông báo chờ kết quả Polling
+          _showSuccessDialog("Thanh toán điện tử thành công!", bookingCode); 
         }
       } else if (status == 'failed' || status == 'cancelled') {
-        // ❌ THANH TOÁN THẤT BẠI
         timer.cancel();
         if (mounted) {
           Navigator.pop(context); 
-          _showErrorDialog("Thanh toán thất bại hoặc đã bị từ chối.");
+          _showErrorDialog("Giao dịch thanh toán thất bại hoặc phía ngân hàng đã từ chối cấp quyền.");
         }
       }
-      // Nếu status vẫn là 'pending', Timer sẽ tiếp tục chạy sau 3 giây nữa...
     });
   }
 

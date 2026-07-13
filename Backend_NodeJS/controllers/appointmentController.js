@@ -12,6 +12,7 @@ export default class AppointmentController {
     static async getMyList(req, res) {
         try {
             const userID = req.Ma_nguoi_dung; 
+            console.log('=== MY LIST USERID: ' + userID);
 
             if (!userID) {
                 return res.status(400).json({ succeeded: false, message: "Không tìm thấy thông tin người dùng." });

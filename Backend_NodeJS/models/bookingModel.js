@@ -1,4 +1,3 @@
-import { cat } from "@xenova/transformers";
 import { beginTransaction, commitTransaction, execute, rollbackTransaction } from "../config/db.js";
 import moment from 'moment';
 
@@ -6,9 +5,11 @@ export default class bookingModel {
     // Lấy danh sách các ngày CÒN Slot trống của 1 bác sĩ
     static async getAvailableDates(ma_bac_si) {
         try {
-            const todayStr = moment().utcOffset('+07:00').format('YYYY-MM-DD');
-            const currentHHmm = moment().utcOffset('+07:00').format('HH:mm');
+            // Lấy thời gian hiện tại chính xác theo múi giờ +07:00 bao gồm cả giờ phút giây
+            const currentDateTimeStr = moment().utcOffset('+07:00').format('YYYY-MM-DD HH:mm:ss');
             
+            // ✨ ĐÃ SỬA: Lọc trực tiếp điều kiện thời gian trực tiếp tại SQL để loại bỏ hoàn toàn 
+            // logic kiểm tra thủ công bằng JS bị lỗi undefined 'row.Gio_Kham'
             const query = `
                 SELECT DISTINCT 
                     DATE(kg.Thoi_gian_Bdau) AS Ngay_trong
@@ -17,117 +18,94 @@ export default class bookingModel {
                 WHERE kg.Ma_bac_si = ? 
                 AND kg.Trang_thai = 'available'
                 AND bs.Trang_thai_hoat_dong = 'active'
-                AND DATE(kg.Thoi_gian_Bdau) >= ?
+                AND kg.Thoi_gian_Bdau >= ?
                 ORDER BY Ngay_trong ASC
             `;
-            const [rows] = await execute(query, [ma_bac_si, todayStr]);
-
-            const validDates = new Set();
-            rows.forEach(row => {
-                const slotDate = moment(row.Ngay_trong).format('YYYY-MM-DD');
-                const slotTime = row.Gio_Kham; // Chuỗi "15:55" an toàn tuyệt đối
-
-                if (slotDate === todayStr) {
-                    if (slotTime > currentHHmm) {
-                        validDates.add(slotDate);
-                    }
-                } else {
-                    validDates.add(slotDate);
-                }
-            });
-
-            return Array.from(validDates).sort();
+            const [rows] = await execute(query, [ma_bac_si, currentDateTimeStr]);
+            return rows.map(row => moment(row.Ngay_trong).format('YYYY-MM-DD'));
         } catch (error) {
             console.error(">>> [LỖI SQL AvailableDates]:", error);
             throw new Error('Lỗi bookingModel.getAvailableDates: ' + error.message);
         }
     }
 
-    // Kiểm tra trạng thái khung giờ
-    static async getSlot(ma_khung_gio) {
+    // Kiểm tra trạng thái khung giờ (Hỗ trợ Transaction)
+    static async getSlot(ma_khung_gio, conn = null) {
         const query = `SELECT Trang_thai FROM khung_gio_kham WHERE Ma_khung_gio = ?`;
-        const [rows] = await execute(query, [ma_khung_gio]);
+        const [rows] = conn ? await conn.execute(query, [ma_khung_gio]) : await execute(query, [ma_khung_gio]);
         return rows.length ? rows[0] : null;
     }
 
-    // Lấy giá tiền thật của dịch vụ
-    static async getServicePrice(ma_dich_vu) {
+    // Khóa hàng dữ liệu bằng khóa bi quan (Pessimistic Locking) để chống Race Condition trùng lịch
+    static async getSlotForUpdate(ma_khung_gio, conn) {
+        console.log("Tiến hàn khóa khung giờ...");
+        const query = `SELECT Trang_thai FROM khung_gio_kham WHERE Ma_khung_gio = ? FOR UPDATE`;
+        const [rows] = await conn.execute(query, [ma_khung_gio]);
+        return rows.length ? rows[0] : null;
+    }
+
+    // Lấy giá tiền thật của dịch vụ (Hỗ trợ Transaction)
+    static async getServicePrice(ma_dich_vu, conn = null) {
         const query = `SELECT Gia_tien FROM dich_vu WHERE Ma_dich_vu = ?`;
-        const [rows] = await execute(query, [ma_dich_vu]);
+        const [rows] = conn ? await conn.execute(query, [ma_dich_vu]) : await execute(query, [ma_dich_vu]);
         return rows.length ? rows[0] : null;
     }
 
-    static async getSlotReal(Ma_khung_gio){
-        try{
-            // Bỏ qua các ca cũ đã hoàn thành (done), đã hủy (cancelled) hoặc vắng mặt (absent)
-            const checkSql = `
-                SELECT COUNT(*) as count 
-                FROM lich_hen 
-                WHERE Ma_khung_gio = ? 
-                  AND Trang_thai_lich_hen IN ('pending', 'confirmed')
-            `;
-            const [rows] = await execute(checkSql, [Ma_khung_gio]);
-
-            return rows;
-        }catch(error){
-            throw new Error("Lỗi bookingModel.getSlotReal: " + error.message);
-        }
+    // Kiểm tra trùng lịch hẹn thực tế (Hỗ trợ Transaction)
+    static async getSlotReal(Ma_khung_gio, conn = null){
+        const checkSql = `
+            SELECT COUNT(*) as count 
+            FROM lich_hen 
+            WHERE Ma_khung_gio = ? 
+              AND Trang_thai_lich_hen IN ('pending', 'confirmed')
+        `;
+        const [rows] = conn ? await conn.execute(checkSql, [Ma_khung_gio]) : await execute(checkSql, [Ma_khung_gio]);
+        return rows;
     }
 
+    // Tạo lịch hẹn mới vào Database (Chạy bên trong Transaction được truyền vào từ Controller)
+    static async createAppointment(data, conn) {
+        const query = `
+            INSERT INTO lich_hen 
+            (Ma_booking, Ma_bac_si, Ma_benh_nhan, Ma_nguoi_than, Ma_khung_gio, Hinh_thuc, Trieu_chung, Trang_thai_lich_hen, Tong_tien, Link_video_call) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `;
 
-    // Tạo lịch hẹn mới vào Database
-    static async createAppointment(data) {
-        let conn = await beginTransaction();
-        try{
-            const query = `
-                INSERT INTO lich_hen 
-                (Ma_booking, Ma_bac_si, Ma_benh_nhan, Ma_nguoi_than, Ma_khung_gio, Hinh_thuc, Trieu_chung, Trang_thai_lich_hen, Tong_tien, Link_video_call) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `;
+        const linkJitsi = data.Hinh_thuc === 'online' ? `https://meet.ffmuc.net/${data.Ma_booking}` : null;
+        
+        const params = [
+            data.Ma_booking,       
+            data.Ma_bac_si,        
+            data.Ma_benh_nhan,     
+            data.Ma_nguoi_than,    
+            data.Ma_khung_gio,     
+            data.Hinh_thuc,        
+            data.Trieu_chung,      
+            'pending',             
+            data.Tong_tien,        
+            linkJitsi              
+        ];
 
-            // Nếu hình thức là online thì tạo link, nếu không thì để null
-            const linkJitsi = data.Hinh_thuc === 'online' ? `https://meet.ffmuc.net/${data.Ma_booking}` : null;
-            
-            // ✨ ĐÃ SỬA: Đủ 10 tham số theo đúng thứ tự của câu lệnh SQL trên
-            const params = [
-                data.Ma_booking,       // 1. Ma_booking
-                data.Ma_bac_si,        // 2. Ma_bac_si
-                data.Ma_benh_nhan,     // 3. Ma_benh_nhan
-                data.Ma_nguoi_than,    // 4. Ma_nguoi_than
-                data.Ma_khung_gio,     // 5. Ma_khung_gio
-                data.Hinh_thuc,        // 6. Hinh_thuc
-                data.Trieu_chung,      // 7. Trieu_chung
-                'pending',             // 8. Trang_thai_lich_hen
-                data.Tong_tien,        // 9. Tong_tien
-                linkJitsi              // 10. Link_video_call
-            ];
+        const [result] = await conn.execute(query, params);
+        const insertId = result.insertId;
 
-            const [result] = await conn.execute(query, params);
-            const insertId = result.insertId;
+        // Ghi nhận lịch sử tạo mới liền mạch trong cùng kết nối hệ thống
+        await conn.execute(
+            `INSERT INTO lich_su_trang_thai_lich_hen (Ma_lich_hen, Trang_thai_cu, Trang_thai_moi, Nguoi_thay_doi) 
+            VALUES (?, NULL, 'pending', 'patient')`,
+            [insertId]
+        );
 
-            // Ghi nhận lịch sử tạo mới
-            await conn.execute(
-                `INSERT INTO lich_su_trang_thai_lich_hen (Ma_lich_hen, Trang_thai_cu, Trang_thai_moi, Nguoi_thay_doi) 
-                VALUES (?, NULL, 'pending', 'patient')`,
-                [insertId]
-            );
-
-            await commitTransaction(conn);
-
-            return insertId;
-        }catch(error){
-            await rollbackTransaction(conn);
-            throw new Error('Lỗi tạo lịch hẹn: ' + error.message);
-        }
+        return insertId;
     }
 
-    // Tạo chi tiết lịch hẹn vào Database
-    static async createAppointmentDetail(detailData) {
+    // Tạo chi tiết lịch hẹn vào Database (Hỗ trợ Transaction)
+    static async createAppointmentDetail(detailData, conn) {
         const query = `
             INSERT INTO chi_tiet_lich_hen (Ma_lich_hen, Ma_dich_vu, Gia_tien) 
             VALUES (?, ?, ?)
         `;
-        const [result] = await execute(query, [
+        const [result] = await conn.execute(query, [
             detailData.Ma_lich_hen,
             detailData.Ma_dich_vu,
             detailData.Gia_tien
@@ -135,10 +113,10 @@ export default class bookingModel {
         return result.insertId;
     }
 
-    // Cập nhật lại khung giờ thành 'booked' (Đã đầy)
-    static async updateSlotStatus(ma_khung_gio, status) {
+    // Cập nhật lại khung giờ thành 'booked' (Hỗ trợ Transaction)
+    static async updateSlotStatus(ma_khung_gio, status, conn) {
         const query = `UPDATE khung_gio_kham SET Trang_thai = ? WHERE Ma_khung_gio = ?`;
-        await execute(query, [status, ma_khung_gio]);
+        await conn.execute(query, [status, ma_khung_gio]);
     }
 
     // Hàm tiện ích: Lấy Ma_benh_nhan từ Ma_nguoi_dung
@@ -151,7 +129,6 @@ export default class bookingModel {
     // Lấy lịch làm việc chi tiết trong 1 ngày
     static async getDoctorSchedule(date){
         try{
-            // Trở về SQL an toàn của bạn, lấy thêm Gio_Kham dạng chuỗi
             const query = `
                 SELECT kgk.*, 
                     DATE_FORMAT(kgk.Thoi_gian_Bdau, '%H:%i') AS Gio_Kham 
@@ -172,10 +149,7 @@ export default class bookingModel {
             
             if (date === todayStr) {
                 const currentHHmm = moment().utcOffset('+07:00').format('HH:mm');
-                return rows.filter(row => {
-                    // row.Gio_Kham không bao giờ bị lệch múi giờ
-                    return row.Gio_Kham > currentHHmm; 
-                });
+                return rows.filter(row => row.Gio_Kham > currentHHmm);
             }
 
             return rows;
@@ -186,11 +160,11 @@ export default class bookingModel {
         }
     }
     
-    // Hàm lưu thông tin thanh toán
-    static async createPayment(paymentData) {
+    // Hàm lưu thông tin thanh toán (Hỗ trợ Transaction)
+    static async createPayment(paymentData, conn) {
         const query = `INSERT INTO thanh_toan (Ma_lich_hen, Phuong_thuc, Trang_thai_thanh_toan, Ma_giao_dich, Tong_tien) 
                        VALUES (?, ?, ?, ?, ?)`;
-        const [result] = await execute(query, [
+        const [result] = await conn.execute(query, [
             paymentData.Ma_lich_hen,
             paymentData.Phuong_thuc,
             paymentData.Trang_thai_thanh_toan,
@@ -207,9 +181,7 @@ export default class bookingModel {
                 SET Ma_giao_dich = ?, Thoi_diem_thanh_toan = ?
                 WHERE Ma_thanh_toan = ?
             `;
-
             const [result] = await execute(query, [transactionCode, date, paymentCode]);
-
             return result.affectedRows;
         }catch(error){
             throw new Error("Lỗi paymentModel.saveTransactionCode: " + error.message);
