@@ -76,6 +76,8 @@ export default class paymentController {
             process.env.TZ = 'Asia/Ho_Chi_Minh';
             let date = new Date();
             let createDate = moment(date).format('YYYYMMDDHHmmss');
+
+            let expireDate = moment(date).add(15, 'minutes').format('YYYYMMDDHHmmss');
             
             // Lấy IP của thiết bị
             let ipAddr = req.headers['x-forwarded-for'] || 
@@ -104,6 +106,7 @@ export default class paymentController {
             vnp_Params['vnp_IpAddr'] = ipAddr;
             vnp_Params['vnp_CreateDate'] = createDate;
             vnp_Params['vnp_Amount'] = vnpayAmount;
+            vnp_Params['vnp_ExpireDate'] = expireDate;
 
             // Sắp xếp dữ liệu
             vnp_Params = sortObject(vnp_Params);

@@ -1,7 +1,7 @@
 import bookingModel from '../models/bookingModel.js';
+import { beginTransaction, commitTransaction, rollbackTransaction } from "../config/db.js";
 
 export default class bookingController {
-    // Lấy danh sách các ngày còn slot trống
     static async getAvailableDates(req, res) {
         try {
             const { doctorId } = req.params;
@@ -14,89 +14,143 @@ export default class bookingController {
         }
     }
 
-    // Tạo lịch hẹn mới (Hỗ trợ nhiều dịch vụ)
     static async createBooking(req, res) {
+        let conn = await beginTransaction();
         try {
-            const { Ma_bac_si, Ma_benh_nhan, Ma_nguoi_than, Ma_dich_vu, Ma_khung_gio, Hinh_thuc, Trieu_chung, Phuong_thuc, paymentMethod } = req.body;
+            const Ma_nguoi_dung = req.Ma_nguoi_dung;
+            const { Ma_bac_si, Ma_benh_nhan, Ma_nguoi_than, Ma_dich_vu, Ma_khung_gio, Hinh_thuc, Trieu_chung } = req.body;
 
-            // 1. Kiểm tra đầu vào (Mảng dịch vụ)
+            // 1. Kiểm tra dữ liệu đầu vào cơ bản
             if (!Array.isArray(Ma_dich_vu) || Ma_dich_vu.length === 0) {
+                await rollbackTransaction(conn);
                 return res.status(400).json({ succeeded: false, message: "Vui lòng chọn ít nhất 1 dịch vụ!" });
             }
 
-            // 2. Kiểm tra hồ sơ bệnh nhân
-            const maBenhNhanThat = await bookingModel.getPatientIdByUserId(Ma_benh_nhan);
-            if (!maBenhNhanThat) return res.status(400).json({ succeeded: false, message: "Chưa có hồ sơ bệnh nhân!" });
+            console.log("MÃ BỆNH NHÂN: " + Ma_benh_nhan);
+            console.log("MÃ NGƯỜI THÂN: " + Ma_nguoi_than);
+            console.log("MÃ NGƯỜI DÙNG: " + Ma_nguoi_dung);
 
-            // 3. Kiểm tra số điện thoại
-            const { execute } = await import('../config/db.js'); 
-            const [userInfo] = await execute(`SELECT Dien_thoai FROM nguoi_dung WHERE Ma_nguoi_dung = ?`, [Ma_benh_nhan]);
-            
+            const maBenhNhanThat = await bookingModel.checkPatienID(Ma_benh_nhan, Ma_nguoi_than, conn);
+
+            console.log("DATA: " + maBenhNhanThat);
+
+            if (!maBenhNhanThat) {
+                await rollbackTransaction(conn);
+                return res.status(400).json({ 
+                    succeeded: false, 
+                    message: "Không tìm thấy hồ sơ bệnh nhân hợp lệ hoặc mối quan hệ người thân không chính xác!" 
+                });
+            }
+
+            // Kiểm tra số điện thoại người dùng từ DB qua connection của Transaction hiện tại
+            const [userInfo] = await conn.execute(`SELECT Dien_thoai FROM nguoi_dung WHERE Ma_nguoi_dung = ?`, [Ma_nguoi_dung]);
             if (!userInfo || userInfo.length === 0 || !userInfo[0].Dien_thoai || userInfo[0].Dien_thoai.trim() === '') {
+                await rollbackTransaction(conn);
                 return res.status(400).json({ 
                     succeeded: false, 
                     message: "Vui lòng cập nhật số điện thoại trong phần Hồ sơ trước khi đặt lịch!" 
                 });
             }
 
-            // 4. Kiểm tra trùng lịch cá nhân (Conflict check)
+            // 3. Cơ chế khóa hàng 'FOR UPDATE' chặn đứng Race Condition trùng lịch
+            const slot = await bookingModel.getSlotForUpdate(Ma_khung_gio, conn);
+            if (!slot || slot.Trang_thai !== 'available') {
+                await rollbackTransaction(conn);
+                return res.status(400).json({ succeeded: false, message: "Khung giờ này vừa có người nhanh tay hơn đặt trước mất rồi! Vui lòng chọn khung giờ khác." });
+            }
+
+            // Kiểm tra trùng lặp lịch hẹn thực tế trong bảng lịch hẹn
+            const rows = await bookingModel.getSlotReal(Ma_khung_gio, conn);
+            if (rows[0].count > 0) {
+                await rollbackTransaction(conn);
+                return res.status(400).json({ succeeded: false, message: "Khung giờ này đã tồn tại lịch đặt trước! Vui lòng chọn lại." });
+            }
+
+            // 4. Kiểm tra trùng lịch cá nhân
             const isConflict = await bookingModel.checkPatientConflict(maBenhNhanThat, Ma_khung_gio);
             if (isConflict) {
+                await rollbackTransaction(conn); 
                 return res.status(400).json({ succeeded: false, message: "Bạn đã có một lịch hẹn khác trùng khung giờ này!" });
             }
 
-            // 5. Logic tiền tệ
+            const todayStr = new Date().toISOString().slice(0, 10);
+
+            const checkAmount = await bookingModel.checkAmount(maBenhNhanThat, todayStr, conn);
+            if (checkAmount && checkAmount.total >= 5) {
+                await rollbackTransaction(conn);
+                return res.status(400).json({ 
+                    succeeded: false, 
+                    message: "Để đảm bảo tính công bằng, mỗi tài khoản chỉ được đặt tối đa 5 lịch hẹn trong cùng một ngày!" 
+                });
+            }
+
+            // 5. Tính toán tổng chi phí dựa trên dịch vụ
             let Tong_tien = 0;
             const thongTinDichVu = [];
             for (const idDichVu of Ma_dich_vu) {
-                const service = await bookingModel.getServicePrice(idDichVu);
+                const service = await bookingModel.getServicePrice(idDichVu, conn);
                 if (service) {
                     Tong_tien += parseFloat(service.Gia_tien);
                     thongTinDichVu.push({ id: idDichVu, price: service.Gia_tien });
                 }
             }
-            if (thongTinDichVu.length === 0) return res.status(404).json({ succeeded: false, message: "Dịch vụ không hợp lệ." });
 
-            // 6. Xử lý thanh toán & Booking code
+            if (thongTinDichVu.length === 0) {
+                await rollbackTransaction(conn);
+                return res.status(404).json({ succeeded: false, message: "Dịch vụ không hợp lệ." });
+            }
+
+            // 6. Xử lý chuẩn hóa phương thức thanh toán & sinh mã Booking
             const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
             const randomNum = Math.floor(1000 + Math.random() * 9000);
             const Ma_booking = `BK${dateStr}_${randomNum}`;
-            const finalMethod = (Phuong_thuc || paymentMethod || 'cash').trim().toLowerCase();
-            const Ma_giao_dich = finalMethod === 'cash' ? `TXN_${Ma_booking}` : null;
+            
+            let rawMethod = req.body.Phuong_thuc || req.body.paymentMethod || 'cash';
+            let Phuong_thuc = rawMethod.toString().trim().toLowerCase();
+            if (!['momo', 'cash', 'transfer', 'vnpay'].includes(Phuong_thuc)) Phuong_thuc = 'vnpay'; 
 
-            // 7. GỌI HÀM TRANSACTION DUY NHẤT (Đã tích hợp kiểm tra slot FOR UPDATE trong model)
-            const result = await bookingModel.createBookingTransaction(
-                { Ma_booking, Ma_bac_si, Ma_benh_nhan: maBenhNhanThat, Ma_nguoi_than, Ma_khung_gio, Hinh_thuc, Trieu_chung, Tong_tien },
-                thongTinDichVu,
-                { Phuong_thuc: finalMethod, Trang_thai_thanh_toan: 'pending', Ma_giao_dich, Tong_tien }
-            );
+            let Ma_giao_dich = Phuong_thuc === 'cash' ? `TXN_${Ma_booking}` : null;
+
+            // 7. Lưu dữ liệu tuần tự vào các bảng (Không dùng hàm gộp trùng lặp bên dưới nữa)
+            const bookingData = { Ma_booking, Ma_bac_si, Ma_benh_nhan: maBenhNhanThat, Ma_nguoi_than, Ma_khung_gio, Hinh_thuc, Trieu_chung, Tong_tien };
+            const insertId = await bookingModel.createAppointment(bookingData, conn);
+
+            // Lưu chi tiết các dịch vụ đã chọn
+            for (const item of thongTinDichVu) {
+                await bookingModel.createAppointmentDetail({
+                    Ma_lich_hen: insertId,
+                    Ma_dich_vu: item.id,
+                    Gia_tien: item.price
+                }, conn);
+            }
+
+            // Lưu thông tin hóa đơn & Đổi trạng thái khung giờ sang 'booked'
+            const paymentData = { Ma_lich_hen: insertId, Phuong_thuc, Trang_thai_thanh_toan: 'pending', Ma_giao_dich, Tong_tien };
+            await bookingModel.createPayment(paymentData, conn);
+            await bookingModel.updateSlotStatus(Ma_khung_gio, 'booked', conn);
+        
+            // Đảm bảo mọi thứ hoàn tất thành công thì mới lưu vào DB và nhả Khóa
+            await commitTransaction(conn);
 
             return res.status(200).json({
                 succeeded: true, 
                 message: "Đặt lịch khám thành công!",
-                data: { Ma_lich_hen: result.maLichHen, Ma_booking: result.maBooking, Tong_tien, Phuong_thuc: finalMethod, Ma_khung_gio }
+                data: { Ma_lich_hen: insertId, Ma_booking, Tong_tien, Phuong_thuc, Ma_khung_gio }
             });
 
         } catch (error) {
-            return res.status(500).json({ succeeded: false, message: error.message });
+            await rollbackTransaction(conn);
+            return res.status(500).json({ succeeded: false, message: "Lỗi hệ thống trong tiến trình đặt lịch: " + error.message });
         }
     }
 
-    // API lấy lịch làm việc của bác sĩ theo ngày
-    static async getDoctorSchedule(req,res){
-        try{
+    static async getDoctorSchedule(req, res) {
+        try {
             const date = req.query.q || '';
             const doctorSchedule = await bookingModel.getDoctorSchedule(date);
-            return  res.status(200).json({
-                succeeded: true,
-                schedule: doctorSchedule
-            });
-        }
-        catch(error){
-            return res.status(500).json({
-                succeeded: false,
-                message: error.message
-            });
+            return res.status(200).json({ succeeded: true, schedule: doctorSchedule });
+        } catch (error) {
+            return res.status(500).json({ succeeded: false, message: error.message });
         }
     }
 
@@ -106,27 +160,18 @@ export default class bookingController {
             const { bookingCode } = req.body;
             const { execute } = await import('../config/db.js');
             
-            // 1. Tìm xem lịch này đang giữ khung giờ nào và lấy Ma_lich_hen
             const [rows] = await execute(`SELECT Ma_lich_hen, Ma_khung_gio FROM lich_hen WHERE Ma_booking = ?`, [bookingCode]);
-            
             if (rows.length > 0) {
                 const maLichHen = rows[0].Ma_lich_hen;
                 const maKhungGio = rows[0].Ma_khung_gio;
 
-                // 2. Hủy lịch hẹn
                 await execute(`UPDATE lich_hen SET Trang_thai_lich_hen = 'cancelled' WHERE Ma_booking = ?`, [bookingCode]);
-                
-                // 3. Ghi log vào bảng lich_su_trang_thai_lich_hen
                 await execute(
                     `INSERT INTO lich_su_trang_thai_lich_hen (Ma_lich_hen, Trang_thai_cu, Trang_thai_moi, Ly_do_thay_doi, Nguoi_thay_doi) 
-                     VALUES (?, 'pending', 'cancelled', 'Khách hàng hủy thanh toán trực tuyến', 'patient')`,
+                     VALUES (?, 'pending', 'cancelled', 'Khách hàng hủy thanh toán trực tuyến hoặc chủ động hủy tiến trình đợi', 'patient')`,
                     [maLichHen]
                 );
-
-                // 4. Nhả khung giờ đó về trạng thái available
                 await execute(`UPDATE khung_gio_kham SET Trang_thai = 'available' WHERE Ma_khung_gio = ?`, [maKhungGio]);
-                
-                // 5. Đánh dấu thanh toán thất bại
                 await execute(`UPDATE thanh_toan SET Trang_thai_thanh_toan = 'failed' WHERE Ma_lich_hen = ?`, [maLichHen]);
             }
             return res.status(200).json({ succeeded: true, message: "Đã hủy lịch chưa thanh toán và nhả slot." });

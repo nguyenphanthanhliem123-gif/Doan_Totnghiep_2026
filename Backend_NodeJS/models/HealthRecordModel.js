@@ -27,7 +27,7 @@ export default class healthRecordModel{
             FROM benh_nhan bn
             JOIN nguoi_dung nd ON bn.Ma_nguoi_dung = nd.Ma_nguoi_dung
             LEFT JOIN nguoi_than nt ON bn.Ma_benh_nhan = nt.Ma_benh_nhan
-            WHERE bn.Ma_nguoi_dung = ?
+            WHERE bn.Ma_nguoi_dung = ? AND nt.Trang_thai = 1
             ORDER BY bn.Ma_benh_nhan ASC;`;
 
             const [result] = await execute(sql,[userID]);
@@ -48,6 +48,10 @@ export default class healthRecordModel{
             const encryptedNhomMau = encrypt(nhomMau);
             const encryptedDiUng = encrypt(diUng);
             const encryptedBenhNen = encrypt(benhNen);
+
+            /*if(moiQuanHe == 'Bản thân'){
+                const sql
+            }*/
 
 
             const sqlBenhNhan = `
@@ -210,13 +214,7 @@ export default class healthRecordModel{
 
             // 2. Xóa dữ liệu trong bảng nguoi_than trước
             await conn.execute(
-                'DELETE FROM nguoi_than WHERE Ma_benh_nhan = ?', 
-                [maBenhNhan]
-            );
-
-            // 3. Xóa dữ liệu gốc trong bảng benh_nhan
-            await conn.execute(
-                'DELETE FROM benh_nhan WHERE Ma_benh_nhan = ?', 
+                'UPDATE nguoi_than SET Trang_thai = 0 WHERE Ma_benh_nhan = ?', 
                 [maBenhNhan]
             );
 

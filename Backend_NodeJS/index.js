@@ -12,6 +12,7 @@ import { fileURLToPath } from 'url';
 import jwt from 'jsonwebtoken';
 import { startReminderCron } from './utils/cronJob.js';
 import { startReminderCron24h } from "../Backend_NodeJS/utils/cronJob24h.js";
+import { initBookingCleanJob } from "./utils/cronJobPaymentFail.js";
 
 //Import Routes
 import userRoutes from './routes/userRoutes.js';
@@ -114,6 +115,7 @@ app.set('onlineUsers', onlineUsers);
 
 startReminderCron(io);
 startReminderCron24h(io);
+initBookingCleanJob();
 
 app.use(bodyParser.json());
 // THÊM DÒNG NÀY: Để Node.js đọc được dữ liệu từ Form HTML gửi lên
