@@ -45,10 +45,9 @@ class _AdminClinicListScreenState extends State<AdminClinicListScreen> {
 
   void _showClinicFormDialog({ClinicModel? clinic}) {
     final isEdit = clinic != null;
+    
+    // Chỉ giữ lại duy nhất controller của Tên phòng khám
     final nameController = TextEditingController(text: clinic?.name);
-    final locationController = TextEditingController(text: clinic?.address);
-    final phoneController = TextEditingController(text: clinic?.phone);
-    final emailController = TextEditingController(text: clinic?.email);
     final formKey = GlobalKey<FormState>();
 
     showModalBottomSheet(
@@ -66,31 +65,31 @@ class _AdminClinicListScreenState extends State<AdminClinicListScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(isEdit ? 'Sửa Phòng Khám' : 'Thêm Phòng Khám Mới', 
+                Text(isEdit ? 'Sửa Tên Phòng Khám' : 'Thêm Phòng Khám Mới', 
                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: kPrimaryColor)),
                 const SizedBox(height: 15),
+                
+                // Ô nhập tên phòng khám (Duy nhất)
                 TextFormField(
                   controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Tên phòng khám (*)', border: OutlineInputBorder()),
-                  validator: (val) => (val == null || val.isEmpty) ? 'Bắt buộc nhập' : null,
+                  decoration: const InputDecoration(
+                    labelText: 'Tên phòng khám (*)', 
+                    border: OutlineInputBorder()
+                  ),
+                  validator: (val) => (val == null || val.isEmpty) ? 'Vui lòng nhập tên phòng khám' : null,
                 ),
+                
+                // Ghi chú cho Admin biết các thông tin khác đã được cài đặt tự động
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12.0),
+                  child: Text(
+                    '* Vị trí, Số điện thoại và Email đã được cài đặt mặc định theo thông tin của Bệnh Viện.',
+                    style: TextStyle(color: Colors.grey, fontSize: 12, fontStyle: FontStyle.italic),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                
                 const SizedBox(height: 10),
-                TextFormField(
-                  controller: locationController,
-                  decoration: const InputDecoration(labelText: 'Vị trí (*)', border: OutlineInputBorder()),
-                  validator: (val) => (val == null || val.isEmpty) ? 'Bắt buộc nhập' : null,
-                ),
-                const SizedBox(height: 10),
-                TextFormField(
-                  controller: phoneController,
-                  decoration: const InputDecoration(labelText: 'Số điện thoại', border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: 10),
-                TextFormField(
-                  controller: emailController,
-                  decoration: const InputDecoration(labelText: 'Email', border: OutlineInputBorder()),
-                ),
-                const SizedBox(height: 20),
                 SizedBox(
                   width: double.infinity,
                   height: 45,
@@ -98,11 +97,9 @@ class _AdminClinicListScreenState extends State<AdminClinicListScreen> {
                     style: ElevatedButton.styleFrom(backgroundColor: kPrimaryColor),
                     onPressed: () async {
                       if (formKey.currentState!.validate()) {
+                        // Cấu hình dữ liệu gửi đi (chỉ cần Tên, các trường kia backend tự xử lý)
                         final data = {
                           "Ten_phong_kham": nameController.text.trim(),
-                          "Vi_tri": locationController.text.trim(),
-                          "Dien_thoai": phoneController.text.trim(),
-                          "Email": emailController.text.trim(),
                         };
                         
                         Navigator.pop(context); // Đóng form
@@ -114,7 +111,10 @@ class _AdminClinicListScreenState extends State<AdminClinicListScreen> {
                         
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(success ? "Lưu thành công!" : "Lưu thất bại!"), backgroundColor: success ? Colors.green : Colors.red),
+                            SnackBar(
+                              content: Text(success ? "Lưu thành công!" : "Lưu thất bại!"), 
+                              backgroundColor: success ? Colors.green : Colors.red
+                            ),
                           );
                         }
                       }

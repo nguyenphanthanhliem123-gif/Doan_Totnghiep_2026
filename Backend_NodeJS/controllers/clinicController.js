@@ -66,11 +66,25 @@ export default class clinicController {
 
     static async createClinic(req, res) {
         try {
-            const { Ten_phong_kham, Vi_tri } = req.body;
-            if (!Ten_phong_kham || !Vi_tri) {
-                return res.status(400).json({ succeeded: false, message: "Tên và vị trí là bắt buộc!" });
+            const { Ten_phong_kham } = req.body;
+            
+            // Chỉ yêu cầu kiểm tra tên phòng khám
+            if (!Ten_phong_kham) {
+                return res.status(400).json({ succeeded: false, message: "Tên phòng khám là bắt buộc!" });
             }
-            const newId = await clinicModel.addClinic(req.body);
+
+            // Gán cứng thông tin mặc định cho toàn bộ phòng khám
+            const clinicData = {
+                Ten_phong_kham: Ten_phong_kham,
+                Vi_tri: "136 Hoàng Hoa Thám, Phường 12, Tân Bình, TP. HCM",
+                Dien_thoai: "0933459578",
+                Email: "contact@tamanhhospital.vn", // 🌟 Sửa lại Email bệnh viện của bạn
+                Mo_ta_phong_kham: req.body.Mo_ta_phong_kham || null,
+                Link_trang_web: "https://tamanhhospital.vn",
+                Tien_ich: "Wifi, Giữ xe ô tô, Máy lạnh, Khu vui chơi trẻ em"
+            };
+
+            const newId = await clinicModel.addClinic(clinicData);
             return res.status(201).json({ succeeded: true, message: "Thêm thành công!", id: newId });
         } catch (error) {
             return res.status(500).json({ succeeded: false, message: error.message });
@@ -80,7 +94,23 @@ export default class clinicController {
     static async updateClinic(req, res) {
         try {
             const { id } = req.params;
-            const success = await clinicModel.updateClinic(id, req.body);
+            const { Ten_phong_kham } = req.body;
+
+            if (!Ten_phong_kham) {
+                return res.status(400).json({ succeeded: false, message: "Tên phòng khám là bắt buộc!" });
+            }
+
+            const clinicData = {
+                Ten_phong_kham: Ten_phong_kham,
+                Vi_tri: "136 Hoàng Hoa Thám, Phường 12, Tân Bình, TP. HCM",
+                Dien_thoai: "0933459578",
+                Email: "contact@tamanhhospital.vn",
+                Mo_ta_phong_kham: req.body.Mo_ta_phong_kham || null,
+                Link_trang_web: "https://tamanhhospital.vn",
+                Tien_ich: "Wifi, Giữ xe ô tô, Máy lạnh, Khu vui chơi trẻ em"
+            };
+
+            const success = await clinicModel.updateClinic(id, clinicData);
             if (success) return res.status(200).json({ succeeded: true, message: "Cập nhật thành công!" });
             return res.status(404).json({ succeeded: false, message: "Không tìm thấy phòng khám!" });
         } catch (error) {

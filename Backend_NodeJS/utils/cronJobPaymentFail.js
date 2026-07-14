@@ -4,8 +4,6 @@ import { execute, beginTransaction, commitTransaction, rollbackTransaction } fro
 export const initBookingCleanJob = () => {
     // Cấu hình chạy định kỳ mỗi 1 phút một lần
     cron.schedule('* * * * *', async () => {
-        console.log('>>> [CRON JOB]: Đang quét dọn lịch hẹn quá hạn thanh toán...');
-        
         try {
             // 1. Tìm các lịch hẹn trực tuyến quá hạn 15 phút chưa thanh toán
             // LƯU Ý: Đảm bảo bảng 'lich_hen' của bạn có cột thời gian tạo (ví dụ: created_at)

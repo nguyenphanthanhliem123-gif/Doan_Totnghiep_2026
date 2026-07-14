@@ -131,7 +131,7 @@ class AdminServiceViewModel extends ChangeNotifier {
   }
 
   // 5. XÓA DỊCH VỤ (DELETE)
-  Future<bool> deleteService(int id) async {
+  Future<Map<String, dynamic>> deleteService(int id) async {
     isLoading = true;
     notifyListeners();
     try {
@@ -146,17 +146,26 @@ class AdminServiceViewModel extends ChangeNotifier {
       );
 
       if (res.statusCode == 200) {
-        return true;
+        return {
+          "succeeded": true,
+          "message": "Đã xóa danh mục dịch vụ này"
+        };
       } else {
         final data = jsonDecode(res.body);
-        debugPrint('Lỗi Xóa: ${data['message']}'); // In ra lỗi nếu vướng khóa ngoại
+        return {
+          "succeeded": false,
+          "message": data['message']
+        };
       }
     } catch (e) {
-      debugPrint('Lỗi deleteService: $e');
+      print('Lỗi deleteService: $e');
     } finally {
       isLoading = false;
       notifyListeners();
     }
-    return false;
+    return {
+      "succeeded": false,
+      "message": "Lỗi khi xóa danh mục dịch vụ"
+    };
   }
 }

@@ -1,4 +1,4 @@
-import { execute } from "../config/db.js";
+import { beginTransaction, commitTransaction, execute, rollbackTransaction } from "../config/db.js";
 
 export default class ServiceModel{
     static async createService(serviceName, specId, doctorId, price){
@@ -84,7 +84,7 @@ export default class ServiceModel{
 
     static async getAllMasterServices() {
         try {
-            const sql = `SELECT * FROM danh_muc_dich_vu ORDER BY id DESC`;
+            const sql = `SELECT * FROM danh_muc_dich_vu WHERE Trang_thai = 1 ORDER BY id DESC`;
             const [rows] = await execute(sql);
             return rows;
         } catch (error) {
@@ -94,7 +94,7 @@ export default class ServiceModel{
 
     static async deleteMasterService(id) {
         try {
-            const sql = `DELETE FROM danh_muc_dich_vu WHERE id = ?`;
+            const sql = `UPDATE danh_muc_dich_vu SET Trang_thai = 0 WHERE id = ?`;
             return await execute(sql, [id]);
         } catch (error) {
             throw new Error("Lỗi khi xóa dịch vụ mẫu: " + error.message);
@@ -109,6 +109,7 @@ export default class ServiceModel{
             const sql = `
                 SELECT * FROM danh_muc_dich_vu 
                 WHERE Ma_chuyen_khoa = ? 
+                AND Trang_thai = 1
                 AND id NOT IN (
                     SELECT IFNULL(Ma_dv_goc, 0) FROM dich_vu WHERE Ma_bac_si = ?
                 )
@@ -121,24 +122,25 @@ export default class ServiceModel{
         }
     }
 
-    // Bác sĩ chọn dịch vụ gốc và lưu vào bảng dịch vụ cũ kèm giá tùy chỉnh
-    static async addDoctorService(doctorId, masterServiceId, customPrice) {
+    // Bác sĩ chọn dịch vụ gốc và lưu vào bảng dịch vụ cũ với GIÁ MẶC ĐỊNH
+    static async addDoctorService(doctorId, masterServiceId) {
         try {
-            // Lấy thông tin dịch vụ gốc trước để copy Tên và Mã chuyên khoa
+            // Lấy thông tin dịch vụ gốc
             const [master] = await execute(`SELECT * FROM danh_muc_dich_vu WHERE id = ?`, [masterServiceId]);
             if (!master || master.length === 0) {
                 throw new Error("Dịch vụ gốc không tồn tại");
             }
             
-            const { Ten_dich_vu, Ma_chuyen_khoa } = master[0];
+            const { Ten_dich_vu, Ma_chuyen_khoa, Gia_mac_dinh } = master[0];
 
             const sql = `
                 INSERT INTO dich_vu (Ten_dich_vu, Gia_tien, Ma_chuyen_khoa, Ma_bac_si, Ma_dv_goc) 
                 VALUES (?, ?, ?, ?, ?)
             `;
-            return await execute(sql, [Ten_dich_vu, customPrice, Ma_chuyen_khoa, doctorId, masterServiceId]);
+            // Lưu Gia_mac_dinh vào cột Gia_tien
+            return await execute(sql, [Ten_dich_vu, Gia_mac_dinh, Ma_chuyen_khoa, doctorId, masterServiceId]);
         } catch (error) {
-            throw new Error("Lỗi khi bác sĩ thêm dịch vụ cấu hình: " + error.message);
+            throw new Error("Lỗi khi bác sĩ thêm dịch vụ: " + error.message);
         }
     }
 
@@ -146,7 +148,7 @@ export default class ServiceModel{
     static async getDoctorServices(doctorId) {
         try {
             console.log("Đang lấy dịch vụ cho bác sĩ ID:", doctorId);
-            const sql = `SELECT * FROM dich_vu WHERE Ma_bac_si = ?`;
+            const sql = `SELECT * FROM dich_vu WHERE Ma_bac_si = ? AND Trang_thai = 1`;
             const [rows] = await execute(sql, [doctorId]);
             return rows;
         } catch (error) {
@@ -157,7 +159,7 @@ export default class ServiceModel{
     // Bác sĩ xóa dịch vụ khỏi danh sách của mình
     static async deleteDoctorService(serviceId, doctorId) {
         try {
-            const sql = `DELETE FROM dich_vu WHERE Ma_dich_vu = ? AND Ma_bac_si = ?`;
+            const sql = `UPDATE dich_vu SET Trang_thai = 0 WHERE Ma_dich_vu = ? AND Ma_bac_si = ?`;
             return await execute(sql, [serviceId, doctorId]);
         } catch (error) {
             throw new Error("Lỗi khi gỡ dịch vụ của bác sĩ: " + error.message);
@@ -170,7 +172,7 @@ export default class ServiceModel{
                 SELECT d.*, c.Ten_chuyen_khoa 
                 FROM danh_muc_dich_vu d
                 LEFT JOIN chuyen_khoa c ON d.Ma_chuyen_khoa = c.Ma_chuyen_khoa
-                WHERE 1=1
+                WHERE 1=1 AND d.Trang_thai = 1
             `;
             let params = [];
 
@@ -213,12 +215,55 @@ export default class ServiceModel{
     }
 
     static async deleteMasterService(id) {
+        let conn = await beginTransaction();
         try {
-            // LƯU Ý: Nếu DB có khóa ngoại ràng buộc bác sĩ đang dùng dịch vụ này, cần cân nhắc dùng "Soft Delete" (ẩn đi) thay vì xóa cứng.
-            const sql = `DELETE FROM danh_muc_dich_vu WHERE id = ?`;
-            return await execute(sql, [id]);
+            // Step 1: Kiểm tra trạng thái hiện tại của dịch vụ gốc
+            const [masterService] = await conn.execute(
+                `SELECT Trang_thai FROM danh_muc_dich_vu WHERE id = ?`, 
+                [id]
+            );
+
+            if (masterService.length === 0) {
+                throw new Error("SERVICE_NOT_FOUND"); // Lỗi không tìm thấy dịch vụ gốc
+            }
+
+            if (masterService[0].Trang_thai === 0) {
+                // Trạng thái đã bằng 0, không cần thay đổi hay cập nhật gì thêm
+                await commitTransaction(conn);
+                return {
+                    succeeded: true,
+                    message: "Dịch vụ gốc đã ở trạng thái ngưng hoạt động trước đó."
+                };
+            }
+
+            // Step 2: Kiểm tra xem có bác sĩ nào đang đăng ký dịch vụ này ở trạng thái hoạt động (Trang_thai = 1) không
+            const [activeDoctors] = await conn.execute(
+                `SELECT COUNT(*) as active_count FROM dich_vu WHERE Ma_dv_goc = ? AND Trang_thai = 1`,
+                [id]
+            );
+
+            if (activeDoctors[0].active_count > 0) {
+                // Có bác sĩ đang hoạt động sử dụng dịch vụ này -> Chặn xóa!
+                throw new Error("ACTIVE_DOCTORS_EXIST");
+            }
+
+            // Step 3: Đạt điều kiện xóa (Không có bác sĩ nào dùng, hoặc tất cả bác sĩ dùng đều đã ở Trang_thai = 0)
+            // Cập nhật Trạng_thai = 0 cho dịch vụ gốc
+            const sqlMaster = `UPDATE danh_muc_dich_vu SET Trang_thai = 0 WHERE id = ?`;
+            await conn.execute(sqlMaster, [id]);
+
+            // Cập nhật đồng bộ toàn bộ dịch vụ của bác sĩ (cho những bản ghi có thể vẫn ở trạng thái khác)
+            const sqlDoctorService = `UPDATE dich_vu SET Trang_thai = 0 WHERE Ma_dv_goc = ?`;
+            await conn.execute(sqlDoctorService, [id]);
+
+            await commitTransaction(conn);
+            return {
+                succeeded: true,
+                message: "Đã xóa dịch vụ gốc và ẩn toàn bộ dịch vụ liên quan của các bác sĩ thành công."
+            };
         } catch (error) {
-            throw new Error("Lỗi xóa dịch vụ gốc: " + error.message);
+            await rollbackTransaction(conn);
+            throw error; // Quăng lỗi nguyên bản ra ngoài để Controller xử lý
         }
     }
 }

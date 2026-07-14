@@ -165,12 +165,12 @@ class _AdminServiceScreenState extends State<AdminServiceScreen> {
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () async {
               Navigator.pop(context); // Đóng hộp thoại
-              bool success = await context.read<AdminServiceViewModel>().deleteService(id);
-              if (success) {
+              Map<String, dynamic> success = await context.read<AdminServiceViewModel>().deleteService(id);
+              if (success["succeeded"]) {
                 context.read<AdminServiceViewModel>().fetchServices();
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đã xóa dịch vụ')));
               } else {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lỗi: Có thể dịch vụ này đã được bác sĩ sử dụng.')));
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(success['message'])));
               }
             },
             child: const Text('Xóa', style: TextStyle(color: Colors.white)),

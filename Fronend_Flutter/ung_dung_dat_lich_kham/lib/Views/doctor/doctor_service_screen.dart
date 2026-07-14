@@ -114,10 +114,18 @@ class _DoctorServiceManagementScreenState extends State<DoctorServiceManagementS
                           title: Text(item.serviceName, style: const TextStyle(fontWeight: FontWeight.w600)),
                           subtitle: Text('Giá gốc: ${formatCurrency(item.price)}'),
                           trailing: const Icon(Icons.add_circle_outline, color: kPrimaryColor),
-                          onTap: () {
+                          onTap: () async {
                             Navigator.pop(context);
                             // Pass the correct properties
-                            _showPriceConfigDialog(item.id, item.serviceName, item.price);
+                            bool success = await vm.chooseService(_doctorId!, item.id);
+                            if (success) {
+                              vm.fetchMyServices(_doctorId!); // Tải lại danh sách
+                              if(context.mounted){
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Đã thêm dịch vụ với giá niêm yết thành công!'))
+                                );
+                              }
+                            }
                           },
                         );
                       },
@@ -133,7 +141,7 @@ class _DoctorServiceManagementScreenState extends State<DoctorServiceManagementS
   }
 
   // Dialog nhập giá tùy chỉnh của Bác sĩ
-  void _showPriceConfigDialog(int masterId, String serviceName, double defaultPrice) {
+  /*void _showPriceConfigDialog(int masterId, String serviceName, double defaultPrice) {
     final priceController = TextEditingController(text: defaultPrice.toStringAsFixed(0));
     
     showDialog(
@@ -181,7 +189,7 @@ class _DoctorServiceManagementScreenState extends State<DoctorServiceManagementS
         ],
       ),
     );
-  }
+  }*/
 
   @override
   Widget build(BuildContext context) {

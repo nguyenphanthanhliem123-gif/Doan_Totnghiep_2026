@@ -85,15 +85,17 @@ export default class ServiceController{
         }
     }
 
-    // Bác sĩ đăng ký dịch vụ khám kèm giá tùy chỉnh
+    // Bác sĩ đăng ký dịch vụ khám
     static async doctorChooseService(req, res) {
         try {
-            const { doctorId, masterServiceId, customPrice } = req.body;
-            if (!doctorId || !masterServiceId || !customPrice) {
+            const { doctorId, masterServiceId } = req.body;
+            if (!doctorId || !masterServiceId) {
                 return res.status(400).json({ success: false, message: "Thiếu thông tin đăng ký" });
             }
-            await ServiceModel.addDoctorService(doctorId, masterServiceId, customPrice);
-            return res.status(200).json({ success: true, message: "Cấu hình dịch vụ thành công!" });
+            
+            await ServiceModel.addDoctorService(doctorId, masterServiceId);
+            
+            return res.status(200).json({ success: true, message: "Thêm dịch vụ thành công!" });
         } catch (error) {
             return res.status(500).json({ success: false, message: error.message });
         }

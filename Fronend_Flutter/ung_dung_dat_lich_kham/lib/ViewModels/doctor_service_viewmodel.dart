@@ -135,7 +135,7 @@ class DoctorServiceViewModel extends ChangeNotifier {
   }
 
   // Chọn thêm dịch vụ mới kèm giá tùy chỉnh
-  Future<bool> chooseService(int doctorId, int masterServiceId, double customPrice) async {
+  Future<bool> chooseService(int doctorId, int masterServiceId) async {
     _isLoading = true;
     notifyListeners();
     try {
@@ -157,7 +157,6 @@ class DoctorServiceViewModel extends ChangeNotifier {
         body: jsonEncode({
           'doctorId': doctorId,
           'masterServiceId': masterServiceId,
-          'customPrice': customPrice
         }),
       );
       

@@ -455,13 +455,35 @@ export default class adminController {
     static async adminDeleteService(req, res) {
         try {
             const { id } = req.params;
-            await ServiceModel.deleteMasterService(id);
-            return res.status(200).json({ success: true, message: "Đã xóa dịch vụ!" });
+            
+            const result = await ServiceModel.deleteMasterService(id);
+            
+            return res.status(200).json({ 
+                success: true, 
+                message: result.message || "Đã xóa dịch vụ!" 
+            });
         } catch (error) {
-            if(error.message.includes('foreign key constraint')) {
-                return res.status(400).json({ success: false, message: "Không thể xóa vì đã có bác sĩ đăng ký dịch vụ này."});
+            // Bắt lỗi khi có bác sĩ hoạt động (Trang_thai = 1) đang sử dụng dịch vụ này
+            if (error.message === 'ACTIVE_DOCTORS_EXIST') {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: "Không thể xóa vì đang có bác sĩ hoạt động đăng ký dịch vụ này." 
+                });
             }
-            return res.status(500).json({ success: false, message: error.message });
+            
+            // Bắt lỗi không tìm thấy ID dịch vụ
+            if (error.message === 'SERVICE_NOT_FOUND') {
+                return res.status(404).json({ 
+                    success: false, 
+                    message: "Không tìm thấy dịch vụ yêu cầu trong hệ thống." 
+                });
+            }
+
+            // Lỗi hệ thống phát sinh khác (mất kết nối, sai cú pháp SQL, v.v.)
+            return res.status(500).json({ 
+                success: false, 
+                message: "Lỗi hệ thống: " + error.message 
+            });
         }
     }
 
