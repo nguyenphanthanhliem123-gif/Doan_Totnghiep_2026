@@ -4,33 +4,26 @@ import { fileURLToPath } from 'url';
 import { ChromaClient } from 'chromadb';
 import { pipeline } from '@xenova/transformers';
 
-// Ép Node.js tìm file .env bằng đường dẫn tuyệt đối độc lập
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
-// Chuyển sang dùng host và port chuẩn cấu trúc mới
 const chromaClient = new ChromaClient({ host: "localhost", port: 8000 });
 
-// Hàm dummy để bypass kiểm tra của ChromaDB
 const dummyEmbeddingFunction = {
     generate: async (texts) => Array(texts.length).fill([])
 };
 
-// Biến toàn cục để lưu trữ model sau khi nạp vào RAM (Singleton Pattern)
 let embeddingPipeline = null;
 
-// HÀM TÍNH VECTOR LOCAL: Đổi văn bản thuần thành mảng số Vector (Chạy Offline 100%)
 async function getLocalEmbedding(text) {
     try {
         if (!embeddingPipeline) {
             console.log("⏳ Lần đầu khởi chạy: Đang nạp model Embedding Local vào RAM (Khoảng ~120MB)...");
-            // Tải bản nén quantized tối ưu tuyệt đối
             embeddingPipeline = await pipeline('feature-extraction', 'Xenova/paraphrase-multilingual-MiniLM-L12-v2');
             console.log("✅ Nạp model Embedding thành công! Sẵn sàng xử lý.");
         }
         
         const output = await embeddingPipeline(text, { pooling: 'mean', normalize: true });
-        // Chuyển kết quả từ Tensor thành mảng Array thông thường để nạp vào ChromaDB
         return Array.from(output.data);
     } catch (error) {
         console.error("❌ Lỗi tính toán Embedding Local:", error);
@@ -107,6 +100,24 @@ export default class ChromaService {
             nResults: 1 
         });
         return results.documents[0];
+    }
+
+    // =========================================================================
+    // 5. NEW COLLECTION: specialty_knowledge_v1 (Tri thức mô tả chi tiết 20 chuyên khoa)
+    // =========================================================================
+    static async searchSpecialtyKnowledge(userSymptom) {
+        const collection = await chromaClient.getOrCreateCollection({ 
+            name: "specialty_knowledge_v1",
+            embeddingFunction: dummyEmbeddingFunction
+        });
+        const queryVector = await getLocalEmbedding(userSymptom);
+
+        // Lấy top 2 chuyên khoa tương đồng nhất để AI dễ so sánh lựa chọn
+        const results = await collection.query({
+            queryEmbeddings: [queryVector],
+            nResults: 2 
+        });
+        return results.documents[0]; 
     }
 
     // =========================================================================

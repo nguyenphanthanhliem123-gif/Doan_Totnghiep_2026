@@ -14,6 +14,7 @@ class AdminPaymentViewModel extends ChangeNotifier {
   String _searchName = '';
   String _searchTransactionId = '';
   String _filterStatus = 'all'; 
+  String _searchUserId = ''; // MỚI THÊM: Biến lưu trữ ID người dùng
 
   List<PaymentAdminModel> get filteredPayments => _filteredPayments;
   bool get isLoading => _isLoading;
@@ -100,6 +101,12 @@ class AdminPaymentViewModel extends ChangeNotifier {
     applyFilters();
   }
 
+  // MỚI THÊM: Hàm cập nhật từ khóa tìm kiếm theo ID
+  void searchByUserId(String query) {
+    _searchUserId = query.trim();
+    applyFilters();
+  }
+
   void setStatusFilter(String status) {
     _filterStatus = status;
     applyFilters();
@@ -116,8 +123,14 @@ class AdminPaymentViewModel extends ChangeNotifier {
       // Lọc trạng thái
       final matchStatus = _filterStatus == 'all' || payment.trangThai == _filterStatus;
 
-      return matchName && matchTxn && matchStatus;
+      // MỚI THÊM: So sánh tuyệt đối mã người dùng (nếu có nhập)
+      final matchUserId = _searchUserId.isEmpty || 
+                          (payment.maNguoiDung != null && payment.maNguoiDung.toString() == _searchUserId);
+
+      // CẬP NHẬT: Trả về kết quả phải thỏa mãn cả 4 điều kiện
+      return matchName && matchTxn && matchStatus && matchUserId;
     }).toList();
+    
     notifyListeners();
   }
 }

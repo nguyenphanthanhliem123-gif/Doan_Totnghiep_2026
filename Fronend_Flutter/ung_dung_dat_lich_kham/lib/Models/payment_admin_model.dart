@@ -24,7 +24,7 @@ class PaymentAdminModel {
   factory PaymentAdminModel.fromJson(Map<String, dynamic> json) {
     return PaymentAdminModel(
       maThanhToan: json['Ma_thanh_toan'],
-      maNguoiDung: json['Ma_nguoi_dung'],
+      maNguoiDung: json['Ma_nguoi_dung'] ?? 1,
       tenNguoiDung: json['Ten_nguoi_dung'] ?? 'Khách',
       phuongThuc: json['Phuong_thuc'] ?? '',
       trangThai: json['Trang_thai_thanh_toan'] ?? 'pending',

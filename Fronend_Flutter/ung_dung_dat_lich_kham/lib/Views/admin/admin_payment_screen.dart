@@ -23,6 +23,11 @@ class _AdminPaymentScreenState extends State<AdminPaymentScreen> {
     });
   }
 
+  String formatPaymentMethod(String paymentMethod){
+    if(paymentMethod == 'cash') return 'Thanh toán tại quầy';
+    return 'VNPay';
+  }
+
   @override
   Widget build(BuildContext context) {
     final vm = context.watch<AdminPaymentViewModel>();
@@ -66,7 +71,8 @@ class _AdminPaymentScreenState extends State<AdminPaymentScreen> {
                                   Text("Mã GD: ${payment.maGiaoDich ?? 'Chưa có'}"),
                                   Text("Booking: ${payment.maBooking ?? ''}"),
                                   Text("Số tiền: ${currencyFormat.format(payment.tongTien)}"),
-                                  Text("PT: ${payment.phuongThuc.toUpperCase()} - Trạng thái: ${_translateStatus(payment.trangThai)}"),
+                                  Text("PT: ${formatPaymentMethod(payment.phuongThuc).toUpperCase()} - Trạng thái: ${_translateStatus(payment.trangThai)}"),
+                                  Text("Mã KH: ${payment.maNguoiDung ?? 'Không có'} - Mã GD: ${payment.maGiaoDich ?? 'Chưa có'}"),
                                 ],
                               ),
                               trailing: IconButton(
@@ -89,13 +95,34 @@ class _AdminPaymentScreenState extends State<AdminPaymentScreen> {
       color: Colors.white,
       child: Column(
         children: [
-          TextField(
-            onChanged: (val) => vm.searchByName(val),
-            decoration: const InputDecoration(
-              labelText: "Tìm theo tên khách hàng",
-              prefixIcon: Icon(Icons.person_search),
-              border: OutlineInputBorder(),
-            ),
+          Row(
+            children: [
+              Expanded(
+                flex: 2,
+                child: TextField(
+                  onChanged: (val) => vm.searchByName(val),
+                  decoration: const InputDecoration(
+                    labelText: "Tìm theo tên khách hàng",
+                    prefixIcon: Icon(Icons.person_search),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                flex: 1,
+                child: TextField(
+                  // Gọi hàm mới trong ViewModel
+                  onChanged: (val) => vm.searchByUserId(val), 
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: "Mã KH",
+                    prefixIcon: Icon(Icons.badge),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 10),
           Row(

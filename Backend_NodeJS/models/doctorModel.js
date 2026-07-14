@@ -107,7 +107,7 @@ export default class doctorModel {
                 FROM bac_si b
                 JOIN nguoi_dung nd ON b.Ma_nguoi_dung = nd.Ma_nguoi_dung
                 LEFT JOIN chuyen_khoa c ON b.Ma_chuyen_khoa = c.Ma_chuyen_khoa
-                WHERE b.Trang_thai_hoat_dong = 'active'
+                WHERE b.Trang_thai_hoat_dong = 'active' AND nd.Trang_thai = 1
             `;
             let params = [];
 
@@ -130,7 +130,7 @@ export default class doctorModel {
     static async getDoctorsFilter(filters = {}) {
         try {
             // Điều kiện mặc định: Bác sĩ phải đang hoạt động
-            let conditions = ["b.Trang_thai_hoat_dong = 'active'"];
+            let conditions = ["b.Trang_thai_hoat_dong = 'active'", "nd.Trang_thai = 1"];
             let params = [];
 
             // 1. Kiểm tra bộ lọc chuyên khoa

@@ -18,15 +18,7 @@ let currentKeyIndex = 0;
 // Bù đúng 7 tiếng để đồng bộ hoàn toàn với múi giờ thực tế Việt Nam
 const vnTime = new Date(new Date().getTime() + 7 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-// HÀM KHỞI TẠO AI: Cấu hình nhân cách (System Instruction) và bộ Công cụ (Tools) cho bot
-function getActiveModel() {
-    const genAI = new GoogleGenerativeAI(API_KEYS[currentKeyIndex]);
-    return genAI.getGenerativeModel({ 
-
-        // Cài đặt vai trò và kiến thức nền cho chatbot
-        model: "gemini-2.5-flash",
-        // Dữ liệu mẫu
-        systemInstruction: `Bạn là trợ lý AI ảo của App Hẹn Đặt Lịch Khám MedCare.
+const SYSTEM_INSTRUCTION =`Bạn là trợ lý AI ảo của App Hẹn Đặt Lịch Khám MedCare.
         Nhiệm vụ: Trả lời ngắn gọn, lịch sự về quy trình khám.
         1. Giấy tờ: CMND/CCCD, BHYT, sổ khám cũ.
         2. Thời gian: 15-30 phút (thêm 1-2 tiếng nếu xét nghiệm).
@@ -42,7 +34,12 @@ function getActiveModel() {
         điều trị nếu có triệu chứng bất thường." ở cuối câu.
         7. TƯ VẤN TRIỆU CHỨNG & SÀNG LỌC BỆNH: 
         - Khi bệnh nhân mô tả các triệu chứng tự nhiên, bạn BẮT BUỘC phải gọi hàm "suggestSpecialtyBySymptom".
-        - Tuyệt đối KHÔNG tự phán đoán hay kết luận vo khi chưa gọi hàm này.
+        - Tuyệt đối KHÔNG tự phán đoán hay kết luận vội khi chưa gọi hàm này.
+        - QUY TẮC ĐỐI TƯỢNG ĐẶC BIỆT (CỰC KỲ QUAN TRỌNG):
+          + Nếu người bệnh là trẻ em (bé, trẻ, con tôi, cháu...) thì luôn ưu tiên tư vấn chuyên khoa Nhi khoa, trừ khi triệu chứng rất đặc hiệu cần chuyên khoa khác.
+          + Nếu người bệnh là phụ nữ mang thai (bầu, thai kỳ...) thì ưu tiên Sản phụ khoa.
+          + Nếu người bệnh là người cao tuổi (ông, bà, người già...) và triệu chứng chưa rõ thì ưu tiên Lão khoa.
+          + Nếu triệu chứng có dấu hiệu cấp cứu (chảy máu nhiều, ngất xỉu, khó thở dữ dội, co giật) thì KHÔNG tư vấn chuyên khoa mà lập tức khuyến cáo đến thẳng khoa Cấp cứu hoặc gọi 115.
 
         8. QUY TRÌNH ĐẶT LỊCH (CHỦ ĐỘNG & RÕ RÀNG):
         - LUỒNG 1 (YÊU CẦU SỚM NHẤT/TÌM MỚI): Khi người dùng yêu cầu "đặt lịch sớm nhất", "đổi bác sĩ", "đổi sang giờ khác" -> BỎ QUA TOÀN BỘ MÃ ẨN CŨ, BẮT BUỘC gọi tool 'shortcut_book_earliest' hoặc 'check_doctor_schedule' để lấy dữ liệu mới.
@@ -53,7 +50,58 @@ function getActiveModel() {
         9. QUY TẮC CHỐT LỊCH (CỰC KỲ QUAN TRỌNG):
         - CHỈ GỌI tool 'confirm_and_book_appointment' KHI VÀ CHỈ KHI người dùng XÁC NHẬN CHỌN MỘT GIỜ CỤ THỂ từ danh sách bạn VỪA MỚI LIỆT KÊ ở tin nhắn ngay phía trên.
         - Tuyệt đối KHÔNG tái sử dụng các mã ẩn [Mã giờ: X] từ những cuộc hội thoại cũ tít phía trên nếu người dùng thay đổi luồng trò chuyện sang "đặt sớm nhất".
-        - Nếu không có dịch vụ nào được chọn, tự truyền {ma_dich_vu: 25, gia_tien: 150000}.`,
+        - Nếu không có dịch vụ nào được chọn, tự truyền {ma_dich_vu: 25, gia_tien: 150000}.
+        
+        10. DUY TRÌ NGỮ CẢNH VÀ TRÍ NHỚ (CỰC KỲ QUAN TRỌNG):
+        - Khi người dùng đưa ra yêu cầu tiếp nối (ví dụ: "Tôi muốn đặt lịch ngày mai", "Tìm giờ trống lúc 10h") mà KHÔNG nhắc lại tên Bác sĩ hoặc Chuyên khoa, bạn BẮT BUỘC phải tự động đọc lại tin nhắn ngay phía trên của chính bạn để lấy tên Bác sĩ/Chuyên khoa vừa thảo luận và điền vào tham số gọi hàm.
+        - Tuyệt đối không hỏi lại người dùng hoặc tự đoán mò sai lệch.
+        
+        `;
+
+// HÀM PHỤ TRỢ: Trích xuất đối tượng bệnh nhân từ câu hỏi trước khi gọi AI
+function extractPatientInfo(text) {
+    const lowerText = text.toLowerCase();
+    
+    // Đã đổi mặc định: Trao lại quyền suy luận từ lịch sử cho AI nếu câu hiện tại không rõ ràng
+    let ageGroup = "Chưa rõ (AI hãy tự đọc ngữ cảnh từ Lịch sử trò chuyện phía trên)"; 
+    let pregnancy = false;
+    let emergency = false;
+
+    // Bắt keyword trẻ em
+    if (/(bé|trẻ|con tôi|con em|con mình|cháu|sơ sinh|nhóc)/.test(lowerText)) {
+        ageGroup = "Trẻ em";
+    } 
+    // Bắt keyword người già
+    else if (/(người già|ông|bà|cụ|người lớn tuổi|cao tuổi)/.test(lowerText)) {
+        ageGroup = "Người cao tuổi";
+    }
+    // Bắt keyword người trưởng thành (nếu họ nói rõ)
+    else if (/(tôi|chồng|vợ|anh|chị|chú|bác|mẹ tôi|ba tôi|bố tôi)/.test(lowerText)) {
+        ageGroup = "Người trưởng thành";
+    }
+
+    // Bắt keyword mang thai
+    if (/(bầu|mang thai|có thai|thai kỳ|mẹ bầu)/.test(lowerText)) {
+        pregnancy = true;
+    }
+
+    // Bắt keyword cấp cứu khẩn cấp
+    if (/(cấp cứu|chảy máu|khó thở dữ dội|ngất|co giật|bất tỉnh|tai nạn|đột quỵ)/.test(lowerText)) {
+        emergency = true;
+    }
+
+    return { ageGroup, pregnancy, emergency };
+}
+
+// HÀM KHỞI TẠO AI: Cấu hình nhân cách (System Instruction) và bộ Công cụ (Tools) cho bot
+function getActiveModel() {
+    const genAI = new GoogleGenerativeAI(API_KEYS[currentKeyIndex]);
+    return genAI.getGenerativeModel({ 
+
+        // Cài đặt vai trò và kiến thức nền cho chatbot
+        model: "gemini-2.5-flash",
+        // Dữ liệu mẫu
+        systemInstruction: SYSTEM_INSTRUCTION,
 
         // Dạy cho AI biết khi nào thì cần gọi hàm (Function Calling)
         tools: [{
@@ -182,9 +230,13 @@ function getActiveModel() {
                             symptomKeyword: { 
                                 type: "STRING", 
                                 description: "Từ khóa chính của triệu chứng hoặc bộ phận bị đau tách ra từ lời kể của người dùng (ví dụ: 'đau đầu', 'ho', 'đau bụng', 'tai')." 
+                            },
+                            patient_type: {
+                                type: "STRING",
+                                description: "Đối tượng bệnh nhân. Nếu người dùng nói 'con tôi', 'bé', 'trẻ sơ sinh', hãy trả về 'Trẻ em'. Nếu là người lớn hoặc không nhắc đến, trả về 'Người lớn'."
                             }
                         },
-                        required: ["symptomKeyword"],
+                        required: ["symptomKeyword", "patient_type"],
                     },
                 },
                 // TOOL: TRA CỨU ĐƠN THUỐC CỦA BỆNH NHÂN
@@ -195,6 +247,14 @@ function getActiveModel() {
                 },
             ]
         }]
+    });
+}
+
+function getActiveModelWithoutTools() {
+    const genAI = new GoogleGenerativeAI(API_KEYS[currentKeyIndex]);
+    return genAI.getGenerativeModel({ 
+        model: "gemini-2.5-flash",
+        systemInstruction: SYSTEM_INSTRUCTION
     });
 }
 
@@ -229,6 +289,16 @@ export default class chatbotController {
                     console.log("Đã tạo Session mới:", session_token);
                 } catch (dbError) { console.error("Lỗi tạo DB Session:", dbError); }
             }
+
+            // Trích xuất đối tượng bằng code cứng
+            const patientInfo = extractPatientInfo(message);
+            
+            // Đóng gói thành Context để mớm cho AI
+            let patientContext = `\n\n--- GỢI Ý ĐỐI TƯỢNG TỪ CÂU HỎI HIỆN TẠI ---\n`;
+            patientContext += `- Nhóm tuổi: ${patientInfo.ageGroup}\n`;
+            patientContext += `- Mang thai: ${patientInfo.pregnancy ? "Có" : "Không xác định"}\n`;
+            patientContext += `- Dấu hiệu cấp cứu: ${patientInfo.emergency ? "CÓ NGUY CƠ CAO - CẦN ƯU TIÊN GỌI CẤP CỨU" : "Không"}\n`;
+            patientContext += `-------------------------------------------\n\n`;
 
             const finalMessageToAI = chatHistoryText + "Câu hỏi hiện tại của Bệnh nhân: " + message;
 
@@ -461,42 +531,50 @@ export default class chatbotController {
                 else if (call.name === "suggestSpecialtyBySymptom") {
                     console.log("AI GỌI HÀM: suggestSpecialtyBySymptom -> từ khóa:", call.args.symptomKeyword);
                     
-                    // 1. Thực hiện RAG: Lấy kiến thức y khoa chuyên sâu từ kho lưu trữ Vector ChromaDB
-                    const medicalFacts = await ChromaService.searchMedicalKnowledge(message);
-                    console.log("[RAG ChromaDB Data]:", medicalFacts);
+                    // 1. Chỉ sử dụng RAG từ ChromaDB (bỏ hẳn việc search bằng SQL cứng)
+                    const specialtyFacts = await ChromaService.searchSpecialtyKnowledge(message);
+                    console.log("[RAG ChromaDB Specialty Data]:", specialtyFacts);
+
+                    const activeSpecialties = await ChatbotModel.getAllSpecialties();
                     
-                    // 2. Lấy dữ liệu chuyên khoa ánh xạ từ Database MySQL
-                    dbData = await ChatbotModel.suggestSpecialtyBySymptom(call.args.symptomKeyword);
-                    
-                    // 3. Định hình prompt nâng cao kết hợp cả 2 nguồn tri thức
-                    prompt = `Bạn đang đóng vai một Bác sĩ tư vấn sàng lọc thông minh của hệ thống phòng khám MedCare.
-                    Người dùng vừa mô tả tình trạng: "${message}" (Từ khóa hệ thống trích xuất: "${call.args.symptomKeyword}").
+                    // 2. Cập nhật Prompt mới, trao quyền quyết định hoàn toàn cho ChromaDB
+                    prompt = `Bạn đang đóng vai một Trợ lý y tế thông minh của phòng khám MedCare.
+                    Người dùng vừa mô tả tình trạng: "${message}".
 
                     ------------------------------------------
-                    KHO KIẾN THỨC Y KHOA ĐƯỢC TRA CỨU TỪ CHROMADB (RAG):
-                    ${medicalFacts ? JSON.stringify(medicalFacts) : "Không tìm thấy tài liệu y khoa khớp chính xác hoàn toàn."}
-
-                    DANH SÁCH CHUYÊN KHOA PHÙ HỢP TỪ DATABASE MYSQL:
-                    ${JSON.stringify(dbData)}
+                    KẾT QUẢ TÌM KIẾM CHUYÊN KHOA PHÙ HỢP TỪ HỆ THỐNG:
+                    ${specialtyFacts && specialtyFacts.length > 0 ? JSON.stringify(specialtyFacts) : "[]"}
                     ------------------------------------------
 
-                    QUY TRÌNH TƯ VẤN VÀ PHÂN LOẠI CỦA BÁC SĨ AI (HÃY LÀM THEO CÁC BƯỚC):
+                    QUY TRÌNH TƯ VẤN VÀ ĐỊNH HƯỚNG (TUÂN THỦ TUYỆT ĐỐI):
                     
-                    Bước 1: Đối chiếu & Phân loại nhóm bệnh tạm thời
-                    - Dựa vào nội dung "Kho kiến thức y khoa từ ChromaDB", hãy chỉ ra cho bệnh nhân biết họ có khả năng đang thuộc "Nhóm bệnh" nào (Ví dụ: Nhiễm trùng đường hô hấp cấp tính, Cơ xương khớp...). 
+                    1. KHÔNG TỰ CHẨN ĐOÁN: Không tự ý kết luận tên bệnh hoặc kê đơn thuốc.
+                    
+                    2. QUY TẮC CHỌN KHOA DỰA TRÊN ĐỐI TƯỢNG VÀ KẾT QUẢ:
+                    - Đọc kỹ phần mô tả trong [KẾT QUẢ TÌM KIẾM CHUYÊN KHOA PHÙ HỢP] để chọn ra chuyên khoa chính xác nhất.
+                    - ĐẶC BIỆT: Nếu người bệnh là trẻ em (nhắc đến "con tôi", "bé", "cháu"), BẮT BUỘC ưu tiên định hướng vào chuyên khoa "Nhi Khoa" (nếu có trong kết quả).
+                    - ĐẶC BIỆT: Nếu người bệnh là người cao tuổi (nhắc đến "ông", "bà"), hãy ưu tiên các khoa phù hợp cho người già như Y học cổ truyền, Cơ xương khớp, hoặc Lão khoa từ kết quả trả về.
+                    
+                    3. KHI NÀO DÙNG NỘI TỔNG QUÁT?
+                    - CHỈ KHI [KẾT QUẢ TÌM KIẾM CHUYÊN KHOA PHÙ HỢP] trả về rỗng ([]), lúc đó bạn mới được phép khuyên bệnh nhân khám "Khoa Nội tổng quát".
+                    
+                    4. LỜI KẾT THÂN THIỆN:
+                    Luôn kết thúc bằng câu: "Bạn có muốn tôi kiểm tra lịch trống sớm nhất của bác sĩ khoa [Tên Khoa bạn vừa chọn] không?".
+                    
+                    Phong cách phản hồi: Nhẹ nhàng, ân cần, giải thích ngắn gọn lý do tại sao nên đi khám ở khoa đó.
 
-                    Bước 2: Hỏi thêm câu hỏi sàng lọc (Nếu dữ liệu thiếu hụt)
-                    - Nếu lời kể của bệnh nhân còn ngắn (ví dụ chỉ nói đau đầu, sốt nhẹ 2 ngày giống như hiện tại), hãy đối chiếu với mục "Triệu chứng điển hình" trong cẩm nang vừa tìm được.
-                    - Hãy chủ động và ân cần hỏi thêm bệnh nhân xem họ có xuất hiện các triệu chứng vệ tinh khác không để giúp định vị bệnh chính xác hơn (Ví dụ: "Anh/Chị có kèm theo ho, nghẹt mũi, chảy dịch mũi hay đau rát họng nhiều không?").
+                    ------------------------------------------
+                    KẾT QUẢ KIẾN THỨC TỪ CHROMADB (CÓ THỂ CŨ):
+                    ${specialtyFacts && specialtyFacts.length > 0 ? JSON.stringify(specialtyFacts) : "[]"}
 
-                    Bước 3: Đưa ra thông tin cảnh báo & Hướng xử lý sơ bộ
-                    - Tóm tắt nhanh "Mức độ nguy hiểm" và "Hướng xử lý" tại nhà (uống nhiều nước, súc họng, dùng paracetamol...) dựa vào đúng dữ liệu của cẩm nang ChromaDB mang lại.
+                    DANH SÁCH CÁC KHOA HIỆN ĐANG MỞ CỬA TẠI PHÒNG KHÁM (LẤY TỪ MYSQL):
+                    ${JSON.stringify(activeSpecialties)}
+                    ------------------------------------------
 
-                    Bước 4: Định hướng Chuyên khoa
-                    - Dựa vào dữ liệu Chuyên khoa từ MySQL để khuyên họ nên đặt lịch hẹn tại chuyên khoa nào (Ví dụ: Khoa Nội tổng quát, Khoa Thần Kinh, Khoa Tai Mũi Họng...). 
-                    - Nếu dữ liệu MySQL trống ([]), dựa trên chuyên môn y khoa của bạn để tự gợi ý chuyên khoa phù hợp nhất trong ứng dụng.
-
-                    Phong cách phản hồi: Nhẹ nhàng, thấu hiểu, mang tính chuyên môn cao nhưng dễ hiểu đối với người dân. Sử dụng Markdown, gạch đầu dòng rõ ràng để người bệnh không bị ngợp thông tin.`;
+                    QUY TẮC CHỐT CHẶN (BẮT BUỘC): 
+                    - Bạn chỉ được phép khuyên bệnh nhân khám các khoa CÓ MẶT TRONG "DANH SÁCH CÁC KHOA HIỆN ĐANG MỞ CỬA". 
+                    - Tuyệt đối không tư vấn những khoa có trong ChromaDB nhưng đã bị xóa khỏi danh sách mở cửa!
+                    `;
                 }
 
                 else if (call.name === "lookup_my_prescription") {
@@ -540,12 +618,14 @@ export default class chatbotController {
         }
     }
 
+    
+
     // HÀM BỔ TRỢ: Rút gọn luồng xoay vòng Key lần 2
     static async handleAIRequestWithRotation(prompt) {
         let finalAttempts = 0;
         while (finalAttempts < API_KEYS.length) {
             try {
-                return await getActiveModel().generateContent(prompt);
+                return await getActiveModelWithoutTools().generateContent(prompt);
             } catch (aiError) {
                 if (aiError.message && (aiError.message.includes('429') || aiError.message.includes('403') || aiError.message.includes('503') || aiError.message.includes('500'))) {
                     console.log(`[CẢNH BÁO LẦN 2] API Key thứ ${currentKeyIndex + 1} thất bại. Lý do: ${aiError.message}`);

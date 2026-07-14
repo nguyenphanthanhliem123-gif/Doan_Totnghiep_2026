@@ -282,7 +282,7 @@ class _BookingScreenState extends State<BookingScreen> {
                               items: relatives.map((relative) {
                                 return DropdownMenuItem<HealthRecordModel>(
                                   value: relative,
-                                  child: Text("${relative.recordName} (${relative.roll})", style: const TextStyle(fontWeight: FontWeight.bold, color: kTextColor)),
+                                  child: Text("${relative.recordName} - Mã BN: ${relative.relativeId} (${relative.roll})", style: const TextStyle(fontWeight: FontWeight.bold, color: kTextColor)),
                                 );
                               }).toList(),
                               onChanged: (val) => setState(() => _selectedRelative = val),
@@ -521,7 +521,11 @@ class _BookingScreenState extends State<BookingScreen> {
     double totalPrice = _calculateTotalPrice();
     final String formattedPrice = "${totalPrice.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')} Đ";
     
-    if (!_isOffline && _paymentMethod == 'cash') _paymentMethod = 'vnpay'; 
+    if (_isOffline) {
+      _paymentMethod = 'cash'; // Offline: Bắt buộc chọn tiền mặt
+    } else {
+      _paymentMethod = 'vnpay'; // Online: Bắt buộc chọn VNPay
+    }
 
     showModalBottomSheet(
       context: context,
@@ -573,9 +577,13 @@ class _BookingScreenState extends State<BookingScreen> {
                   const SizedBox(height: 10),
                   Row(
                     children: [
-                      if (_isOffline) _buildPaymentButton("Tiền mặt", "cash", Icons.money, setModalState),
-                      if (_isOffline) const SizedBox(width: 10),
-                      _buildPaymentButton("VNPay", "vnpay", Icons.payment_rounded, setModalState),
+                      // Nếu Offline -> Chỉ hiện nút Tiền mặt
+                      if (_isOffline) 
+                        _buildPaymentButton("Thanh toán tại quầy", "cash", Icons.money, setModalState),
+                        
+                      // Nếu Online -> Chỉ hiện nút VNPay
+                      if (!_isOffline) 
+                        _buildPaymentButton("VNPay", "vnpay", Icons.payment_rounded, setModalState),
                     ],
                   ),
                   const SizedBox(height: 30),

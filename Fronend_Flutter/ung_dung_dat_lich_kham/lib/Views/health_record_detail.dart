@@ -162,6 +162,7 @@ class _HealthRecordMenuScreenState extends State<HealthRecordMenuScreen> {
                   _buildSectionTitle('Thông tin cơ bản'),
                   const SizedBox(height: 10),
                   _buildInfoCard([
+                    _buildInfoRow(Icons.badge_rounded, 'Mã bệnh nhân', record.id.toString()),
                     _buildInfoRow(Icons.calendar_today_rounded, 'Ngày sinh', formattedDob),
                     _buildInfoRow(Icons.location_on_rounded, 'Địa chỉ', record.address),
                   ]),

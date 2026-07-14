@@ -107,11 +107,6 @@ const sendReminderEmail24h = async (emailNguoiNhan, thongTin) => {
                         <p style="margin: 5px 0;"><strong>Địa chỉ:</strong> ${thongTin.diaChi}</p>
                     </div>
 
-                    <div style="text-align: center; margin: 20px 0;">
-                        <p style="font-size: 14px; color: #555;">Vui lòng chuẩn bị sẵn mã QR này khi đến phòng khám:</p>
-                        <img src="${qrCodeDataUrl}" alt="Mã QR Booking" style="width: 150px; height: 150px; border: 1px solid #ccc; border-radius: 8px;" />
-                    </div>
-
                     <p style="font-size: 13px; color: #777;">Nếu bạn có việc bận đột xuất, vui lòng truy cập ứng dụng để hủy hoặc đổi lịch trước 2 tiếng.</p>
                 </div>
             </div>

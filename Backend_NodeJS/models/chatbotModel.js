@@ -338,7 +338,7 @@ export default class ChatbotModel {
         const sql = `
             SELECT Ten_chuyen_khoa, Mo_ta
             FROM chuyen_khoa 
-            WHERE Ten_chuyen_khoa LIKE ? OR Mo_ta LIKE ?
+            WHERE Ten_chuyen_khoa LIKE ? OR Mo_ta LIKE ? AND Trang_thai = 1
             LIMIT 2
         `;
         const [specialties] = await execute(sql, [`%${symptomKeyword}%`, `%${symptomKeyword}%`]);
@@ -385,5 +385,16 @@ export default class ChatbotModel {
         // Truyền thẳng targetTime vào thay vì hourPrefix như code cũ
         const [rows] = await execute(query, [`%${doctorName}%`, targetDate, targetTime]);
         return rows.length > 0 ? rows[0] : null;
+    }
+
+    static async getAllSpecialties() {
+        try {
+            // Thay 'chuyen_khoa' bằng tên bảng thực tế và 'Ten_chuyen_khoa' bằng tên cột của bạn
+            const [rows] = await execute("SELECT Ten_chuyen_khoa FROM chuyen_khoa WHERE Trang_thai = 1");
+            return rows; 
+        } catch (error) {
+            console.error("Lỗi lấy danh sách chuyên khoa:", error);
+            return [];
+        }
     }
 }

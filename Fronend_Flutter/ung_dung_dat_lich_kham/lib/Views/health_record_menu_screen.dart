@@ -138,7 +138,7 @@ class _HealthRecordListScreenState extends State<HealthRecordListScreen> {
               record.recordName, // Tên hồ sơ (VD: Nguyễn Phan Thanh Liêm)
               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
-            subtitle: Text(record.roll), // Vai trò (Chủ tài khoản, Cha, Mẹ...)
+            subtitle: Text('Mã BN: ${record.id} • ${record.roll}'), // Vai trò (Chủ tài khoản, Cha, Mẹ...)
             trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
             onTap: () {
               if(!mounted) return;

@@ -271,7 +271,7 @@ class TransactionCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Phương thức: ${transaction.phuongThuc}',
+                  'Phương thức: ${transaction.phuongThuc == 'Tiền mặt'? 'Thanh toán tại quầy': transaction.phuongThuc}',
                   style: TextStyle(fontSize: 14, color: Colors.grey[700]),
                 ),
                 Container(

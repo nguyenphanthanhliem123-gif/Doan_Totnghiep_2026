@@ -331,7 +331,13 @@ export default class adminController {
                 iconPath = `/uploads/${iconName}`;
             }
 
-            await adminModel.createSpecialty(tenChuyenKhoa, moTa || '', iconPath);
+            const newSpecialty = await adminModel.createSpecialty(tenChuyenKhoa, moTa || '', iconPath);
+
+            const chromaId = `specialty_${newSpecialty}`;
+            await ChromaService.addDataToCollection("specialty_knowledge_v1", chromaId, moTa, {
+                loai: "Chuyen_Khoa",
+                ten: tenChuyenKhoa
+            });
             return res.status(201).json({ success: true, message: 'Thêm chuyên khoa thành công!' });
         } catch (error) {
             return res.status(500).json({ success: false, message: error.message });

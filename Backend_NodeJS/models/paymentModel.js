@@ -159,6 +159,8 @@ export default class paymentModel{
                 JOIN benh_nhan bn ON lh.Ma_benh_nhan = bn.Ma_benh_nhan
                 JOIN nguoi_dung nd ON bn.Ma_nguoi_dung = nd.Ma_nguoi_dung
                 JOIN khung_gio_kham kg ON kg.Ma_khung_gio = lh.Ma_khung_gio
+
+                ORDER BY tt.Thoi_diem_thanh_toan DESC
             `;
 
             const [rows] = await execute(sql);

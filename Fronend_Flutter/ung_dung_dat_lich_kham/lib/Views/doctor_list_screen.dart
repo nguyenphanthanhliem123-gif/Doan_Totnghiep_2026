@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import 'package:ung_dung_dat_lich_kham/Views/doctor_detail_screen.dart';
 import '../Constants/ui_constants.dart'; // 🌟 Đồng bộ UI Constants
@@ -17,8 +16,7 @@ class DoctorListScreen extends StatefulWidget {
 }
 
 class _DoctorListScreenState extends State<DoctorListScreen> {
-
-  String? selectedLocation;
+  // ĐÃ XOÁ: Biến selectedLocation
   double minPrice = 0;
   double maxPrice = 1000000;
   double? selectedRating;
@@ -34,30 +32,7 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
     });
   }
 
-  Future<Position> _determinePosition() async {
-    bool serviceEnabled;
-    LocationPermission permission;
-
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      return Future.error('Vui lòng bật GPS (Vị trí) trên điện thoại.');
-    }
-
-    permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission(); 
-      if (permission == LocationPermission.denied) {
-        return Future.error('Bạn đã từ chối cấp quyền vị trí.');
-      }
-    }
-    
-    if (permission == LocationPermission.deniedForever) {
-      return Future.error('Quyền vị trí bị từ chối vĩnh viễn, không thể lấy tọa độ.');
-    } 
-
-    return await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
-  }
-
+  // ĐÃ XOÁ: Hàm _determinePosition sử dụng GPS Geolocator
 
   @override
   Widget build(BuildContext context) {
@@ -100,46 +75,35 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
                           DropdownMenuItem(value: 'default', child: Text('Mới nhất')),
                           DropdownMenuItem(value: 'rating_desc', child: Text('Đánh giá cao nhất')),
                           DropdownMenuItem(value: 'price_asc', child: Text('Giá thấp nhất')),
-                          DropdownMenuItem(value: 'distance_asc', child: Text('Gần tôi nhất')),
+                          // ĐÃ XOÁ: DropdownMenuItem 'distance_asc' (Gần tôi nhất)
                         ],
                         onChanged: (value) async {
                           if (value != null) {
-                            setState(() => selectedSort = value);
+                            setState(() {
+                              selectedSort = value;
+                              
+                              if (value == 'default') {
+                                minPrice = 0;
+                                maxPrice = 1000000;
+                                selectedRating = null;
+                                selectedDate = null;
+                              }
+                            });
                             String? formattedDate;
                             if(selectedDate != null) {
                               formattedDate = "${selectedDate!.year}-${selectedDate!.month.toString().padLeft(2, '0')}-${selectedDate!.day.toString().padLeft(2, '0')}";
                             }
 
-                            double? myLat;
-                            double? myLng;
+                            double? apiMinPrice = minPrice == 0 ? null : minPrice;
+                            double? apiMaxPrice = maxPrice == 1000000 ? null : maxPrice;
 
-                            if (value == 'distance_asc') {
-                              try {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Đang lấy vị trí của bạn...'), duration: Duration(seconds: 1)),
-                                );
-
-                                Position position = await _determinePosition(); 
-                                myLat = position.latitude;
-                                myLng = position.longitude;
-                              } catch (e) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
-                                );
-                                setState(() => selectedSort = 'default');
-                                return; 
-                              }
-                            }
                             context.read<DoctorViewModel>().loadDoctors(
                               specialtyId: widget.specialtyId,
                               sortBy: value == 'default' ? null : value,
-                              location: selectedLocation,
-                              minPrice: minPrice,
-                              maxPrice: maxPrice,
+                              minPrice: apiMinPrice,
+                              maxPrice: apiMaxPrice,
                               minRating: selectedRating,
                               availableDate: formattedDate,
-                              userLat: myLat,
-                              userLng: myLng,
                             );
                           }
                         },
@@ -304,19 +268,7 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
                   const Text('Lọc Bác Sĩ', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                   const Divider(height: 30),
 
-                  const Text('Khu vực', style: TextStyle(fontWeight: FontWeight.bold)),
-                  DropdownButtonFormField<String>(
-                    value: selectedLocation,
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(kBorderRadiusSmall)),
-                    ),
-                    items: ['TP. Hồ Chí Minh', 'Hà Nội', 'Đà Nẵng'].map((loc) {
-                      return DropdownMenuItem(value: loc, child: Text(loc));
-                    }).toList(),
-                    onChanged: (val) => setModalState(() => selectedLocation = val),
-                    hint: const Text('Chọn khu vực'),
-                  ),
-                  const SizedBox(height: kSpacingLarge),
+                  // ĐÃ XOÁ: Dropdown lọc theo "Khu vực"
 
                   Text('Khoảng giá: ${(minPrice/1000).toStringAsFixed(0)}k - ${(maxPrice/1000).toStringAsFixed(0)}k', style: const TextStyle(fontWeight: FontWeight.bold)),
                   RangeSlider(
@@ -333,6 +285,7 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
                       });
                     },
                   ),
+                  const SizedBox(height: kSpacingLarge),
 
                   const Text('Đánh giá tối thiểu', style: TextStyle(fontWeight: FontWeight.bold)),
                   Wrap(
@@ -382,7 +335,6 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
                       Expanded(
                         child: OutlinedButton(
                           onPressed: () {
-                            selectedLocation = null;
                             minPrice = 0; maxPrice = 1000000;
                             selectedRating = null; selectedDate = null;
                             Navigator.pop(context); 
@@ -409,11 +361,13 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
                                 ? "${selectedDate!.year}-${selectedDate!.month.toString().padLeft(2, '0')}-${selectedDate!.day.toString().padLeft(2, '0')}" 
                                 : null;
 
+                            double? apiMinPrice = minPrice == 0 ? null : minPrice;
+                            double? apiMaxPrice = maxPrice == 1000000 ? null : maxPrice;
+
                             context.read<DoctorViewModel>().loadDoctors(
                               specialtyId: widget.specialtyId,
-                              location: selectedLocation,
-                              minPrice: minPrice,
-                              maxPrice: maxPrice,
+                              minPrice: apiMinPrice,
+                              maxPrice: apiMaxPrice,
                               minRating: selectedRating,
                               availableDate: formattedDate,
                             );
