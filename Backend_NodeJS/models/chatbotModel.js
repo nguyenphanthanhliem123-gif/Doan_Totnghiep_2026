@@ -203,52 +203,81 @@ export default class ChatbotModel {
         return rows;
     }
 
-    // 9. CHỐT ĐẶT LỊCH HẸN VÀO DATABASE BẰNG TRANSACTION (Đồng bộ với luồng Booking chuẩn)
+    // 9. CHỐT ĐẶT LỊCH HẸN VÀO DATABASE BẰNG TRANSACTION (ĐÃ ĐỒNG BỘ BẢO MẬT VỚI LUỒNG THỦ CÔNG)
     static async createNewAppointment(userId, maKhungGio, maBacSi, danhSachDichVu = []) {
         let conn = null;
         try {
-            conn = await beginTransaction(); // Bắt đầu Transaction
+            conn = await beginTransaction();
 
-            // 1. SELECT FOR UPDATE: Khóa khung giờ (Chống Race Condition)
+            // 1. Khóa khung giờ & Lấy thông tin Bác sĩ (Kiểm tra đình chỉ và quá khứ)
             const [checkRows] = await conn.execute(
-                `SELECT Trang_thai, DATE_FORMAT(Thoi_gian_Bdau, '%Y-%m-%d') as Ngay_kham, DATE_FORMAT(Thoi_gian_Bdau, '%H:%i') as Gio_kham 
-                 FROM khung_gio_kham WHERE Ma_khung_gio = ? FOR UPDATE`,
+                `SELECT kg.Trang_thai, kg.Thoi_gian_Bdau, bs.Trang_thai_hoat_dong,
+                        DATE_FORMAT(kg.Thoi_gian_Bdau, '%Y-%m-%d') as Ngay_kham, 
+                        DATE_FORMAT(kg.Thoi_gian_Bdau, '%H:%i') as Gio_kham 
+                 FROM khung_gio_kham kg
+                 JOIN bac_si bs ON kg.Ma_bac_si = bs.Ma_bac_si
+                 WHERE kg.Ma_khung_gio = ? FOR UPDATE`,
                 [maKhungGio]
             );
 
-            if (checkRows.length === 0) {
-                throw new Error("Khung giờ không tồn tại trong hệ thống.");
-            }
-            if (checkRows[0].Trang_thai !== 'available') {
-                throw new Error("Khung giờ này đã bị người khác đặt mất.");
+            if (checkRows.length === 0) throw new Error("Khung giờ không tồn tại trong hệ thống.");
+            if (checkRows[0].Trang_thai !== 'available') throw new Error("Khung giờ này đã bị người khác đặt mất.");
+            if (checkRows[0].Trang_thai_hoat_dong !== 'active') throw new Error("Bác sĩ này hiện đang tạm ngưng nhận bệnh nhân.");
+            
+            // Chặn cỗ máy thời gian
+            if (new Date(checkRows[0].Thoi_gian_Bdau) < new Date()) {
+                throw new Error("Không thể đặt lịch cho khung giờ trong quá khứ.");
             }
 
             const ngayKhamThucTe = checkRows[0].Ngay_kham;
             const gioKhamThucTe = checkRows[0].Gio_kham;
 
-            // 2. Lấy ID Bệnh nhân thật từ userId
+            // 2. Kiểm tra số điện thoại người dùng
+            const [userInfo] = await conn.execute(`SELECT Dien_thoai FROM nguoi_dung WHERE Ma_nguoi_dung = ?`, [userId]);
+            if (!userInfo || userInfo.length === 0 || !userInfo[0].Dien_thoai || userInfo[0].Dien_thoai.trim() === '') {
+                throw new Error("Vui lòng cập nhật số điện thoại trong phần Hồ sơ trước khi đặt lịch.");
+            }
+
+            // 3. Lấy ID Bệnh nhân thật từ userId
             const [patientRows] = await conn.execute(`SELECT Ma_benh_nhan FROM benh_nhan WHERE Ma_nguoi_dung = ? LIMIT 1`, [userId]);
             if (patientRows.length === 0) {
                 throw new Error("Bạn chưa có hồ sơ bệnh nhân. Vui lòng cập nhật hồ sơ trước khi đặt lịch.");
             }
             const maBenhNhanThat = patientRows[0].Ma_benh_nhan;
 
-            // 3. CHECK TRÙNG LỊCH CÁ NHÂN (Patient Conflict)
+            // 4. CHECK TRÙNG LỊCH CÁ NHÂN (Áp dụng thuật toán Giao thoa - Overlapping mới nhất)
             const [conflictRows] = await conn.execute(`
-                SELECT COUNT(*) as count 
+                SELECT lh.Ma_lich_hen 
                 FROM lich_hen lh
                 JOIN khung_gio_kham kg ON lh.Ma_khung_gio = kg.Ma_khung_gio
                 WHERE lh.Ma_benh_nhan = ? 
+                AND lh.Ma_nguoi_than IS NULL -- AI chỉ đặt cho bản thân
                 AND lh.Trang_thai_lich_hen IN ('pending', 'confirmed')
-                AND kg.Thoi_gian_Bdau = ?`, 
-                [maBenhNhanThat, checkRows[0].Thoi_gian_Bdau] // Dùng Thoi_gian_Bdau gốc, không format
-            );
+                AND kg.Thoi_gian_Bdau < (SELECT Thoi_gian_Kthuc FROM khung_gio_kham WHERE Ma_khung_gio = ?)
+                AND kg.Thoi_gian_Kthuc > (SELECT Thoi_gian_Bdau FROM khung_gio_kham WHERE Ma_khung_gio = ?)
+            `, [maBenhNhanThat, maKhungGio, maKhungGio]);
 
-            if (conflictRows[0].count > 0) {
-                throw new Error("Bạn đã có một lịch hẹn khác trùng với khung giờ này!");
+            if (conflictRows.length > 0) {
+                throw new Error("Bạn đã có một lịch hẹn khác trùng hoặc giao thoa với thời gian này!");
             }
 
-            // 4. Tạo mã Booking & Tính tiền
+            // 5. Chặn Spam (Tối đa 5 lịch/ngày ở 1 tài khoản)
+            const todayStr = new Date().toISOString().slice(0, 10);
+            const [spamRows] = await conn.execute(
+                `SELECT COUNT(*) as total 
+                 FROM lich_hen lh
+                 JOIN benh_nhan bn ON lh.Ma_benh_nhan = bn.Ma_benh_nhan
+                 WHERE bn.Ma_nguoi_dung = ? 
+                 AND DATE(lh.Ngay_tao) = ? 
+                 AND lh.Trang_thai_lich_hen IN ('pending', 'confirmed')`,
+                [userId, todayStr] // Kiểm tra theo userId gốc
+            );
+            
+            if (spamRows[0].total >= 5) {
+                throw new Error("Tài khoản của bạn đã đạt giới hạn đặt tối đa 5 lịch hẹn trong hôm nay.");
+            }
+
+            // 6. Tạo mã Booking & Tính tiền
             const dateStr = new Date().toISOString().split('T')[0].replace(/-/g, '');
             const randomCode = Math.floor(1000 + Math.random() * 9000);
             const maBooking = `BK${dateStr}_${randomCode}`;
@@ -258,7 +287,7 @@ export default class ChatbotModel {
                 tongTien = danhSachDichVu.reduce((sum, item) => sum + (item.gia_tien || 0), 0);
             }
 
-            // 5. Tạo lịch hẹn gốc
+            // 7. Tạo lịch hẹn gốc
             const sqlInsertLichHen = `
                 INSERT INTO lich_hen (Ma_booking, Ma_bac_si, Ma_benh_nhan, Ma_khung_gio, Hinh_thuc, Trang_thai_lich_hen, Tong_tien, Ngay_tao) 
                 VALUES (?, ?, ?, ?, 'offline', 'pending', ?, NOW())
@@ -266,7 +295,7 @@ export default class ChatbotModel {
             const [insertResult] = await conn.execute(sqlInsertLichHen, [maBooking, maBacSi, maBenhNhanThat, maKhungGio, tongTien]);
             const maLichHen = insertResult.insertId; 
 
-            // 6. Ghi chi tiết dịch vụ
+            // 8. Ghi chi tiết dịch vụ
             if (danhSachDichVu.length > 0) {
                 const sqlInsertChiTiet = `INSERT INTO chi_tiet_lich_hen (Ma_lich_hen, Ma_dich_vu, Gia_tien) VALUES (?, ?, ?)`;
                 for (let dv of danhSachDichVu) {
@@ -274,23 +303,23 @@ export default class ChatbotModel {
                 }
             }
 
-            // 7. Tạo thanh toán
+            // 9. Tạo thanh toán
             const maGiaoDich = `TXN_${maBooking}`;
             await conn.execute(
                 `INSERT INTO thanh_toan (Ma_lich_hen, Phuong_thuc, Trang_thai_thanh_toan, Ma_giao_dich, Tong_tien) VALUES (?, ?, ?, ?, ?)`,
-                [maLichHen, 'cash', 'pending', maGiaoDich, tongTien] // Đặt qua AI auto là trả tiền mặt
+                [maLichHen, 'cash', 'pending', maGiaoDich, tongTien]
             );
 
-            // 8. Khóa khung giờ
+            // 10. Khóa khung giờ
             await conn.execute(`UPDATE khung_gio_kham SET Trang_thai = 'booked' WHERE Ma_khung_gio = ?`, [maKhungGio]);
 
-            // 9. Lưu vết lịch sử
+            // 11. Lưu vết lịch sử
             await conn.execute(
                 `INSERT INTO lich_su_trang_thai_lich_hen (Ma_lich_hen, Trang_thai_cu, Trang_thai_moi, Nguoi_thay_doi, Ngay_thay_doi) VALUES (?, NULL, 'pending', 'patient', NOW())`,
                 [maLichHen]
             );
 
-            await commitTransaction(conn); // Xác nhận lưu toàn bộ dữ liệu
+            await commitTransaction(conn); 
 
             return {
                 maBooking: maBooking,
@@ -298,8 +327,8 @@ export default class ChatbotModel {
                 gioKham: gioKhamThucTe
             }; 
         } catch (error) {
-            if (conn) await rollbackTransaction(conn); // Hoàn tác nếu có bất kỳ lỗi gì
-            console.error("Lỗi Model Đặt lịch (Transaction):", error.message);
+            if (conn) await rollbackTransaction(conn); 
+            console.error("Lỗi Model Đặt lịch AI (Transaction):", error.message);
             throw error; 
         }
     }

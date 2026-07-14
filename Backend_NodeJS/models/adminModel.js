@@ -61,7 +61,7 @@ export default class adminModel {
             const [totalPatients] = await execute(`
                 SELECT COUNT(*) as count 
                 FROM nguoi_dung 
-                WHERE Phan_quyen = 'Benh_nhan' AND Trang_thai != 0
+                WHERE Phan_quyen = 'Benh_nhan' AND Trang_thai = 1
             `);
 
             // 3. Số hồ sơ bác sĩ mới đăng ký đang chờ duyệt (Trang_thai_hoat_dong = 'pending')
@@ -98,47 +98,65 @@ export default class adminModel {
         }
     }
 
-    static async lockAccount(userId, adminId, admin_log){
+    static async lockAccount(userId, adminId, admin_log) {
         let conn = await beginTransaction();
-        try{
-            const [lockingUser] = await conn.execute(`
-                    UPDATE nguoi_dung
-                    SET Trang_thai = 2
-                    WHERE Ma_nguoi_dung = ?
-                `,[userId]);
+        try {
+            // 1. Kiểm tra xem người dùng này là Bác sĩ hay Bệnh nhân
+            const [userRows] = await conn.execute(`SELECT Phan_quyen FROM nguoi_dung WHERE Ma_nguoi_dung = ?`, [userId]);
+            if (userRows.length === 0) throw new Error("Không tìm thấy người dùng này trong hệ thống.");
+            const phanQuyen = userRows[0].Phan_quyen;
 
-            const [createAdminLog] = await conn.execute(`
-                    INSERT INTO admin_logs (admin_id, action, target_type, target_id, reason, created_at) 
-                    VALUES (?, ?, ?, ?, ?, NOW())
-                `,[adminId, admin_log.action, admin_log.target_type, userId, admin_log.reason]);
+            // 2. Khóa quyền đăng nhập chung (Áp dụng cho cả Bác sĩ và Bệnh nhân)
+            await conn.execute(`UPDATE nguoi_dung SET Trang_thai = 2 WHERE Ma_nguoi_dung = ?`, [userId]);
+
+            // 3. NẾU LÀ BÁC SĨ: Cập nhật thêm trạng thái đình chỉ trong bảng bac_si
+            if (phanQuyen === 'Bac_si') {
+                await conn.execute(`UPDATE bac_si SET Trang_thai_hoat_dong = 'suspended' WHERE Ma_nguoi_dung = ?`, [userId]);
+            }
+
+            // 4. Ghi log hành động của Admin
+            const [createAdminLog] = await conn.execute(
+                `INSERT INTO admin_logs (admin_id, action, target_type, target_id, reason, created_at) 
+                 VALUES (?, ?, ?, ?, ?, NOW())`,
+                [adminId, admin_log.action, admin_log.target_type, userId, admin_log.reason]
+            );
 
             await commitTransaction(conn);
             return createAdminLog.insertId;
-        }catch(error){
+        } catch (error) {
             await rollbackTransaction(conn);
             throw new Error('Lỗi khóa tài khoản: ' + error.message);
         }
     }
 
-    static async unLockAccount(userId, adminId, admin_log){
+    static async unLockAccount(userId, adminId, admin_log) {
         let conn = await beginTransaction();
-        try{
-            const [lockingUser] = await conn.execute(`
-                    UPDATE nguoi_dung
-                    SET Trang_thai = 1
-                    WHERE Ma_nguoi_dung = ?
-                `,[userId]);
+        try {
+            // 1. Kiểm tra phân quyền
+            const [userRows] = await conn.execute(`SELECT Phan_quyen FROM nguoi_dung WHERE Ma_nguoi_dung = ?`, [userId]);
+            if (userRows.length === 0) throw new Error("Không tìm thấy người dùng này trong hệ thống.");
+            const phanQuyen = userRows[0].Phan_quyen;
 
-            const [createAdminLog] = await conn.execute(`
-                    INSERT INTO admin_logs (admin_id, action, target_type, target_id, reason, created_at) 
-                    VALUES (?, ?, ?, ?, ?, NOW())
-                `,[adminId, admin_log.action, admin_log.target_type, userId, admin_log.reason]);
+            // 2. Mở quyền đăng nhập chung
+            await conn.execute(`UPDATE nguoi_dung SET Trang_thai = 1 WHERE Ma_nguoi_dung = ?`, [userId]);
+
+            // 3. NẾU LÀ BÁC SĨ: Kích hoạt lại hiển thị hồ sơ trong bảng bac_si
+            if (phanQuyen === 'Bac_si') {
+                await conn.execute(`UPDATE bac_si SET Trang_thai_hoat_dong = 'active' WHERE Ma_nguoi_dung = ?`, [userId]);
+            }
+
+            // 4. Ghi log hành động của Admin
+            const [createAdminLog] = await conn.execute(
+                `INSERT INTO admin_logs (admin_id, action, target_type, target_id, reason, created_at) 
+                 VALUES (?, ?, ?, ?, ?, NOW())`,
+                [adminId, admin_log.action, admin_log.target_type, userId, admin_log.reason]
+            );
 
             await commitTransaction(conn);
             return createAdminLog.insertId;
-        }catch(error){
+        } catch (error) {
             await rollbackTransaction(conn);
-            throw new Error('Lỗi khóa tài khoản: ' + error.message);
+            throw new Error('Lỗi mở khóa tài khoản: ' + error.message);
         }
     }
 
