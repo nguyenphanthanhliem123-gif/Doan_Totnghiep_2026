@@ -11,7 +11,6 @@ class AdminTodayAppointmentsScreen extends StatefulWidget {
 }
 
 class _AdminTodayAppointmentsScreenState extends State<AdminTodayAppointmentsScreen> {
-  // 🌟 KHAI BÁO CÁC BIẾN QUẢN LÝ TÌM KIẾM VÀ LỌC CA
   String _searchQuery = "";
   String _selectedShift = "All"; // "All", "Morning", "Afternoon", "Evening"
   final TextEditingController _searchController = TextEditingController();
@@ -40,10 +39,9 @@ class _AdminTodayAppointmentsScreenState extends State<AdminTodayAppointmentsScr
     }
   }
 
-  // 🌟 THUẬT TOÁN LỌC DỮ LIỆU (TÌM KIẾM + CA KHÁM)
   List<dynamic> _applyFilters(List<dynamic> rawList) {
     return rawList.where((item) {
-      // 1. Lọc theo tìm kiếm (Mã booking hoặc Tên bác sĩ)
+      // 1. Lọc theo tìm kiếm
       final doctorName = (item['Ten_bac_si'] ?? '').toString().toLowerCase();
       final bookingCode = (item['Ma_booking'] ?? '').toString().toLowerCase();
       final query = _searchQuery.toLowerCase();
@@ -58,11 +56,11 @@ class _AdminTodayAppointmentsScreenState extends State<AdminTodayAppointmentsScr
           try {
             final hour = DateTime.parse(timeStr).toLocal().hour;
             if (_selectedShift == "Morning") {
-              matchShift = (hour >= 8 && hour < 12); // Ca sáng: 8h - 11h59
+              matchShift = (hour >= 8 && hour < 12); 
             } else if (_selectedShift == "Afternoon") {
-              matchShift = (hour >= 12 && hour < 18); // Ca chiều: 12h - 17h59 (Bao gồm cả 13h)
+              matchShift = (hour >= 12 && hour < 18); 
             } else if (_selectedShift == "Evening") {
-              matchShift = (hour >= 18); // Ca tối: Từ 18h trở đi
+              matchShift = (hour >= 18); 
             }
           } catch (e) {
             matchShift = false;
@@ -72,7 +70,6 @@ class _AdminTodayAppointmentsScreenState extends State<AdminTodayAppointmentsScr
         }
       }
 
-      // Trả về true nếu thỏa mãn cả 2 điều kiện
       return matchSearch && matchShift;
     }).toList();
   }
@@ -82,11 +79,13 @@ class _AdminTodayAppointmentsScreenState extends State<AdminTodayAppointmentsScr
     final adminVM = context.watch<AdminViewModel>();
     final rawList = adminVM.todayAppointments;
 
-    // 🌟 BƯỚC 1: LỌC DANH SÁCH TỔNG THEO TỪ KHÓA VÀ CA KHÁM TRƯỚC
     final filteredList = _applyFilters(rawList);
 
-    // 🌟 BƯỚC 2: PHÂN LOẠI DANH SÁCH ĐÃ LỌC THEO TAB (TRẠNG THÁI)
-    final pendingList = filteredList.where((item) => item['Trang_thai_lich_hen'] == 'confirmed' || item['Trang_thai_lich_hen'] == 'pending').toList();
+    final pendingList = filteredList.where((item) => 
+        item['Trang_thai_lich_hen'] == 'confirmed' || 
+        item['Trang_thai_lich_hen'] == 'pending' || 
+        item['Trang_thai_lich_hen'] == 'reschedule_pending').toList();
+
     final doneList = filteredList.where((item) => item['Trang_thai_lich_hen'] == 'done').toList();
     final cancelledList = filteredList.where((item) => item['Trang_thai_lich_hen'] == 'cancelled' || item['Trang_thai_lich_hen'] == 'absent').toList();
 
@@ -106,7 +105,7 @@ class _AdminTodayAppointmentsScreenState extends State<AdminTodayAppointmentsScr
             unselectedLabelColor: Colors.white70,
             tabs: [
               Tab(text: 'Tất cả'),
-              Tab(text: 'Chờ duyệt / Chờ khám'),
+              Tab(text: 'Chờ duyệt / Chờ khám / Chờ dời lịch'),
               Tab(text: 'Đã hoàn thành'),
               Tab(text: 'Đã hủy / Vắng mặt'),
             ],
@@ -116,10 +115,7 @@ class _AdminTodayAppointmentsScreenState extends State<AdminTodayAppointmentsScr
             ? const Center(child: CircularProgressIndicator(color: kPrimaryColor))
             : Column(
                 children: [
-                  // 🌟 KHU VỰC TÌM KIẾM VÀ LỌC CA
                   _buildFilterSection(),
-
-                  // KHU VỰC HIỂN THỊ DANH SÁCH
                   Expanded(
                     child: TabBarView(
                       children: [
@@ -136,7 +132,6 @@ class _AdminTodayAppointmentsScreenState extends State<AdminTodayAppointmentsScr
     );
   }
 
-  // 🌟 WIDGET: THANH TÌM KIẾM VÀ CHỌN CA
   Widget _buildFilterSection() {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -149,7 +144,6 @@ class _AdminTodayAppointmentsScreenState extends State<AdminTodayAppointmentsScr
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Thanh tìm kiếm
           TextField(
             controller: _searchController,
             onChanged: (value) {
@@ -180,8 +174,6 @@ class _AdminTodayAppointmentsScreenState extends State<AdminTodayAppointmentsScr
             ),
           ),
           const SizedBox(height: 12),
-          
-          // Bộ lọc Ca khám (Chip)
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
@@ -201,7 +193,6 @@ class _AdminTodayAppointmentsScreenState extends State<AdminTodayAppointmentsScr
     );
   }
 
-  // WIDGET HỖ TRỢ: Nút bấm (Chip) chọn ca
   Widget _buildShiftChip(String label, String shiftValue) {
     final isSelected = _selectedShift == shiftValue;
     return ChoiceChip(
@@ -246,12 +237,11 @@ class _AdminTodayAppointmentsScreenState extends State<AdminTodayAppointmentsScr
           final item = list[index];
           final String status = item['Trang_thai_lich_hen'] ?? 'pending';
           
-          // 🌟 XỬ LÝ GHÉP HỌC VỊ VÀ TÊN BÁC SĨ
           final String hocVi = (item['Hoc_vi'] != null && item['Hoc_vi'].toString().isNotEmpty) 
               ? item['Hoc_vi'] 
-              : 'BS.'; // Nếu DB không có học vị thì mặc định để chữ BS.
+              : 'BS.'; 
           final String tenBacSi = item['Ten_bac_si'] ?? 'Chưa rõ';
-          final String fullNameDoctor = "$hocVi $tenBacSi"; // Ghép lại thành "ThS.BS Nguyễn Văn A"
+          final String fullNameDoctor = "$hocVi $tenBacSi"; 
 
           return Container(
             margin: const EdgeInsets.only(bottom: 15),
@@ -289,10 +279,7 @@ class _AdminTodayAppointmentsScreenState extends State<AdminTodayAppointmentsScr
                 const SizedBox(height: 8),
                 _buildInfoRow(Icons.person, "Bệnh nhân:", item['Ten_benh_nhan'] ?? 'Chưa rõ'),
                 const SizedBox(height: 8),
-                
-                // 🌟 GỌI BIẾN ĐÃ GHÉP VÀO ĐÂY THAY VÌ HARDCODE "BS."
                 _buildInfoRow(Icons.medical_information, "Bác sĩ phụ trách:", fullNameDoctor),
-                
                 const SizedBox(height: 8),
                 _buildInfoRow(
                   item['Hinh_thuc'] == 'online' ? Icons.videocam : Icons.location_on, 
@@ -335,6 +322,7 @@ class _AdminTodayAppointmentsScreenState extends State<AdminTodayAppointmentsScr
       case 'done': bgColor = Colors.green.shade50; textColor = Colors.green; text = 'Hoàn thành'; break;
       case 'cancelled': bgColor = Colors.red.shade50; textColor = Colors.red; text = 'Đã hủy'; break;
       case 'absent': bgColor = Colors.grey.shade100; textColor = Colors.grey; text = 'Vắng mặt'; break;
+      case 'reschedule_pending': bgColor = Colors.orange.shade50; textColor = Colors.orange.shade900; text = 'Chờ dời lịch'; break;
       default: bgColor = Colors.orange.shade50; textColor = Colors.orange; text = 'Chờ duyệt'; break;
     }
     return Container(

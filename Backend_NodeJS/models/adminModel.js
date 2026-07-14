@@ -298,6 +298,7 @@ export default class adminModel {
                     kg.Thoi_gian_Kthuc,
                     nd_bs.Ten_nguoi_dung AS Ten_bac_si,
                     bs.Hoc_vi,
+                    bs.Trang_thai_hoat_dong AS Trang_thai_bac_si,
                     nd_bn.Ten_nguoi_dung AS Ten_benh_nhan,
                     -- Gom tất cả dịch vụ của 1 ca khám thành 1 chuỗi cách nhau bởi dấu phẩy
                     GROUP_CONCAT(dv.Ten_dich_vu SEPARATOR ', ') AS Ten_dich_vu
@@ -310,6 +311,7 @@ export default class adminModel {
                 LEFT JOIN chi_tiet_lich_hen ctlh ON lh.Ma_lich_hen = ctlh.Ma_lich_hen
                 LEFT JOIN dich_vu dv ON ctlh.Ma_dich_vu = dv.Ma_dich_vu
                 WHERE DATE(kg.Thoi_gian_Bdau) = CURDATE()
+                AND bs.Trang_thai_hoat_dong = 'active'
                 -- Bắt buộc gom nhóm theo Mã lịch hẹn để không bị nhân bản dòng
                 GROUP BY lh.Ma_lich_hen
                 ORDER BY kg.Thoi_gian_Bdau ASC
