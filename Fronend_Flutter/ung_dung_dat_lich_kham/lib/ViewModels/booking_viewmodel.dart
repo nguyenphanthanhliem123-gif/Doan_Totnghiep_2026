@@ -41,23 +41,22 @@ class BookingViewModel extends ChangeNotifier {
   }
 
   // Hàm gọi API lấy lịch khám của bác sĩ theo ngày
-  Future<void> fetchDoctorSchedule(String date) async {
+  Future<void> fetchDoctorSchedule(String date, int doctorId) async {
     _isLoading = true;
     _schedule = [];
     notifyListeners();
 
     try {
-      // Gọi đúng API với query parameter ?q=yyyy-mm-dd
-      final url = Uri.parse('$_baseUrl/doctor-schedule?q=$date');
-      final response = await http.get(url);
+      // Ép kiểu URL chuẩn nhất, đảm bảo truyền đúng doctorId và date
+      final url = Uri.parse('$_baseUrl/doctor-schedule?doctorId=$doctorId&date=$date');
 
-      if (response.statusCode == 200) {
-        final responseData = jsonDecode(response.body);
-        if (responseData['succeeded'] == true) {
-          _schedule = responseData['schedule'] ?? [];
-        } else {
-          _schedule = [];
-        }
+      final response = await http.get(url);
+      final responseData = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && responseData['succeeded'] == true) {
+        _schedule = responseData['schedule'] ?? [];
+      } else {
+        _schedule = [];
       }
     } catch (e) {
       print("Lỗi tải lịch bác sĩ: $e");

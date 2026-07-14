@@ -422,7 +422,7 @@ class _BookingScreenState extends State<BookingScreen> {
             String formattedDate = _formatDate(cellDate);
             
             // 1. Gọi API
-            await context.read<BookingViewModel>().fetchDoctorSchedule(formattedDate);
+            await context.read<BookingViewModel>().fetchDoctorSchedule(formattedDate, widget.doctor.id);
             
             // 2. Chuyển đổi dữ liệu siêu an toàn
             List<DoctorTimeSlotModel> fetchedSlots = [];

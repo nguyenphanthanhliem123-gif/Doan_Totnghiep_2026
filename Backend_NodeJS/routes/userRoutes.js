@@ -39,7 +39,13 @@ authUserRoutes.post('/delete-account', userController.deleteAccount);
 userRoutes.post('/register-doctor', userController.registerDoctor);
 userRoutes.post('/verify-doctor-otp', userController.verifyDoctorOTP);
 
-userRoutes.get('/verify-token', auth);
+userRoutes.get('/verify-token', auth, (req, res) => {
+    // Nếu vượt qua được middleware 'auth' thì chắc chắn token hợp lệ
+    return res.status(200).json({ 
+        success: true, 
+        message: "Token hợp lệ." 
+    });
+});
 
 
 userRoutes.use('/', authUserRoutes);
