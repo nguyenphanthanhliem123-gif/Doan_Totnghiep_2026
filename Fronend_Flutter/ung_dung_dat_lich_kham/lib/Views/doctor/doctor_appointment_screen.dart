@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../Constants/ui_constants.dart'; // 🌟 Chuẩn hóa đường dẫn
+import '../../Constants/ui_constants.dart'; 
 import '../../viewmodels/doctor_appointment_list_viewmodel.dart';
 import 'doctor_appointment_detail_screen.dart';
 
@@ -43,25 +43,24 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
     final vm = context.watch<DoctorAppointmentListViewModel>();
 
     return Scaffold(
-      backgroundColor: kLightCyanBg2, // 🌟 Đồng bộ nền sáng mịn
+      backgroundColor: kLightCyanBg2, 
       appBar: AppBar(
         backgroundColor: kPrimaryColor,
-        title: const Text('Quản lý Lịch hẹn', style: kHeaderTextStyle), // 🌟 Text Style chuẩn
+        title: const Text('Quản lý Lịch hẹn', style: kHeaderTextStyle), 
         centerTitle: true,
       ),
       body: Column(
         children: [
           // 🌟 THANH CÔNG CỤ LỌC (FILTER BAR)
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: kDefaultPadding, vertical: 12), // 🌟 Lề chuẩn 20
+            padding: const EdgeInsets.symmetric(horizontal: kDefaultPadding, vertical: 12), 
             decoration: BoxDecoration(color: Colors.white, boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))]),
             child: Row(
               children: [
-                // 1. Lọc Trạng Thái (Bên trái)
                 Expanded(
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(border: Border.all(color: kBorderCyan), borderRadius: BorderRadius.circular(kBorderRadiusSmall)), // 🌟 Bo 12, viền chuẩn
+                    decoration: BoxDecoration(border: Border.all(color: kBorderCyan), borderRadius: BorderRadius.circular(kBorderRadiusSmall)), 
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
                         value: _selectedStatus,
@@ -75,6 +74,7 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
                           DropdownMenuItem(value: 'done', child: Text("Đã hoàn thành")),
                           DropdownMenuItem(value: 'cancelled', child: Text("Đã hủy")),
                           DropdownMenuItem(value: 'absent', child: Text("Vắng mặt")),
+                          DropdownMenuItem(value: 'reschedule_pending', child: Text("Chờ dời lịch")),
                         ],
                         onChanged: (val) {
                           if (val != null) {
@@ -88,7 +88,6 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
                 ),
                 const SizedBox(width: 10),
                 
-                // 2. Lọc Ngày (Bên phải)
                 Expanded(
                   child: InkWell(
                     onTap: () async {
@@ -114,7 +113,7 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
                     },
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
-                      decoration: BoxDecoration(border: Border.all(color: kBorderCyan), borderRadius: BorderRadius.circular(kBorderRadiusSmall)), // 🌟 Bo 12
+                      decoration: BoxDecoration(border: Border.all(color: kBorderCyan), borderRadius: BorderRadius.circular(kBorderRadiusSmall)), 
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -159,7 +158,7 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
                         color: kPrimaryColor,
                         onRefresh: () async => _fetchData(),
                         child: ListView.builder(
-                          padding: const EdgeInsets.all(kDefaultPadding), // 🌟 Lề 20 chuẩn
+                          padding: const EdgeInsets.all(kDefaultPadding), 
                           itemCount: vm.appointments.length,
                           itemBuilder: (context, index) {
                             return _buildAppointmentCard(context, vm.appointments[index]);
@@ -184,14 +183,14 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(kBorderRadiusLarge), // 🌟 Bo 20
+        borderRadius: BorderRadius.circular(kBorderRadiusLarge), 
         border: Border.all(color: kBorderCyan),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(kBorderRadiusLarge), // 🌟 Bo 20
+          borderRadius: BorderRadius.circular(kBorderRadiusLarge), 
           onTap: () async {
             await Navigator.push(
               context,
@@ -260,12 +259,46 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
       case 'confirmed': bgColor = Colors.blue.shade50; textColor = Colors.blue; text = 'Đang khám'; break;
       case 'done': bgColor = Colors.green.shade50; textColor = Colors.green; text = 'Đã hoàn thành'; break;
       case 'cancelled': bgColor = Colors.red.shade50; textColor = Colors.red; text = 'Đã hủy'; break;
+      case 'reschedule_pending': bgColor = Colors.orange.shade50; textColor = Colors.orange.shade900; text = 'Chờ dời lịch'; break;
       case 'absent': default: bgColor = Colors.grey.shade200; textColor = Colors.grey.shade700; text = 'Vắng mặt'; break;
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(8)),
       child: Text(text, style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.w600)),
+    );
+  }
+
+  // Hàm show Dialog báo bận để tránh bác sĩ bấm nhầm
+  void _showCancelDialog(BuildContext context, int appointmentId) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        title: const Text('Báo bận đột xuất', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
+        content: const Text('Bạn có chắc chắn muốn hủy ca khám này không?\n\nHệ thống sẽ tự động xử lý bảo lưu tiền (nếu có) và yêu cầu bệnh nhân dời lịch sang giờ khác.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Bỏ qua', style: TextStyle(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(dialogContext); 
+              final vm = context.read<DoctorAppointmentListViewModel>();
+              final res = await vm.updateStatus(
+                appointmentId, 'reject', 
+                status: _selectedStatus, 
+                date: _selectedDate == null ? 'all' : "${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}"
+              );
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(res['message']), backgroundColor: res['success'] ? Colors.green : Colors.red));
+              }
+            },
+            child: const Text('Xác nhận báo bận', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
     );
   }
 
@@ -289,6 +322,11 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
     } else if (status == 'confirmed') {
       return Row(
         children: [
+          Expanded(child: _buildActionBtn(
+            icon: Icons.event_busy, text: 'Báo bận', color: Colors.red, bgColor: Colors.red.shade50, 
+            onTap: () => _showCancelDialog(context, appointmentId)
+          )),
+          const SizedBox(width: 8),
           Expanded(child: _buildActionBtn(
             icon: Icons.person_off_outlined, text: 'Báo vắng', color: Colors.orange, bgColor: Colors.orange.shade50, 
             onTap: () {
@@ -321,7 +359,7 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
   Widget _buildActionBtn({required IconData icon, required String text, required Color color, required Color bgColor, required VoidCallback? onTap}) {
     return InkWell(
       onTap: onTap, 
-      borderRadius: BorderRadius.circular(kBorderRadiusSmall), // 🌟 Bo 12
+      borderRadius: BorderRadius.circular(kBorderRadiusSmall), 
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
         decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(kBorderRadiusSmall)),
@@ -330,7 +368,7 @@ class _DoctorAppointmentScreenState extends State<DoctorAppointmentScreen> {
           children: [
             Icon(icon, color: color, size: 18),
             const SizedBox(height: 4),
-            Text(text, textAlign: TextAlign.center, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600)),
+            Text(text, textAlign: TextAlign.center, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600)),
           ],
         ),
       ),

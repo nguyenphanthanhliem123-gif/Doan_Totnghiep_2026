@@ -13,13 +13,12 @@ class AppointmentViewModel extends ChangeNotifier {
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
-  String _errorMessage = ''; // Thêm biến lưu lỗi để hiển thị lên UI
+  String _errorMessage = ''; 
   String get errorMessage => _errorMessage;
 
   List<AppointmentModel> _allAppointments = [];
   List<AppointmentModel> get allAppointments => _allAppointments;
 
-  // ✅ Thêm biến lưu dữ liệu Chi tiết lịch hẹn
   AppointmentDetailModel? _appointmentDetail;
   AppointmentDetailModel? get appointmentDetail => _appointmentDetail;
 
@@ -32,31 +31,26 @@ class AppointmentViewModel extends ChangeNotifier {
   Map<String, dynamic>? _prescriptionData;
   Map<String, dynamic>? get prescriptionData => _prescriptionData;
 
-  // Cấu hình URL đồng bộ
   final String _baseUrl = "$BASE_URL/api/appointments";
 
-  // --- Tự động lọc danh sách cho 3 Tab ---
   List<AppointmentModel> get upcomingList {
     return _allAppointments.where((e) {
-      return e.status == 'pending' || e.status == 'confirmed';
+      return e.status == 'pending' || e.status == 'confirmed' || e.status == 'reschedule_pending';
     }).toList();
   }
 
   List<AppointmentModel> get completedList {
     return _allAppointments.where((e) {
-      // Bác sĩ đã bấm hoàn thành thì mới được vào đây
       return e.status == 'done';
     }).toList();
   }
 
   List<AppointmentModel> get cancelledList {
     return _allAppointments.where((e) {
-      // Đã bị hủy hoặc bác sĩ đánh dấu vắng mặt
       return e.status == 'cancelled' || e.status == 'absent';
     }).toList();
   }
 
-  // Hàm gọi API lấy danh sách lịch hẹn của bệnh nhân
   Future<void> loadMyAppointments() async {
     _isLoading = true;
     _errorMessage = '';
@@ -100,11 +94,10 @@ class AppointmentViewModel extends ChangeNotifier {
     }
   }
 
-  // Hàm gọi API lấy chi tiết lịch hẹn dựa trên Ma_lich_hen (appointmentId)
   Future<void> fetchDetail(int appointmentId) async {
     _isLoading = true;
     _errorMessage = '';
-    _appointmentDetail = null; // Reset dữ liệu cũ trước khi gọi data mới
+    _appointmentDetail = null; 
     notifyListeners();
 
     try {
@@ -144,7 +137,6 @@ class AppointmentViewModel extends ChangeNotifier {
     }
   }
 
-  // Hàm gọi API hủy lịch hẹn với điều kiện chặn hủy trước 2 giờ
   Future<Map<String, dynamic>> cancelAppointment(int appointmentId) async {
     _isLoading = true;
     notifyListeners();
@@ -166,7 +158,6 @@ class AppointmentViewModel extends ChangeNotifier {
 
       final data = jsonDecode(response.body);
       if (response.statusCode == 200 && data['succeeded'] == true) {
-        // Đồng bộ lại danh sách lịch hẹn chung ở màn hình ngoài (để tab tự cập nhật)
         await loadMyAppointments();
         return {"succeeded": true, "message": data['message']};
       } else {
@@ -180,7 +171,6 @@ class AppointmentViewModel extends ChangeNotifier {
     }
   }
 
-  // Hàm gọi API Đổi lịch hẹn với điều kiện chặn đổi trước 2 giờ
   Future<Map<String, dynamic>> rescheduleAppointment(int appointmentId, int newSlotId) async {
     _isLoading = true;
     notifyListeners();
@@ -200,7 +190,7 @@ class AppointmentViewModel extends ChangeNotifier {
 
       final data = jsonDecode(response.body);
       if (response.statusCode == 200 && data['succeeded'] == true) {
-        await loadMyAppointments(); // Đồng bộ lại list
+        await loadMyAppointments(); 
         return {"succeeded": true, "message": data['message']};
       } else {
         return {"succeeded": false, "message": data['message'] ?? "Đổi lịch thất bại."};
@@ -238,7 +228,6 @@ class AppointmentViewModel extends ChangeNotifier {
       final token = prefs.getString('token');
       if (token == null) return;
 
-      // Gọi đúng Endpoint bảo mật mới của Bệnh nhân
       final url = Uri.parse('$_baseUrl/prescription/$appointmentId');
       final response = await http.get(url, headers: {
         "Content-Type": "application/json",
@@ -251,7 +240,6 @@ class AppointmentViewModel extends ChangeNotifier {
           _prescriptionData = data['data'];
         }
       } else {
-        // ✨ THÊM DÒNG NÀY ĐỂ DEBUG TRÊN TERMINAL
         print("🔥 LỖI TẢI ĐƠN THUỐC: HTTP ${response.statusCode} - ${response.body}");
       }
     } catch (e) {

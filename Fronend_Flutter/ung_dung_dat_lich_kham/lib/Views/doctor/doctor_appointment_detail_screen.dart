@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:ung_dung_dat_lich_kham/Services/jitsi_service.dart';
 import 'package:ung_dung_dat_lich_kham/Views/report_bottom_sheet.dart';
-import '../../Constants/ui_constants.dart'; // 🌟 Chuẩn hóa đường dẫn
+import '../../Constants/ui_constants.dart'; 
 import '../../viewmodels/doctor_appointment_detail_viewmodel.dart';
 
 class DoctorAppointmentDetailScreen extends StatefulWidget {
@@ -65,7 +65,6 @@ class _DoctorAppointmentDetailScreenState extends State<DoctorAppointmentDetailS
     }
   }
 
-  // 🌟 HÀM MỞ BOTTOM SHEET XEM LỊCH SỬ BỆNH ÁN
   void _showMedicalHistory(BuildContext context) {
     context.read<DoctorAppointmentDetailViewModel>().fetchMedicalHistory(widget.appointmentId);
 
@@ -73,7 +72,7 @@ class _DoctorAppointmentDetailScreenState extends State<DoctorAppointmentDetailS
       context: context,
       isScrollControlled: true, 
       backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(kBorderRadiusLarge))), // 🌟 Bo 20 chuẩn
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(kBorderRadiusLarge))), 
       builder: (context) {
         return DraggableScrollableSheet(
           expand: false,
@@ -100,14 +99,14 @@ class _DoctorAppointmentDetailScreenState extends State<DoctorAppointmentDetailS
                               ? const Center(child: Text("Bệnh nhân chưa có lịch sử khám bệnh nào.", style: TextStyle(color: kGreyTextColor)))
                               : ListView.builder(
                                   controller: scrollController,
-                                  padding: const EdgeInsets.symmetric(horizontal: kDefaultPadding, vertical: 10), // 🌟 Lề 20
+                                  padding: const EdgeInsets.symmetric(horizontal: kDefaultPadding, vertical: 10), 
                                   itemCount: vm.medicalHistory.length,
                                   itemBuilder: (context, index) {
                                     final item = vm.medicalHistory[index];
                                     return Card(
-                                      elevation: 0, // Bỏ bóng đổ, dùng viền chuẩn
+                                      elevation: 0, 
                                       margin: const EdgeInsets.only(bottom: 15),
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusSmall), side: const BorderSide(color: kBorderCyan)), // 🌟 Bo 12
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusSmall), side: const BorderSide(color: kBorderCyan)), 
                                       child: Padding(
                                         padding: const EdgeInsets.all(15),
                                         child: Column(
@@ -149,7 +148,6 @@ class _DoctorAppointmentDetailScreenState extends State<DoctorAppointmentDetailS
     );
   }
 
-  // 🌟 Hàm hiển thị Bottomsheet kê đơn thuốc
   void _showPrescriptionBottomSheet(BuildContext context) {
     final TextEditingController chanDoanCtrl = TextEditingController();
     DateTime? selectedDate;
@@ -169,7 +167,7 @@ class _DoctorAppointmentDetailScreenState extends State<DoctorAppointmentDetailS
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(kBorderRadiusLarge))), // 🌟 Bo 20
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(kBorderRadiusLarge))), 
       builder: (context) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setModalState) {
@@ -201,9 +199,9 @@ class _DoctorAppointmentDetailScreenState extends State<DoctorAppointmentDetailS
                               decoration: InputDecoration(
                                 hintText: "Nhập kết luận khám...",
                                 hintStyle: const TextStyle(color: kGreyTextColor),
-                                fillColor: kLightCyanBg1, // 🌟 Nền chuẩn
+                                fillColor: kLightCyanBg1, 
                                 filled: true,
-                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(kBorderRadiusSmall), borderSide: BorderSide.none), // 🌟 Bo 12
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(kBorderRadiusSmall), borderSide: BorderSide.none), 
                                 contentPadding: const EdgeInsets.all(12),
                               ),
                             ),
@@ -233,7 +231,7 @@ class _DoctorAppointmentDetailScreenState extends State<DoctorAppointmentDetailS
                               },
                               child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 15),
-                                decoration: BoxDecoration(color: kLightCyanBg1, borderRadius: BorderRadius.circular(kBorderRadiusSmall)), // 🌟 Nền chuẩn
+                                decoration: BoxDecoration(color: kLightCyanBg1, borderRadius: BorderRadius.circular(kBorderRadiusSmall)), 
                                 child: Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
@@ -261,7 +259,7 @@ class _DoctorAppointmentDetailScreenState extends State<DoctorAppointmentDetailS
                               return Container(
                                 margin: const EdgeInsets.only(bottom: 15),
                                 padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(color: kLightCyanBg2, border: Border.all(color: kBorderCyan), borderRadius: BorderRadius.circular(kBorderRadiusSmall)), // 🌟 Bo 12
+                                decoration: BoxDecoration(color: kLightCyanBg2, border: Border.all(color: kBorderCyan), borderRadius: BorderRadius.circular(kBorderRadiusSmall)), 
                                 child: Column(
                                   children: [
                                     Row(
@@ -309,7 +307,7 @@ class _DoctorAppointmentDetailScreenState extends State<DoctorAppointmentDetailS
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(backgroundColor: kPrimaryColor, padding: const EdgeInsets.symmetric(vertical: 15), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusSmall))), // 🌟 Bo 12
+                        style: ElevatedButton.styleFrom(backgroundColor: kPrimaryColor, padding: const EdgeInsets.symmetric(vertical: 15), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusSmall))), 
                         onPressed: () async {
                           if (chanDoanCtrl.text.trim().isEmpty) {
                             ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Vui lòng nhập chẩn đoán bệnh!")));
@@ -345,7 +343,7 @@ class _DoctorAppointmentDetailScreenState extends State<DoctorAppointmentDetailS
                             ));
                           }
                         },
-                        child: const Text("HOÀN THÀNH & LƯU ĐƠN THUỐC", style: kButtonTextStyle), // 🌟 Chuẩn Text
+                        child: const Text("HOÀN THÀNH & LƯU ĐƠN THUỐC", style: kButtonTextStyle), 
                       ),
                     ),
                     const SizedBox(height: 15),
@@ -366,7 +364,7 @@ class _DoctorAppointmentDetailScreenState extends State<DoctorAppointmentDetailS
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(kBorderRadiusLarge))), // 🌟 Bo 20
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(kBorderRadiusLarge))), 
       builder: (context) {
         return DraggableScrollableSheet(
           expand: false,
@@ -395,7 +393,7 @@ class _DoctorAppointmentDetailScreenState extends State<DoctorAppointmentDetailS
                               ? const Center(child: Text("Không tìm thấy đơn thuốc cho ca khám này.", style: TextStyle(color: kGreyTextColor)))
                               : SingleChildScrollView(
                                   controller: scrollController,
-                                  padding: const EdgeInsets.symmetric(horizontal: kDefaultPadding, vertical: 10), // 🌟 Lề 20
+                                  padding: const EdgeInsets.symmetric(horizontal: kDefaultPadding, vertical: 10), 
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
@@ -424,7 +422,7 @@ class _DoctorAppointmentDetailScreenState extends State<DoctorAppointmentDetailS
                                             padding: const EdgeInsets.all(12),
                                             decoration: BoxDecoration(
                                               color: kLightCyanBg2,
-                                              borderRadius: BorderRadius.circular(kBorderRadiusSmall), // 🌟 Bo 12
+                                              borderRadius: BorderRadius.circular(kBorderRadiusSmall), 
                                               border: Border.all(color: kBorderCyan)
                                             ),
                                             child: Column(
@@ -481,7 +479,7 @@ class _DoctorAppointmentDetailScreenState extends State<DoctorAppointmentDetailS
     final vm = context.watch<DoctorAppointmentDetailViewModel>();
     final appointment = vm.appointmentDetail;
     return Scaffold(
-      backgroundColor: kLightCyanBg2, // 🌟 Đồng bộ màu nền
+      backgroundColor: kLightCyanBg2, 
       body: vm.isLoading
           ? const Center(child: CircularProgressIndicator(color: kPrimaryColor))
           : appointment == null
@@ -666,7 +664,7 @@ class _DoctorAppointmentDetailScreenState extends State<DoctorAppointmentDetailS
                           padding: const EdgeInsets.all(15),
                           decoration: BoxDecoration(
                             color: Colors.red.shade50, 
-                            borderRadius: BorderRadius.circular(kBorderRadiusSmall), // 🌟 Bo 12
+                            borderRadius: BorderRadius.circular(kBorderRadiusSmall), 
                             border: Border.all(color: Colors.red.shade200)
                           ),
                           child: Text(
@@ -691,7 +689,7 @@ class _DoctorAppointmentDetailScreenState extends State<DoctorAppointmentDetailS
                             const Divider(height: 20, color: kBorderCyan),
                             _buildInfoRow("Bệnh nền", appointment['backgroundDiseases'] ?? 'Không ghi nhận', isBoldValue: appointment['backgroundDiseases'] != null),
                             
-                            // 🌟 NÚT XEM LỊCH SỬ BỆNH ÁN
+                            // NÚT XEM LỊCH SỬ BỆNH ÁN
                             const Divider(height: 20, color: kBorderCyan),
                             SizedBox(
                               width: double.infinity,
@@ -700,7 +698,7 @@ class _DoctorAppointmentDetailScreenState extends State<DoctorAppointmentDetailS
                                   foregroundColor: kPrimaryColor, 
                                   side: const BorderSide(color: kPrimaryColor),
                                   padding: const EdgeInsets.symmetric(vertical: 12),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusSmall)), // 🌟 Bo 12
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusSmall)), 
                                 ),
                                 onPressed: () => _showMedicalHistory(context),
                                 icon: const Icon(Icons.history, size: 20),
@@ -713,7 +711,7 @@ class _DoctorAppointmentDetailScreenState extends State<DoctorAppointmentDetailS
                     ],
                   ),
                 ),
-      bottomSheet: vm.isLoading || appointment == null || appointment['status'] == 'cancelled' || appointment['status'] == 'absent'
+      bottomSheet: vm.isLoading || appointment == null || appointment['status'] == 'cancelled' || appointment['status'] == 'absent' || appointment['status'] == 'reschedule_pending'
           ? null
           : Container(
               padding: const EdgeInsets.symmetric(horizontal: kDefaultPadding, vertical: 15),
@@ -726,7 +724,6 @@ class _DoctorAppointmentDetailScreenState extends State<DoctorAppointmentDetailS
     );
   }
 
-  // Hàm vẽ Badge trạng thái chuẩn màu giống trang danh sách
   Widget _buildStatusDetailBadge(String status) {
     Color bgColor; Color textColor; String text;
     switch (status) {
@@ -734,6 +731,7 @@ class _DoctorAppointmentDetailScreenState extends State<DoctorAppointmentDetailS
       case 'confirmed': bgColor = Colors.blue.shade50; textColor = Colors.blue; text = 'Đang khám'; break;
       case 'done': bgColor = Colors.green.shade50; textColor = Colors.green; text = 'Đã hoàn thành'; break;
       case 'cancelled': bgColor = Colors.red.shade50; textColor = Colors.red; text = 'Đã hủy'; break;
+      case 'reschedule_pending': bgColor = Colors.orange.shade50; textColor = Colors.orange.shade900; text = 'Chờ dời lịch'; break;
       case 'absent': default: bgColor = Colors.grey.shade200; textColor = Colors.grey.shade700; text = 'Vắng mặt'; break;
     }
     return Container(
@@ -743,11 +741,38 @@ class _DoctorAppointmentDetailScreenState extends State<DoctorAppointmentDetailS
     );
   }
 
+  // Hàm show Dialog xác nhận báo bận
+  void _showDoctorCancelDialog(BuildContext context, DoctorAppointmentDetailViewModel vm) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        title: const Text('Báo bận đột xuất', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
+        content: const Text('Bạn có chắc chắn muốn hủy ca khám này không?\n\nHệ thống sẽ tự động xử lý bảo lưu tiền (nếu có) và yêu cầu bệnh nhân dời lịch sang giờ khác.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Bỏ qua', style: TextStyle(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(dialogContext); 
+              final res = await vm.updateStatus(widget.appointmentId, 'reject');
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(res['message']), backgroundColor: res['success'] ? Colors.green : Colors.red));
+              }
+            },
+            child: const Text('Xác nhận báo bận', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildDoctorBottomActions(BuildContext context, Map<String, dynamic> appointment) {
     String status = appointment['status'] ?? 'pending';
     final vm = context.read<DoctorAppointmentDetailViewModel>();
 
-    // 🌟 HÀM XỬ LÝ CHUNG CHO NÚT DUYỆT/TỪ CHỐI
     void handleUpdateStatus(String action) async {
       final res = await vm.updateStatus(widget.appointmentId, action);
       if (context.mounted) {
@@ -785,13 +810,15 @@ class _DoctorAppointmentDetailScreenState extends State<DoctorAppointmentDetailS
             ),
             const SizedBox(height: 10),
           ],
-          // 🌟 CHIA ĐÔI HÀNG NÚT: BÁO VẮNG VÀ KÊ ĐƠN
           Row(
             children: [
               Expanded(
+                child: _buildOutlinedButton('Báo bận', Colors.red, () => _showDoctorCancelDialog(context, vm)),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
                 child: _buildOutlinedButton('Báo vắng', Colors.orange, () async {
                   final startTime = DateTime.parse(appointment['startTime']).toLocal();
-                  // Kiểm tra thời gian: Chỉ được báo vắng sau khi giờ khám đã qua 15 phút
                   if (DateTime.now().isAfter(startTime.add(const Duration(minutes: 15)))) {
                     final res = await vm.updateStatusAbsent(widget.appointmentId);
                     if (context.mounted) {
@@ -810,14 +837,15 @@ class _DoctorAppointmentDetailScreenState extends State<DoctorAppointmentDetailS
                   }
                 }),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _buildSolidButton('Kê đơn', Icons.edit_document, kPrimaryColor, () {
-                  _showPrescriptionBottomSheet(context);
-                }),
-              ),
             ],
           ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: _buildSolidButton('Khám & Kê đơn', Icons.edit_document, kPrimaryColor, () {
+              _showPrescriptionBottomSheet(context);
+            }),
+          )
         ],
       );
     }
@@ -847,7 +875,7 @@ class _DoctorAppointmentDetailScreenState extends State<DoctorAppointmentDetailS
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white, 
-        borderRadius: BorderRadius.circular(kBorderRadiusLarge), // 🌟 Bo 20
+        borderRadius: BorderRadius.circular(kBorderRadiusLarge), 
         border: Border.all(color: kBorderCyan),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))]
       ),
@@ -879,7 +907,7 @@ class _DoctorAppointmentDetailScreenState extends State<DoctorAppointmentDetailS
         foregroundColor: color, 
         side: BorderSide(color: color), 
         padding: const EdgeInsets.symmetric(vertical: 14), 
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusSmall)) // 🌟 Bo 12
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusSmall)) 
       ),
       onPressed: onTap,
       child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
@@ -892,7 +920,7 @@ class _DoctorAppointmentDetailScreenState extends State<DoctorAppointmentDetailS
         backgroundColor: bgColor, 
         foregroundColor: Colors.white, 
         padding: const EdgeInsets.symmetric(vertical: 14), 
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusSmall)), // 🌟 Bo 12 
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusSmall)), 
         elevation: 0
       ),
       onPressed: onTap,
