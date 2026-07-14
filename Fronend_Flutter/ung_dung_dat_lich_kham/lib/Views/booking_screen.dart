@@ -165,32 +165,62 @@ class _BookingScreenState extends State<BookingScreen> {
                       spacing: 10,
                       runSpacing: 10,
                       children: _currentDaySlots.map((slot) {
-                        bool isAvailable = slot.status == 'available';
+                        // Bóc tách giờ từ chuỗi (VD: "08:30" hoặc "08:00 - 08:30")
+                        String timeString = slot.time.split('-')[0].trim();
+                        List<String> timeParts = timeString.split(':');
+                        int hour = int.parse(timeParts[0]);
+                        int minute = int.parse(timeParts[1]);
+
+                        // Tạo DateTime cho khung giờ đó
+                        DateTime slotDateTime = DateTime(
+                          _selectedDate!.year,
+                          _selectedDate!.month,
+                          _selectedDate!.day,
+                          hour,
+                          minute,
+                        );
+
+                        DateTime now = DateTime.now();
+                        bool isPast = slotDateTime.isBefore(now); // Kiểm tra xem giờ này đã qua chưa
                         bool isBooked = slot.status == 'booked';
+                        
+                        // Chỉ available khi trạng thái là available VÀ chưa qua giờ hiện tại
+                        bool isAvailable = slot.status == 'available' && !isPast; 
                         bool isSelected = _selectedSlotId == slot.id;
 
-                        Color bgColor; Color borderColor = Colors.transparent; Color textColor; TextDecoration? textDecoration;
-                        if (isAvailable) {
+                        Color bgColor; 
+                        Color borderColor = Colors.transparent; 
+                        Color textColor; 
+
+                        if (isPast || isBooked) {
+                          // Đã qua giờ hoặc đã có người đặt -> Bôi xám
+                          bgColor = Colors.grey.shade300; 
+                          textColor = Colors.grey.shade600; 
+                        } else if (isAvailable) {
+                          // Trống và có thể đặt
                           bgColor = isSelected ? kPrimaryColor : kLightCyanBg1; 
-                          borderColor = isAvailable ? kPrimaryColor.withOpacity(0.4) : Colors.transparent;
+                          borderColor = kPrimaryColor.withOpacity(0.4);
                           textColor = isSelected ? Colors.white : kPrimaryColor;
-                        } else if (isBooked) {
-                          bgColor = Colors.grey.shade300; textColor = Colors.grey.shade600; textDecoration = TextDecoration.lineThrough;
                         } else { 
-                          bgColor = Colors.white; borderColor = Colors.grey.shade300; textColor = Colors.grey.shade400;
+                          bgColor = Colors.white; 
+                          borderColor = Colors.grey.shade300; 
+                          textColor = Colors.grey.shade400;
                         }
 
                         return GestureDetector(
                           onTap: isAvailable ? () => setState(() => _selectedSlotId = slot.id) : null,
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                            decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(kBorderRadiusSmall), border: Border.all(color: borderColor)), 
-                            child: Text(slot.time, style: TextStyle(color: textColor, fontWeight: FontWeight.bold, decoration: textDecoration)),
+                            decoration: BoxDecoration(
+                              color: bgColor, 
+                              borderRadius: BorderRadius.circular(kBorderRadiusSmall), 
+                              border: Border.all(color: borderColor)
+                            ), 
+                            child: Text(slot.time, style: TextStyle(color: textColor, fontWeight: FontWeight.bold)),
                           ),
                         );
                       }).toList(),
                     ),
-                  // KẾT THÚC ĐOẠN KHUNG GIỜ MỚI
 
                   const SizedBox(height: kSpacingLarge),
                   _buildSectionTitle("Khám cho"),
@@ -392,7 +422,7 @@ class _BookingScreenState extends State<BookingScreen> {
             String formattedDate = _formatDate(cellDate);
             
             // 1. Gọi API
-            await context.read<BookingViewModel>().fetchDoctorSchedule(formattedDate);
+            await context.read<BookingViewModel>().fetchDoctorSchedule(formattedDate, widget.doctor.id);
             
             // 2. Chuyển đổi dữ liệu siêu an toàn
             List<DoctorTimeSlotModel> fetchedSlots = [];
@@ -418,7 +448,13 @@ class _BookingScreenState extends State<BookingScreen> {
           child: Container(
             decoration: BoxDecoration(color: isSelected ? kPrimaryColor : Colors.transparent, shape: BoxShape.circle),
             alignment: Alignment.center,
-            child: Text(day.toString(), style: TextStyle(color: isDisabled ? Colors.grey.shade300 : (isSelected ? Colors.white : kTextColor), fontWeight: isSelected ? FontWeight.bold : FontWeight.normal, decoration: isDisabled ? TextDecoration.lineThrough : null)),
+            child: Text(
+              day.toString(), 
+              style: TextStyle(
+                color: isDisabled ? Colors.grey.shade300 : (isSelected ? Colors.white : kTextColor), 
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              )
+            ),
           ),
         );
       },

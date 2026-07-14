@@ -1,7 +1,6 @@
-// lib/views/chatbot_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter/services.dart';
 import 'package:ung_dung_dat_lich_kham/Constants/ui_constants.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/chatbot_viewmodel.dart';
 
@@ -62,14 +61,20 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[50], // Nền xám nhạt giúp nổi bật các bong bóng chat
       appBar: AppBar(
-        title: const Text(
-          'Trợ lý ảo MedCare AI', 
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)
-        ),
-        backgroundColor: primaryCyan,
+        title: const Text('Trợ lý ảo MedCare AI', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        backgroundColor: kPrimaryColor,
         foregroundColor: Colors.white,
-        elevation: 0.5,
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add),
+            tooltip: 'Bắt đầu phiên chat mới',
+            onPressed: () {
+              // Gọi hàm resetChat để xóa phiên cũ
+              context.read<ChatbotViewModel>().resetChat();
+            },
+          ),
+        ],
       ),
       body: SafeArea(
         child: Column(
@@ -153,47 +158,46 @@ class _ChatbotScreenState extends State<ChatbotScreen> {
   // HÀM TẠO GIAO DIỆN BONG BÓNG CHAT (CHAT BUBBLE)
   Widget _buildChatBubble(String text, bool isUser, {bool isLoading = false}) {
     return Align(
-      // Nếu là người dùng gửi thì đẩy sang PHẢI, nếu là AI thì đẩy sang TRÁI
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12.0),
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 11.0),
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.78, // Chiều ngang tối đa 78% màn hình
-        ),
-        decoration: BoxDecoration(
-          // Người dùng: Nền xanh chữ trắng. AI: Nền trắng chữ đen xám.
-          color: isUser ? kPrimaryColor : Colors.white,
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(16),
-            topRight: const Radius.circular(16),
-            bottomLeft: Radius.circular(isUser ? 16 : 4),  // Bo góc đặc trưng cho bong bóng bên trái
-            bottomRight: Radius.circular(isUser ? 4 : 16), // Bo góc đặc trưng cho bong bóng bên phải
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.03),
-              blurRadius: 3,
-              offset: const Offset(0, 1),
-            ),
-          ],
-        ),
-        child: isLoading
-            ? const SizedBox(
-                height: 18,
-                width: 35,
-                child: Center(
-                  child: LinearProgressIndicator(minHeight: 2, color: kPrimaryColor), // Thanh chạy chạy khi AI đang nghĩ
-                ),
-              )
-            : Text(
-                text,
-                style: TextStyle(
-                  color: isUser ? Colors.white : Colors.black87,
-                  fontSize: 14.5,
-                  height: 1.35, // Giúp khoảng cách giữa các dòng chữ thoáng, dễ đọc
-                ),
+      child: GestureDetector( // Bọc trong GestureDetector để bắt sự kiện nhấn
+        onLongPress: () {
+          if (!isLoading) {
+            Clipboard.setData(ClipboardData(text: text));
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Đã sao chép tin nhắn'),
+                duration: Duration(seconds: 1),
               ),
+            );
+          }
+        },
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 12.0),
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 11.0),
+          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
+          decoration: BoxDecoration(
+            color: isUser ? kPrimaryColor : Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: const Radius.circular(16),
+              topRight: const Radius.circular(16),
+              bottomLeft: Radius.circular(isUser ? 16 : 4),
+              bottomRight: Radius.circular(isUser ? 4 : 16),
+            ),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 3, offset: const Offset(0, 1)),
+            ],
+          ),
+          child: isLoading
+              ? const SizedBox(height: 18, width: 35, child: Center(child: LinearProgressIndicator(minHeight: 2, color: kPrimaryColor)))
+              : SelectableText( // Cho phép người dùng bôi đen và chọn text để copy
+              text,
+              style: TextStyle(
+                color: isUser ? Colors.white : Colors.black87,
+                fontSize: 14.5,
+                height: 1.35,
+              ),
+          ),
+        ),
       ),
     );
   }

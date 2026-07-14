@@ -525,31 +525,41 @@ class AuthViewModel extends ChangeNotifier {
   }
 
   Future<bool?> verifyToken() async {
-    try{
+    try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token');
 
       if (token == null) {
-        print("Lỗi: Không tìm thấy token đăng nhập");
         return null;
       }
 
       final res = await http.get(
-        Uri.parse('$_baseUrl/verify-token'),
+        Uri.parse('$_baseUrl/verify-token'), // Đảm bảo API này có tồn tại ở Backend nhé!
         headers: {
           "Content-Type": "application/json",
           "Authorization": "Bearer $token",
         },
       );
 
-      if(res.statusCode != 200){
-        await logout();
-        print('Lỗi: Token đã hết hạn');
+      // NẾU BACKEND TỪ CHỐI TOKEN (Hết hạn thật sự hoặc Token sai)
+      if (res.statusCode == 401 || res.statusCode == 403) {
+        print('Lỗi 401/403: Token đã hết hạn hoặc không hợp lệ.');
+        await logout(); // Chỉ xóa token khi chắc chắn nó hết hạn
+        return false;
+      } 
+      // NẾU LÀ LỖI KHÁC TỪ SERVER (Sập server, gọi sai URL 404, Lỗi mạng 500...)
+      else if (res.statusCode != 200) {
+        print('CẢNH BÁO Server lỗi: Mã ${res.statusCode} - Nội dung: ${res.body}');
+        // KHÔNG GỌI logout() Ở ĐÂY. Cứ giữ token để app dùng hàm check thời gian Local.
         return false;
       }
+
+      // Trả về 200 OK
       return true;
-    }catch(error){
-      throw Exception('Lỗi xác thực token: ${error.toString()}');
+    } catch (error) {
+      print('Lỗi ngoại lệ khi gọi API xác thực: $error');
+      // Không ném Exception (throw) để tránh làm sập/treo màn hình Splash Screen
+      return false;
     }
   }
 }

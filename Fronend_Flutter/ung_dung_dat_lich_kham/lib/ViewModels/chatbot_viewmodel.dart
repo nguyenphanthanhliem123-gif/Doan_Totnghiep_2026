@@ -107,4 +107,9 @@ class ChatbotViewModel extends ChangeNotifier {
       notifyListeners();
     }
   }
+  void resetChat() {
+    sessionToken = null; // Xóa token để backend tự tạo mới
+    messages.clear();    // Xóa hết tin nhắn cũ trên UI
+    notifyListeners();
+  }
 }

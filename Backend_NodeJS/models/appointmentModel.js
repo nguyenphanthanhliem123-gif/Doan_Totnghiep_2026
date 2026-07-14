@@ -231,7 +231,7 @@ export default class appointmentModel {
         }
     }
 
-    // Đổi lịch hẹn với điều kiện chặn đổi trước 2 giờ và kiểm tra slot mới
+    // Đổi lịch hẹn với điều kiện chặn đổi trước 2 giờ
     static async rescheduleAppointment(appointmentID, newSlotID) {
         try {
             // 1. Kiểm tra chính sách chặn đổi lịch trước 2 giờ
@@ -252,10 +252,17 @@ export default class appointmentModel {
                 return { success: false, message: "Chỉ được đổi lịch trước giờ khám tối thiểu 2 tiếng." };
             }
 
-            // 2. Kiểm tra slot mới có thực sự còn trống không (chống double booking)
-            const checkNewSlot = await execute(`SELECT Trang_thai FROM khung_gio_kham WHERE Ma_khung_gio = ?`, [newSlotID]);
-            if (checkNewSlot[0].length === 0 || checkNewSlot[0][0].Trang_thai !== 'available') {
+            // 2. Kiểm tra Slot mới (Chống trùng lịch và chống đổi lịch trong quá khứ)
+            const checkNewSlot = await execute(`SELECT Trang_thai, Thoi_gian_Bdau FROM khung_gio_kham WHERE Ma_khung_gio = ?`, [newSlotID]);
+            
+            if (checkNewSlot.length === 0 || checkNewSlot[0].Trang_thai !== 'available') {
                 return { success: false, message: "Khung giờ này đã có người đặt hoặc không tồn tại." };
+            }
+
+            // Lưới an toàn: Không cho phép đổi sang giờ đã qua
+            const newSlotTime = new Date(checkNewSlot[0].Thoi_gian_Bdau);
+            if (newSlotTime < now) {
+                return { success: false, message: "Không thể đổi sang khung giờ trong quá khứ." };
             }
 
             // 3. Thực hiện đổi lịch

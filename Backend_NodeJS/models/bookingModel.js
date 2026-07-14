@@ -156,8 +156,9 @@ export default class bookingModel {
     }
 
     // Lấy lịch làm việc chi tiết trong 1 ngày
-    static async getDoctorSchedule(date){
+    static async getDoctorSchedule(maBacSi, date){
         try{
+            // Lấy toàn bộ lịch khả dụng trong ngày
             const query = `
                 SELECT kgk.*, 
                     DATE_FORMAT(kgk.Thoi_gian_Bdau, '%H:%i') AS Gio_Kham 
@@ -165,23 +166,17 @@ export default class bookingModel {
                 JOIN bac_si bs ON bs.Ma_bac_si = kgk.Ma_bac_si
                 JOIN nguoi_dung nd ON nd.Ma_nguoi_dung = bs.Ma_nguoi_dung
                 JOIN phong_kham pk ON pk.Ma_phong_kham = kgk.Ma_phong_kham
-                WHERE DATE(kgk.Thoi_gian_Bdau) = ? 
-                AND kgk.Trang_thai = 'available'
+                WHERE kgk.Ma_bac_si = ?
+                AND DATE(kgk.Thoi_gian_Bdau) = ? 
                 AND bs.Trang_thai_hoat_dong = 'active'
                 ORDER BY kgk.Thoi_gian_Bdau ASC
             `;
 
-            const [rows] = await execute(query, [date]);
-            if (!rows || rows.length === 0) return [];
-
-            const todayStr = moment().utcOffset('+07:00').format('YYYY-MM-DD');
+            const [rows] = await execute(query, [maBacSi, date]);
             
-            if (date === todayStr) {
-                const currentHHmm = moment().utcOffset('+07:00').format('HH:mm');
-                return rows.filter(row => row.Gio_Kham > currentHHmm);
-            }
-
-            return rows;
+            // Trả về toàn bộ danh sách. 
+            return rows || [];
+            
         }
         catch(error){
             console.error(">>> [LỖI SQL Schedule]:", error);
@@ -246,78 +241,5 @@ export default class bookingModel {
         );
 
         return rows[0] || { total: 0 };
-    }
-
-    // Xử lý toàn bộ quy trình đặt lịch trong 1 Transaction
-    static async createBookingTransaction(data, thongTinDichVu, paymentData) {
-        let conn = await beginTransaction();
-        try {
-            // 1. SELECT FOR UPDATE: Khóa khung giờ để chống Race Condition cho khung giờ đó
-            const [rows] = await conn.execute(
-                `SELECT Trang_thai, Thoi_gian_Bdau FROM khung_gio_kham WHERE Ma_khung_gio = ? FOR UPDATE`, 
-                [data.Ma_khung_gio]
-            );
-
-            if (rows.length === 0 || rows[0].Trang_thai !== 'available') {
-                throw new Error("Khung giờ này không khả dụng hoặc đã có người đặt.");
-            }
-
-            // 2. CHECK TRÙNG LỊCH CÁ NHÂN (Patient Conflict)
-            // Kiểm tra bệnh nhân đã có lịch nào khác vào đúng thời điểm đó chưa
-            const [conflictRows] = await conn.execute(`
-                SELECT COUNT(*) as count 
-                FROM lich_hen lh
-                JOIN khung_gio_kham kg ON lh.Ma_khung_gio = kg.Ma_khung_gio
-                WHERE lh.Ma_benh_nhan = ? 
-                AND lh.Trang_thai_lich_hen IN ('pending', 'confirmed')
-                AND kg.Thoi_gian_Bdau = ?`, 
-                [data.Ma_benh_nhan, rows[0].Thoi_gian_Bdau]
-            );
-
-            if (conflictRows[0].count > 0) {
-                throw new Error("Bạn đã có một lịch hẹn khác vào khung giờ này!");
-            }
-
-            // 3. Tạo lịch hẹn (Vỏ)
-            const sqlInsertLichHen = `
-                INSERT INTO lich_hen (Ma_booking, Ma_bac_si, Ma_benh_nhan, Ma_nguoi_than, Ma_khung_gio, Hinh_thuc, Trieu_chung, Trang_thai_lich_hen, Tong_tien, Ngay_tao) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, NOW())
-            `;
-            const [insertResult] = await conn.execute(sqlInsertLichHen, [
-                data.Ma_booking, data.Ma_bac_si, data.Ma_benh_nhan, data.Ma_nguoi_than, 
-                data.Ma_khung_gio, data.Hinh_thuc, data.Trieu_chung, data.Tong_tien
-            ]);
-            const maLichHen = insertResult.insertId;
-
-            // 4. Tạo chi tiết lịch hẹn
-            for (const item of thongTinDichVu) {
-                await conn.execute(
-                    `INSERT INTO chi_tiet_lich_hen (Ma_lich_hen, Ma_dich_vu, Gia_tien) VALUES (?, ?, ?)`,
-                    [maLichHen, item.id, item.price]
-                );
-            }
-
-            // 5. Tạo thanh toán
-            await conn.execute(
-                `INSERT INTO thanh_toan (Ma_lich_hen, Phuong_thuc, Trang_thai_thanh_toan, Ma_giao_dich, Tong_tien) VALUES (?, ?, ?, ?, ?)`,
-                [maLichHen, paymentData.Phuong_thuc, paymentData.Trang_thai_thanh_toan, paymentData.Ma_giao_dich, paymentData.Tong_tien]
-            );
-
-            // 6. Update trạng thái khung giờ
-            await conn.execute(`UPDATE khung_gio_kham SET Trang_thai = 'booked' WHERE Ma_khung_gio = ?`, [data.Ma_khung_gio]);
-
-            // 7. Lưu log
-            await conn.execute(
-                `INSERT INTO lich_su_trang_thai_lich_hen (Ma_lich_hen, Trang_thai_cu, Trang_thai_moi, Nguoi_thay_doi, Ngay_thay_doi) VALUES (?, NULL, 'pending', 'patient', NOW())`,
-                [maLichHen]
-            );
-
-            await commitTransaction(conn);
-            return { maLichHen, maBooking: data.Ma_booking };
-
-        } catch (error) {
-            if (conn) await rollbackTransaction(conn);
-            throw error; 
-        }
     }
 }

@@ -281,16 +281,6 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
                                   },
                                 ),
                                 _buildActionButton(
-                                  icon: Icons.phone,
-                                  label: "Gọi điện",
-                                  color: Colors.green,
-                                  onTap: () {
-                                    if (clinic.phone != null && clinic.phone!.isNotEmpty) {
-                                      _launchExternalUrl('tel:${clinic.phone}');
-                                    }
-                                  },
-                                ),
-                                _buildActionButton(
                                   icon: Icons.language,
                                   label: "Website",
                                   color: Colors.orange,

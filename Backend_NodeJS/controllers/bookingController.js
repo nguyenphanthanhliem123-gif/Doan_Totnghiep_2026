@@ -146,8 +146,17 @@ export default class bookingController {
 
     static async getDoctorSchedule(req, res) {
         try {
-            const date = req.query.q || '';
-            const doctorSchedule = await bookingModel.getDoctorSchedule(date);
+            // Hứng tham số ngày và ID bác sĩ từ URL
+            const date = req.query.date || req.query.q || '';
+            const doctorId = req.query.doctorId; 
+
+            // Kiểm tra rỗng
+            if (!doctorId || doctorId === 'null') {
+                return res.status(400).json({ succeeded: false, message: "Thiếu mã bác sĩ để xem lịch." });
+            }
+
+            const doctorSchedule = await bookingModel.getDoctorSchedule(doctorId, date);
+            
             return res.status(200).json({ succeeded: true, schedule: doctorSchedule });
         } catch (error) {
             return res.status(500).json({ succeeded: false, message: error.message });
