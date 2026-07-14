@@ -1,4 +1,4 @@
-import { execute } from "../config/db.js";
+import { beginTransaction, commitTransaction, execute, rollbackTransaction } from "../config/db.js";
 import { hash, compare } from 'bcrypt';
 
 export default class userModel {
@@ -32,26 +32,37 @@ export default class userModel {
 
     // Hàm tạo người dùng mới
     static async create({ email, hashedPassword, fullName }) {
+        let conn = await beginTransaction();
         try {
             // Tạo tài khoản bên bảng nguoi_dung
-            const [result] = await execute(
+            const [result] = await conn.execute(
                 'INSERT INTO `nguoi_dung`(`Ten_nguoi_dung`, `Email`, `Mat_khau`, `Phan_quyen`) VALUES (?, ?, ?, ?)',
                 [fullName, email, hashedPassword, 'Benh_nhan']
             );
             
             const newUserId = result.insertId;
 
+            console.log('New userID: ' + newUserId);
+
             // Tạo 1 dòng trống bên bảng benh_nhan
             if (newUserId) {
-                await execute(
+                const [patienId] = await conn.execute(
                     'INSERT INTO `benh_nhan`(`Ma_nguoi_dung`) VALUES (?)',
                     [newUserId]
                 );
+
+                await conn.execute(`
+                    INSERT INTO nguoi_than(Ma_benh_nhan, Ten_nguoi_than, Quan_he)
+                    VALUES(?, ?, 'Bản thân')  
+                `,[patienId.insertId, fullName]);
+                await commitTransaction(conn);
                 return newUserId;
             }
-            
+            await rollbackTransaction(conn);
             return null;
         } catch(error) {
+            await rollbackTransaction(conn);
+            console.log('Lỗi create account: ' + error.message);
             throw new Error(error.message);
         }
     }

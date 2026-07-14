@@ -57,7 +57,7 @@ class _AddHealthRecordScreenState extends State<AddHealthRecordScreen> {
     return Scaffold(
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(60),
-        child: AppBar(backgroundColor: kPrimaryColor, title: const Text('Thêm hồ sơ người thân', style: TextStyle(color: Colors.white)), centerTitle: true, leading: IconButton(icon: const Icon(Icons.arrow_back_ios, color: Colors.white), onPressed: () => Navigator.pop(context))),
+        child: AppBar(backgroundColor: kPrimaryColor, title: const Text('Thêm hồ sơ sức khỏe', style: TextStyle(color: Colors.white)), centerTitle: true, leading: IconButton(icon: const Icon(Icons.arrow_back_ios, color: Colors.white), onPressed: () => Navigator.pop(context))),
       ),
       body: healthVM.isLoading
           ? const Center(child: CircularProgressIndicator(color: kPrimaryColor))

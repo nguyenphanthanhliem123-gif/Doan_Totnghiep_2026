@@ -78,4 +78,36 @@ class APINotificationService {
       throw Exception('Lỗi server: ${e.toString()}');
     }
   }
+
+  Future<bool> saveFCMToken(String? FCMToken) async {
+    try{
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      if(token == null ) return false;
+
+      final res = await http.put(
+        Uri.parse('$BASE_URL/api/notification/save-FCMToken'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: {
+          'FCMToken': FCMToken 
+        }
+      );
+
+      if(res.statusCode == 200){
+        print('Lưu FCMToken thành công');
+        return true;
+      }
+      else{
+        final data = jsonDecode(res.body);
+        print("Lỗi ${data['message']}");
+        return false;
+      }
+    }catch(e){
+      print('Lỗi ${e.toString()}');
+      return false;
+    }
+  }
 }

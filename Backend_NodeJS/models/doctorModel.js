@@ -325,4 +325,6 @@ export default class doctorModel {
             throw new Error("Lỗi khi lấy danh sách phòng khám đã chọn: " + error.message);
         }
     }
+
+    
 }

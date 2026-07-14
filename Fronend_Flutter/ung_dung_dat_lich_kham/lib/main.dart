@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:ung_dung_dat_lich_kham/Services/local_notification_service.dart';
 import 'dart:convert';
 import 'package:ung_dung_dat_lich_kham/viewmodels/admin_clinic_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/admin_payment_viewmodel.dart';
@@ -34,8 +35,10 @@ import 'views/main_screen.dart';
 import 'views/doctor/doctor_main_screen.dart';
 import 'Constants/ui_constants.dart';
 
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  LocalNotificationService.initialize();
   runApp(const MyApp());
 }
 
