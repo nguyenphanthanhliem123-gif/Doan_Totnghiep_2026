@@ -23,7 +23,6 @@ class _RescheduleBottomSheetState extends State<RescheduleBottomSheet> {
   @override
   void initState() {
     super.initState();
-    // Tải dữ liệu lịch trống của bác sĩ này
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<DoctorViewModel>().fetchDoctorDetail(widget.doctorId);
     });
@@ -45,7 +44,6 @@ class _RescheduleBottomSheetState extends State<RescheduleBottomSheet> {
       );
     }
 
-    // Logic lọc slot y hệt BookingScreen
     List<String> availableDateStrings = doctor.schedules.map((s) => s.date).toList();
     List<DoctorTimeSlotModel> activeSlots = [];
     if (_selectedDate != null) {
@@ -63,10 +61,9 @@ class _RescheduleBottomSheetState extends State<RescheduleBottomSheet> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(25))
       ),
       padding: EdgeInsets.only(top: 20, left: 20, right: 20, bottom: MediaQuery.of(context).viewInsets.bottom + 20),
-      // ✅ FIX LỖI Ở ĐÂY: Bọc toàn bộ Column vào SingleChildScrollView để chống lỗi tràn viền khi resize cửa sổ.
       child: SingleChildScrollView(
         child: Column(
-          mainAxisSize: MainAxisSize.min, // Tự co giãn theo nội dung
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Center(child: Container(width: 50, height: 5, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(10)))),
@@ -122,7 +119,6 @@ class _RescheduleBottomSheetState extends State<RescheduleBottomSheet> {
                 spacing: 10,
                 runSpacing: 10,
                 children: activeSlots.map((slot) {
-                  // 🌟 Thêm logic so sánh thời gian thực tế
                   String timeString = slot.time.split('-')[0].trim();
                   List<String> timeParts = timeString.split(':');
                   int hour = int.parse(timeParts[0]);
@@ -137,10 +133,9 @@ class _RescheduleBottomSheetState extends State<RescheduleBottomSheet> {
                   );
 
                   DateTime now = DateTime.now();
-                  bool isPast = slotDateTime.isBefore(now); // Đã qua giờ hiện tại
+                  bool isPast = slotDateTime.isBefore(now);
                   bool isBooked = slot.status == 'booked';
                   
-                  // Chỉ cho phép bấm khi trạng thái available VÀ chưa qua giờ
                   bool isAvailable = slot.status == 'available' && !isPast;
                   bool isSelected = _selectedSlotId == slot.id;
 
@@ -149,7 +144,6 @@ class _RescheduleBottomSheetState extends State<RescheduleBottomSheet> {
                   Color textColor; 
 
                   if (isPast || isBooked) {
-                    // Bôi xám, vô hiệu hóa, không gạch ngang chữ
                     bgColor = Colors.grey.shade300; 
                     textColor = Colors.grey.shade600; 
                   } else if (isAvailable) {
@@ -171,7 +165,6 @@ class _RescheduleBottomSheetState extends State<RescheduleBottomSheet> {
                         borderRadius: BorderRadius.circular(15), 
                         border: Border.all(color: borderColor)
                       ),
-                      // 🌟 Xóa bỏ TextDecoration.lineThrough
                       child: Text(slot.time, style: TextStyle(color: textColor, fontWeight: FontWeight.bold)),
                     ),
                   );
@@ -233,13 +226,12 @@ class _RescheduleBottomSheetState extends State<RescheduleBottomSheet> {
     );
   }
 
-  // Thực thi đổi lịch
   Future<void> _executeReschedule(BuildContext context) async {
     final appVM = context.read<AppointmentViewModel>();
     final result = await appVM.rescheduleAppointment(widget.appointmentId, _selectedSlotId!);
 
     if (context.mounted) {
-      Navigator.pop(context); // Đóng BottomSheet
+      Navigator.pop(context); 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(result['message']),
@@ -247,7 +239,7 @@ class _RescheduleBottomSheetState extends State<RescheduleBottomSheet> {
         ),
       );
       if (result['succeeded'] == true) {
-        appVM.fetchDetail(widget.appointmentId); // Tải lại chi tiết để hiển thị giờ mới
+        appVM.fetchDetail(widget.appointmentId); 
       }
     }
   }

@@ -11,6 +11,7 @@ class AppointmentModel {
   final int? specialtyId;
   final String? specialtyName;
   final String totalPrice;
+  final String? doctorStatus;
 
   AppointmentModel({
     required this.id,
@@ -25,6 +26,7 @@ class AppointmentModel {
     this.specialtyId,
     this.specialtyName,
     required this.totalPrice,
+    this.doctorStatus,
   });
 
   factory AppointmentModel.fromJson(Map<String, dynamic> json) {
@@ -42,6 +44,7 @@ class AppointmentModel {
       specialtyId: json['Ma_chuyen_khoa'] ?? 0,
       specialtyName: json['Ten_chuyen_khoa'] ?? '',
       totalPrice: json['Tong_tien'] ?? '0',
+      doctorStatus: json['Trang_thai_bac_si'],
     );
   }
 }

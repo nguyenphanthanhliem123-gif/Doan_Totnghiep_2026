@@ -69,7 +69,7 @@ class _DoctorMainScreenState extends State<DoctorMainScreen> {
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         currentIndex: _selectedIndex,
-        selectedItemColor: kPrimaryColor, // 🌟 Đồng bộ màu chuẩn hệ thống
+        selectedItemColor: kPrimaryColor, 
         unselectedItemColor: kGreyTextColor,
         onTap: _onItemTapped,
         items: const [
@@ -83,9 +83,6 @@ class _DoctorMainScreenState extends State<DoctorMainScreen> {
   }
 }
 
-// =====================================================================
-// MÀN HÌNH DASHBOARD BÁC SĨ
-// =====================================================================
 class DoctorDashboardScreen extends StatelessWidget {
   final Function(int) onNavigate; 
   const DoctorDashboardScreen({Key? key, required this.onNavigate}) : super(key: key);
@@ -102,7 +99,7 @@ class DoctorDashboardScreen extends StatelessWidget {
     final doctorVM = context.watch<DoctorAppointmentViewModel>();
 
     return Scaffold(
-      backgroundColor: kLightCyanBg2, // 🌟 Đồng bộ nền sáng mịn màng toàn hệ thống
+      backgroundColor: kLightCyanBg2, 
       body: SafeArea(
         child: doctorVM.isLoading && doctorVM.pendingAppointments.isEmpty
           ? const Center(child: CircularProgressIndicator(color: kPrimaryColor))
@@ -166,9 +163,7 @@ class DoctorDashboardScreen extends StatelessWidget {
               ],
             ),
           ),
-
           NotificationBadge(),
-    
         ],
       ),
     );
@@ -195,7 +190,7 @@ class DoctorDashboardScreen extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: color.withOpacity(0.08),
-          borderRadius: BorderRadius.circular(kBorderRadiusLarge), // 🌟 Bo tròn 20 chuẩn hệ thống
+          borderRadius: BorderRadius.circular(kBorderRadiusLarge), 
           border: Border.all(color: color.withOpacity(0.25)),
         ),
         child: Column(
@@ -246,7 +241,7 @@ class DoctorDashboardScreen extends StatelessWidget {
                 padding: const EdgeInsets.all(15),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(kBorderRadiusLarge), // Bo góc 20
+                  borderRadius: BorderRadius.circular(kBorderRadiusLarge), 
                   boxShadow: [
                     BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 5)),
                   ],
@@ -285,7 +280,7 @@ class DoctorDashboardScreen extends StatelessWidget {
                               foregroundColor: Colors.redAccent,
                               elevation: 0,
                               padding: const EdgeInsets.symmetric(vertical: 8),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusSmall)), // Bo 12
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusSmall)), 
                             ),
                             child: const Text('Từ chối', style: TextStyle(fontSize: 13)),
                           ),
@@ -459,7 +454,7 @@ class _ExpandableRevenueCardState extends State<_ExpandableRevenueCard> {
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(kBorderRadiusLarge), // Bo 20
+          borderRadius: BorderRadius.circular(kBorderRadiusLarge), 
           boxShadow: [
             BoxShadow(color: kPrimaryColor.withOpacity(0.15), blurRadius: 10, offset: const Offset(0, 5)),
           ],
@@ -477,7 +472,7 @@ class _ExpandableRevenueCardState extends State<_ExpandableRevenueCard> {
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [kPrimaryColor, kDarkCyan], // 🌟 Đồng bộ dải màu Gradient chuẩn hệ thống
+                    colors: [kPrimaryColor, kDarkCyan], 
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -531,16 +526,15 @@ class _ExpandableRevenueCardState extends State<_ExpandableRevenueCard> {
                     final localTime = DateTime.parse(item['Thoi_gian_Bdau']).toLocal();
                     final timeStr = "${localTime.day}/${localTime.month} - ${localTime.hour.toString().padLeft(2, '0')}:${localTime.minute.toString().padLeft(2, '0')}";
 
-                    // 🌟 XỬ LÝ CHUỖI DỊCH VỤ: Chuyển dấu phẩy thành dấu xuống dòng kèm gạch đầu dòng (bullet)
                     String rawServices = item['Ten_dich_vu'] ?? 'Khám dịch vụ';
                     String displayServices = rawServices.contains(',') 
                         ? '• ${rawServices.split(', ').join('\n• ')}'
                         : rawServices;
 
                     return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12), // Tăng khoảng cách trên dưới cho thoáng
+                      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12), 
                       child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start, // 🌟 Neo các cột lên trên cùng (Top) khi bị rớt dòng
+                        crossAxisAlignment: CrossAxisAlignment.start, 
                         children: [
                           Expanded(
                             flex: 3,
@@ -556,15 +550,14 @@ class _ExpandableRevenueCardState extends State<_ExpandableRevenueCard> {
                           const SizedBox(width: 8),
                           
                           Expanded(
-                            flex: 4, // 🌟 Tăng diện tích cho cột dịch vụ
+                            flex: 4, 
                             child: Text(
                               displayServices,
                               style: const TextStyle(
                                 color: kTextColor, 
                                 fontSize: 13, 
-                                height: 1.4 // 🌟 Tăng khoảng cách giữa các dòng (Line height) cho dễ đọc
+                                height: 1.4 
                               ),
-                              // 🌟 Đã xóa maxLines và overflow để hiển thị toàn bộ
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -574,7 +567,7 @@ class _ExpandableRevenueCardState extends State<_ExpandableRevenueCard> {
                             child: Text(
                               '${_formatCurrency(item['Tong_tien'])} đ',
                               textAlign: TextAlign.right,
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: kPrimaryColor), // 🌟 Đổi màu giá tiền thành màu chủ đạo cho nổi bật
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: kPrimaryColor), 
                             ),
                           ),
                         ],

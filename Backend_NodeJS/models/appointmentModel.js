@@ -45,7 +45,8 @@ export default class appointmentModel {
                     kg.Thoi_gian_Bdau,
                     kg.Thoi_gian_Kthuc,
                     nd.Ten_nguoi_dung AS Ten_bac_si,
-                    nd.Anh_dai_dien AS Anh_bac_si
+                    nd.Anh_dai_dien AS Anh_bac_si,
+                    bs.Trang_thai_hoat_dong AS Trang_thai_bac_si
                 FROM lich_hen lh
                 JOIN khung_gio_kham kg ON lh.Ma_khung_gio = kg.Ma_khung_gio
                 JOIN bac_si bs ON lh.Ma_bac_si = bs.Ma_bac_si
@@ -231,51 +232,103 @@ export default class appointmentModel {
         }
     }
 
-    // Đổi lịch hẹn với điều kiện chặn đổi trước 2 giờ
+    // Đổi lịch hẹn (Tích hợp Race Condition, Trùng lịch cá nhân và Luật 2 tiếng)
     static async rescheduleAppointment(appointmentID, newSlotID) {
+        let conn;
         try {
-            // 1. Kiểm tra chính sách chặn đổi lịch trước 2 giờ
-            const checkSql = `
-                SELECT lh.Ma_khung_gio, kg.Thoi_gian_Bdau 
+            conn = await beginTransaction();
+
+            // 1. Lấy thông tin lịch cũ
+            const oldSql = `
+                SELECT lh.Ma_khung_gio, lh.Trang_thai_lich_hen, lh.So_lan_doi_lich, 
+                       lh.Ma_benh_nhan, lh.Ma_nguoi_than, kg.Thoi_gian_Bdau 
                 FROM lich_hen lh
                 JOIN khung_gio_kham kg ON lh.Ma_khung_gio = kg.Ma_khung_gio
                 WHERE lh.Ma_lich_hen = ?
             `;
-            const [rows] = await execute(checkSql, [appointmentID]);
-            if (rows.length === 0) return { success: false, message: "Không tìm thấy lịch hẹn." };
+            const [oldRows] = await conn.execute(oldSql, [appointmentID]);
+            if (oldRows.length === 0) throw new Error("Không tìm thấy lịch hẹn.");
             
-            const oldSlotID = rows[0].Ma_khung_gio;
-            const startTime = new Date(rows[0].Thoi_gian_Bdau);
+            const appt = oldRows[0];
             const now = new Date();
-            
-            if ((startTime - now) / (1000 * 60 * 60) < 2) {
-                return { success: false, message: "Chỉ được đổi lịch trước giờ khám tối thiểu 2 tiếng." };
+
+            // 2. Chặn lạm dụng đổi lịch (Chỉ cho tự đổi tối đa 1 lần)
+            if (appt.So_lan_doi_lich >= 1 && appt.Trang_thai_lich_hen !== 'reschedule_pending') {
+                throw new Error("Bạn đã hết lượt đổi lịch cho ca khám này.");
             }
 
-            // 2. Kiểm tra Slot mới (Chống trùng lịch và chống đổi lịch trong quá khứ)
-            const checkNewSlot = await execute(`SELECT Trang_thai, Thoi_gian_Bdau FROM khung_gio_kham WHERE Ma_khung_gio = ?`, [newSlotID]);
-            
-            if (checkNewSlot.length === 0 || checkNewSlot[0].Trang_thai !== 'available') {
-                return { success: false, message: "Khung giờ này đã có người đặt hoặc không tồn tại." };
+            // 3. Kiểm tra luật 2 tiếng (NẾU bệnh nhân chủ động đổi)
+            // Nếu trạng thái là 'reschedule_pending' (Do BS bận) -> Cho phép đổi bất chấp giờ giấc cũ
+            if (appt.Trang_thai_lich_hen !== 'reschedule_pending') {
+                const startTime = new Date(appt.Thoi_gian_Bdau);
+                if ((startTime - now) / (1000 * 60 * 60) < 2) {
+                    throw new Error("Theo chính sách, chỉ được tự đổi lịch trước giờ khám tối thiểu 2 tiếng.");
+                }
             }
 
-            // Lưới an toàn: Không cho phép đổi sang giờ đã qua
-            const newSlotTime = new Date(checkNewSlot[0].Thoi_gian_Bdau);
+            // 4. KIỂM TRA SLOT MỚI & KHÓA RACE CONDITION (FOR UPDATE)
+            const checkNewSlot = await conn.execute(
+                `SELECT Trang_thai, Thoi_gian_Bdau FROM khung_gio_kham WHERE Ma_khung_gio = ? FOR UPDATE`, 
+                [newSlotID]
+            );
+            if (checkNewSlot[0].length === 0 || checkNewSlot[0][0].Trang_thai !== 'available') {
+                throw new Error("Khung giờ này vừa có người nhanh tay hơn đặt mất. Vui lòng chọn giờ khác.");
+            }
+            const newSlotTime = new Date(checkNewSlot[0][0].Thoi_gian_Bdau);
             if (newSlotTime < now) {
-                return { success: false, message: "Không thể đổi sang khung giờ trong quá khứ." };
+                throw new Error("Không thể đổi sang khung giờ trong quá khứ.");
             }
 
-            // 3. Thực hiện đổi lịch
-            // Nhả slot cũ thành available
-            await execute(`UPDATE khung_gio_kham SET Trang_thai = 'available' WHERE Ma_khung_gio = ?`, [oldSlotID]);
-            // Khóa slot mới thành booked
-            await execute(`UPDATE khung_gio_kham SET Trang_thai = 'booked' WHERE Ma_khung_gio = ?`, [newSlotID]);
-            // Cập nhật slot mới cho lịch hẹn
-            await execute(`UPDATE lich_hen SET Ma_khung_gio = ? WHERE Ma_lich_hen = ?`, [newSlotID, appointmentID]);
+            // 5. KIỂM TRA TRÙNG LỊCH CÁ NHÂN (OVERLAPPING)
+            let conflictSql = `
+                SELECT lh.Ma_lich_hen 
+                FROM lich_hen lh
+                JOIN khung_gio_kham kg ON lh.Ma_khung_gio = kg.Ma_khung_gio
+                WHERE lh.Ma_benh_nhan = ? 
+                AND lh.Trang_thai_lich_hen IN ('pending', 'confirmed')
+                AND kg.Thoi_gian_Bdau < (SELECT Thoi_gian_Kthuc FROM khung_gio_kham WHERE Ma_khung_gio = ?)
+                AND kg.Thoi_gian_Kthuc > (SELECT Thoi_gian_Bdau FROM khung_gio_kham WHERE Ma_khung_gio = ?)
+            `;
+            const conflictParams = [appt.Ma_benh_nhan, newSlotID, newSlotID];
+            if (appt.Ma_nguoi_than) {
+                conflictSql += ` AND lh.Ma_nguoi_than = ?`;
+                conflictParams.push(appt.Ma_nguoi_than);
+            } else {
+                conflictSql += ` AND lh.Ma_nguoi_than IS NULL`;
+            }
+            conflictSql += ` FOR UPDATE`;
+            const [conflictRows] = await conn.execute(conflictSql, conflictParams);
+            
+            if (conflictRows.length > 0) {
+                throw new Error("Người khám này đã có một lịch hẹn khác bị trùng hoặc giao thoa với giờ bạn vừa chọn!");
+            }
 
-            return { success: true, message: "Đổi lịch khám thành công!" };
+            // 6. THỰC HIỆN DỜI LỊCH (HOÁN ĐỔI SLOT)
+            // Nhả slot cũ (Chỉ nhả nếu slot cũ đang bị khóa, nếu là reschedule_pending thì slot cũ đã nhả rồi)
+            if (appt.Trang_thai_lich_hen !== 'reschedule_pending') {
+                await conn.execute(`UPDATE khung_gio_kham SET Trang_thai = 'available' WHERE Ma_khung_gio = ?`, [appt.Ma_khung_gio]);
+            }
+            
+            // Khóa slot mới
+            await conn.execute(`UPDATE khung_gio_kham SET Trang_thai = 'booked' WHERE Ma_khung_gio = ?`, [newSlotID]);
+            
+            // Cập nhật Lịch hẹn về Pending và +1 số lần đổi
+            await conn.execute(
+                `UPDATE lich_hen SET Ma_khung_gio = ?, Trang_thai_lich_hen = 'pending', So_lan_doi_lich = So_lan_doi_lich + 1 WHERE Ma_lich_hen = ?`, 
+                [newSlotID, appointmentID]
+            );
+
+            // Ghi log lịch sử
+            await conn.execute(
+                `INSERT INTO lich_su_trang_thai_lich_hen (Ma_lich_hen, Trang_thai_cu, Trang_thai_moi, Nguoi_thay_doi) VALUES (?, ?, 'pending', 'patient')`, 
+                [appointmentID, appt.Trang_thai_lich_hen]
+            );
+
+            await commitTransaction(conn);
+            return { success: true, message: "Đổi lịch khám thành công! Vui lòng chờ bác sĩ xác nhận lại." };
         } catch (error) {
-            throw new Error('Lỗi khi đổi lịch: ' + error.message);
+            if (conn) await rollbackTransaction(conn);
+            throw new Error(error.message);
         }
     }
 
@@ -409,50 +462,41 @@ export default class appointmentModel {
         }
     }
 
-    // Bác sĩ xác nhận hoặc từ chối lịch hẹn
+    // Bác sĩ xác nhận hoặc từ chối/báo bận
     static async updateAppointmentStatus(appointmentID, status, userID) {
         try {
-            // 1. Xác thực quyền bác sĩ
             const [doctorInfo] = await execute(`SELECT Ma_bac_si FROM bac_si WHERE Ma_nguoi_dung = ?`, [userID]);
             if (doctorInfo.length === 0) throw new Error('Không có quyền truy cập.');
             const maBacSi = doctorInfo[0].Ma_bac_si;
 
-            // 2. Lấy Mã khung giờ VÀ Trạng thái cũ của lịch hẹn hiện tại
             const [apptInfo] = await execute(
                 `SELECT Ma_khung_gio, Trang_thai_lich_hen FROM lich_hen WHERE Ma_lich_hen = ? AND Ma_bac_si = ?`, 
                 [appointmentID, maBacSi]
             );
-            
-            if (apptInfo.length === 0) {
-                throw new Error('Lịch hẹn không tồn tại hoặc không thuộc thẩm quyền của bạn.');
-            }
+            if (apptInfo.length === 0) throw new Error('Lịch hẹn không tồn tại.');
 
             const maKhungGio = apptInfo[0].Ma_khung_gio;
-            const trangThaiCu = apptInfo[0].Trang_thai_lich_hen; // Lấy trạng thái cũ
+            const trangThaiCu = apptInfo[0].Trang_thai_lich_hen;
 
-            // 3. Xử lý logic dựa trên hành động của bác sĩ
-            if (status === 'cancelled') {
+            // NẾU TỪ CHỐI / BÁO BẬN -> Nhả slot cũ ra cho hệ thống
+            if (status === 'cancelled' || status === 'reschedule_pending') {
                 await execute(`UPDATE khung_gio_kham SET Trang_thai = 'available' WHERE Ma_khung_gio = ?`, [maKhungGio]);
             } else if (status === 'confirmed') {
                 await execute(`UPDATE khung_gio_kham SET Trang_thai = 'booked' WHERE Ma_khung_gio = ?`, [maKhungGio]);
             }
 
-            // 4. Cập nhật trạng thái mới cho bảng Lịch Hẹn
             await execute(`UPDATE lich_hen SET Trang_thai_lich_hen = ? WHERE Ma_lich_hen = ?`, [status, appointmentID]);
 
-            // 5. Lưu lịch sử thay đổi
             if (trangThaiCu !== status) {
                 await execute(
-                    `INSERT INTO lich_su_trang_thai_lich_hen 
-                    (Ma_lich_hen, Trang_thai_cu, Trang_thai_moi, Nguoi_thay_doi) 
-                    VALUES (?, ?, ?, 'doctor')`, 
+                    `INSERT INTO lich_su_trang_thai_lich_hen (Ma_lich_hen, Trang_thai_cu, Trang_thai_moi, Nguoi_thay_doi) VALUES (?, ?, ?, 'doctor')`, 
                     [appointmentID, trangThaiCu, status]
                 );
             }
 
-            return { success: true, message: status === 'cancelled' ? "Đã từ chối và giải phóng khung giờ." : "Đã xác nhận lịch hẹn." };
+            return { success: true, message: "Đã cập nhật trạng thái lịch hẹn." };
         } catch (error) {
-            throw new Error('Lỗi cập nhật trạng thái lịch hẹn: ' + error.message);
+            throw new Error('Lỗi cập nhật trạng thái: ' + error.message);
         }
     }
 
