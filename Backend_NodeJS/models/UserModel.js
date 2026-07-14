@@ -69,26 +69,34 @@ export default class userModel {
 
     // Hàm tạo người dùng mới từ OAuth
     static async createOAuthUser({ email, randomHashedPassword, fullName, provider, providerId, avatar }) {
+        let conn = await beginTransaction();
         try {
-            // Bước 1: Tạo tài khoản bên bảng nguoi_dung
-            const [result] = await execute(
+            const [result] = await conn.execute(
                 'INSERT INTO `nguoi_dung`(`Ten_nguoi_dung`, `Email`, `Mat_khau`, `Phan_quyen`, `Dang_nhap_Oauth`, `Ma_DN_Oauth`, `Anh_dai_dien`) VALUES (?, ?, ?, ?, ?, ?, ?)',
                 [fullName, email, randomHashedPassword, 'Benh_nhan', provider, providerId, avatar]
             );
             
             const newUserId = result.insertId;
 
-            // Bước 2: Tạo 1 dòng trống bên bảng benh_nhan
             if (newUserId) {
-                await execute(
+                const [patientResult] = await conn.execute(
                     'INSERT INTO `benh_nhan`(`Ma_nguoi_dung`) VALUES (?)',
                     [newUserId]
                 );
+
+                await conn.execute(`
+                    INSERT INTO nguoi_than(Ma_benh_nhan, Ten_nguoi_than, Quan_he)
+                    VALUES(?, ?, 'Bản thân')  
+                `, [patientResult.insertId, fullName]);
+
+                await commitTransaction(conn); // Xác nhận lưu toàn bộ
                 return newUserId;
             }
             
+            await rollbackTransaction(conn);
             return null;
         } catch(error) {
+            if (conn) await rollbackTransaction(conn); // Hoàn tác nếu có lỗi
             throw new Error(error.message);
         }
     }

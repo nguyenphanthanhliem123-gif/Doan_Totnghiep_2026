@@ -354,11 +354,25 @@ export default class chatbotController {
                             // Tính tổng tiền dựa trên mảng dịch vụ cuối cùng
                             const tongChiPhi = danhSachDichVu.reduce((sum, item) => sum + (item.gia_tien || 0), 0);
                             
-                            prompt = `Bạn đã tìm thấy khung giờ phù hợp và Backend đã tự động đặt lịch thành công. Mã Booking là: ${bookingCode}.
-                            Hãy đóng vai lễ tân báo tin vui, nhắc lại ngày giờ (${call.args.target_time} ngày ${call.args.target_date}) do bác sĩ ${call.args.doctor_name} khám. 
+                            prompt = `Bạn đã tìm thấy khung giờ phù hợp và Backend đã tự động 
+                            đặt lịch thành công. Mã Booking là: ${bookingCode.maBooking}.
+                            Hãy đóng vai lễ tân báo tin vui, nhắc lại ngày giờ (${call.args.target_time} 
+                            ngày ${call.args.target_date}) do bác sĩ ${call.args.doctor_name} khám. 
                             Báo tổng chi phí dự kiến là ${tongChiPhi} VNĐ và dặn họ đến trước 15 phút.`;
                         } catch (err) {
-                            prompt = `Hệ thống backend báo lỗi khi lưu lịch. Hãy xin lỗi người dùng và báo hệ thống đang bận.`;
+                            console.error("LỖI SQL KHI ĐẶT LỊCH TRỰC TIẾP:", err.message);
+                            
+                            // 🌟 ĐÃ SỬA: Ép AI đọc lỗi từ Backend và diễn đạt lại thật tự nhiên
+                            prompt = `Lệnh đặt lịch không thành công. Lý do từ hệ thống: "${err.message}".
+                            Bạn đang đóng vai trợ lý ảo MedCare, hãy thông báo lại cho 
+                            người dùng bằng giọng điệu ân cần, tự nhiên và thấu hiểu. 
+                            TUYỆT ĐỐI KHÔNG trích dẫn lại nguyên văn câu báo lỗi khô khan của hệ thống.
+                            Ví dụ 1: Nếu lỗi là "Bác sĩ này hiện đang tạm ngưng nhận bệnh nhân", 
+                            hãy nói nhẹ nhàng: "Dạ rất tiếc, Bác sĩ ${call.args.doctor_name} hiện 
+                            đang tạm ngưng nhận lịch khám ạ.".
+                            Ví dụ 2: Nếu lỗi là "trùng hoặc giao thoa", hãy nói: 
+                            "Dạ rất tiếc, vào khoảng thời gian này bạn đã có một lịch hẹn 
+                            khác rồi ạ.".`;
                         }
                     } else {
                         // 4. Nếu giờ đó BS không có lịch hoặc đã bị người khác đặt
@@ -367,12 +381,18 @@ export default class chatbotController {
                         // Chủ động quét DB lấy các giờ còn trống của bác sĩ đó trong cùng ngày
                         const lichGoiY = await ChatbotModel.checkDoctorSchedule(call.args.doctor_name, call.args.target_date);
                         
-                        prompt = `Khung giờ ${call.args.target_time} ngày ${call.args.target_date} của bác sĩ ${call.args.doctor_name} hiện không khả dụng hoặc đã có người đặt. 
+                        prompt = `Khung giờ ${call.args.target_time} ngày ${call.args.target_date} 
+                        của bác sĩ ${call.args.doctor_name} hiện không khả dụng hoặc đã có người đặt. 
                         Hãy lịch sự xin lỗi người dùng vì sự bất tiện này.
                         
-                        Tiếp theo, hãy dựa vào danh sách các khung giờ còn trống khác trong ngày: ${JSON.stringify(lichGoiY)}.
-                        - Nếu có lịch trống khác ([] không rỗng): Hãy chủ động gợi ý các giờ này cho người dùng chọn. ⚠️ NHỚ BẮT BUỘC CHÈN MÃ ẨN [Mã giờ: X, Mã BS: Y] sau mỗi giờ gợi ý để họ có thể chốt.
-                        - Nếu rỗng ([]): Hãy báo là bác sĩ đã kín lịch toàn bộ trong ngày hôm đó và gợi ý họ chọn ngày khác hoặc bác sĩ khác.`;
+                        Tiếp theo, hãy dựa vào danh sách các khung giờ 
+                        còn trống khác trong ngày: ${JSON.stringify(lichGoiY)}.
+                        - Nếu có lịch trống khác ([] không rỗng): Hãy 
+                        chủ động gợi ý các giờ này cho người dùng chọn. 
+                        ⚠️ NHỚ BẮT BUỘC CHÈN MÃ ẨN [Mã giờ: X, Mã BS: Y] 
+                        sau mỗi giờ gợi ý để họ có thể chốt.
+                        - Nếu rỗng ([]): Hãy báo là bác sĩ đã kín lịch toàn bộ 
+                        trong ngày hôm đó và gợi ý họ chọn ngày khác.`;
                     }
                 }
 
@@ -391,12 +411,17 @@ export default class chatbotController {
                     }
                     
                     prompt = `Dựa vào kết quả lịch trống sớm nhất: ${JSON.stringify(dbData)}. 
-                    - Nếu có lịch ([] không rỗng): Hãy thông báo đây là lịch sớm nhất, nêu rõ giờ khám, ngày khám và tên bác sĩ. 
-                      ⚠️ QUAN TRỌNG: Bạn BẮT BUỘC phải viết kèm mã ẩn theo cú pháp chính xác là [Mã giờ: X, Mã BS: Y] ở cuối câu. 
+                    - Nếu có lịch ([] không rỗng): Hãy thông báo đây là 
+                    lịch sớm nhất, nêu rõ giờ khám, ngày khám và tên bác sĩ. 
+                      ⚠️ QUAN TRỌNG: Bạn BẮT BUỘC phải viết kèm mã ẩn theo 
+                      cú pháp chính xác là [Mã giờ: X, Mã BS: Y] ở cuối câu. 
                       Sau đó HỎI người dùng có ĐỒNG Ý chốt lịch này không.
-                      Ví dụ: Bác sĩ Nguyễn Thị Alery còn lịch trống sớm nhất vào lúc 08:00 - 08:30 ngày 14-07-2026 [Mã giờ: 1, Mã BS: 13]. Bạn có muốn tôi chốt lịch này không?
+                      Ví dụ: Bác sĩ Nguyễn Thị Alery còn lịch trống sớm nhất 
+                      vào lúc 08:00 - 08:30 ngày 14-07-2026 [Mã giờ: 1, Mã BS: 13]. 
+                      Bạn có muốn tôi chốt lịch này không?
                       
-                    - Trường hợp Hết chỗ (nếu kết quả trả về rỗng []): Hãy xin lỗi và báo rằng hiện tại bác sĩ/chuyên khoa này đã kín lịch.`;
+                    - Trường hợp Hết chỗ (nếu kết quả trả về rỗng []): Hãy xin lỗi 
+                    và báo rằng hiện tại bác sĩ/chuyên khoa này đã kín lịch.`;
                 }
 
                 else if (call.name === "confirm_and_book_appointment") {
@@ -415,14 +440,21 @@ export default class chatbotController {
 
                         prompt = `Hệ thống vừa đặt lịch thành công với Mã Booking là: ${bookingResult.maBooking}. 
                         Hãy báo tin vui cho bệnh nhân.
-                        ⚠️ BẮT BUỘC ĐỌC ĐÚNG THỜI GIAN NÀY: Khám vào lúc ${bookingResult.gioKham} ngày ${bookingResult.ngayKham}.
+                        ⚠️ BẮT BUỘC ĐỌC ĐÚNG THỜI GIAN NÀY: Khám vào lúc 
+                        ${bookingResult.gioKham} ngày ${bookingResult.ngayKham}.
                         Báo tổng chi phí là ${tongChiPhi} VNĐ và dặn họ đến trước 15 phút.`;
                     } catch (error) {
                         console.error("LỖI SQL KHI ĐẶT LỊCH:", error.message);
                         
-                        // Truyền thẳng nguyên nhân lỗi cho AI để AI giải thích với khách hàng
-                        prompt = `Việc đặt lịch bị thất bại do lỗi hệ thống trả về như sau: "${error.message}". 
-                        Hãy giải thích lỗi này một cách lịch sự, thấu hiểu và gợi ý hướng giải quyết cho bệnh nhân (Ví dụ: Chọn một khung giờ khác).`;
+                        prompt = `Việc đặt lịch bị thất bại do lỗi hệ thống: ${error.message}. 
+                        Bạn đang đóng vai trợ lý ảo MedCare, hãy phản hồi lại 
+                        người dùng bằng giọng điệu ân cần, tự nhiên và chân thành. 
+                        TUYỆT ĐỐI KHÔNG trích dẫn nguyên văn câu thông báo lỗi khô khan từ hệ thống.
+                        Hãy giải thích lỗi một cách lịch sự và gợi ý hướng giải quyết 
+                        (Ví dụ: Đổi giờ khác, hoặc kiểm tra lại giới hạn lịch hẹn trong ngày). 
+                        Ví dụ: Nếu lỗi là "trùng lịch", hãy nói "Dạ rất tiếc, 
+                        vào khoảng thời gian này bạn đã có một lịch hẹn khác 
+                        rồi ạ. Bạn có muốn MedCare tìm một giờ khác không?".`;
                     }
                 }
                 

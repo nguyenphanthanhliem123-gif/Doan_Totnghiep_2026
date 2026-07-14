@@ -81,18 +81,30 @@ export default class bookingController {
             const isConflict = await bookingModel.checkPatientConflict(maBenhNhanThat, Ma_nguoi_than, Ma_khung_gio, conn);
             if (isConflict) {
                 await rollbackTransaction(conn); 
-                return res.status(400).json({ succeeded: false, message: "Bạn đã có một lịch hẹn khác trùng khung giờ này!" });
+                // 🌟 ĐÃ SỬA KỊCH BẢN 3: Đổi câu thông báo cho chính xác và lịch sự hơn
+                return res.status(400).json({ succeeded: false, message: "Rất tiếc, người khám này đã có một lịch hẹn khác bị trùng hoặc giao thoa thời gian!" });
             }
 
-            // Chặn Spam lịch
+            // 5. Chặn Spam lịch (Tối đa 5 lịch/ngày TRÊN TOÀN TÀI KHOẢN)
             const todayStr = new Date().toISOString().slice(0, 10);
-            const checkAmount = await bookingModel.checkAmount(maBenhNhanThat, todayStr, conn);
-            if (checkAmount && checkAmount.total >= 5) {
+            
+            // 🌟 ĐÃ SỬA KỊCH BẢN 4: Truy ngược về Ma_nguoi_dung để đếm tổng lịch của cả Tài khoản (bao gồm tất cả người thân)
+            const [spamRows] = await conn.execute(
+                `SELECT COUNT(*) as total 
+                 FROM lich_hen lh
+                 JOIN benh_nhan bn ON lh.Ma_benh_nhan = bn.Ma_benh_nhan
+                 WHERE bn.Ma_nguoi_dung = ? 
+                 AND DATE(lh.Ngay_tao) = ? 
+                 AND lh.Trang_thai_lich_hen IN ('pending', 'confirmed')`,
+                [Ma_nguoi_dung, todayStr]
+            );
+            
+            if (spamRows[0].total >= 5) {
                 await rollbackTransaction(conn);
-                return res.status(400).json({ succeeded: false, message: "Mỗi tài khoản chỉ được đặt tối đa 5 lịch hẹn trong cùng một ngày!" });
+                return res.status(400).json({ succeeded: false, message: "Tài khoản của bạn đã đạt giới hạn đặt tối đa 5 lịch hẹn trong hôm nay!" });
             }
 
-            // 5. Tính toán tổng chi phí dựa trên dịch vụ
+            // 6. Tính toán tổng chi phí dựa trên dịch vụ
             let Tong_tien = 0;
             const thongTinDichVu = [];
             for (const idDichVu of Ma_dich_vu) {
@@ -108,7 +120,7 @@ export default class bookingController {
                 return res.status(404).json({ succeeded: false, message: "Dịch vụ không hợp lệ." });
             }
 
-            // 6. Xử lý chuẩn hóa phương thức thanh toán & sinh mã Booking
+            // 7. Xử lý chuẩn hóa phương thức thanh toán & sinh mã Booking
             const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
             const randomNum = Math.floor(1000 + Math.random() * 9000);
             const Ma_booking = `BK${dateStr}_${randomNum}`;
@@ -119,7 +131,7 @@ export default class bookingController {
 
             let Ma_giao_dich = Phuong_thuc === 'cash' ? `TXN_${Ma_booking}` : null;
 
-            // 7. Lưu dữ liệu tuần tự vào các bảng
+            // 8. Lưu dữ liệu tuần tự vào các bảng
             const bookingData = { Ma_booking, Ma_bac_si, Ma_benh_nhan: maBenhNhanThat, Ma_nguoi_than, Ma_khung_gio, Hinh_thuc, Trieu_chung, Tong_tien };
             const insertId = await bookingModel.createAppointment(bookingData, conn);
 
