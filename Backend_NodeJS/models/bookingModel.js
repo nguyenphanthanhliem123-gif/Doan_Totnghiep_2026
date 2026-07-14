@@ -38,8 +38,14 @@ export default class bookingModel {
 
     // Khóa hàng dữ liệu bằng khóa bi quan (Pessimistic Locking) để chống Race Condition trùng lịch
     static async getSlotForUpdate(ma_khung_gio, conn) {
-        console.log("Tiến hàn khóa khung giờ...");
-        const query = `SELECT Trang_thai FROM khung_gio_kham WHERE Ma_khung_gio = ? FOR UPDATE`;
+        console.log("Tiến hành khóa khung giờ...");
+        const query = `
+            SELECT kg.Trang_thai, kg.Thoi_gian_Bdau, bs.Trang_thai_hoat_dong 
+            FROM khung_gio_kham kg
+            JOIN bac_si bs ON kg.Ma_bac_si = bs.Ma_bac_si
+            WHERE kg.Ma_khung_gio = ? 
+            FOR UPDATE
+        `;
         const [rows] = await conn.execute(query, [ma_khung_gio]);
         return rows.length ? rows[0] : null;
     }
@@ -127,13 +133,15 @@ export default class bookingModel {
     }
 
 
+    // Xác minh ID bệnh nhân và TIẾN HÀNH KHÓA ROW (Chống Race Condition)
     static async checkPatienID(maBenhNhan, maNguoiThan = null, conn = null) {
         if (maNguoiThan) {
-            // TRƯỜNG HỢP 1: Đặt cho người thân -> Xác thực cặp mã người thân & mã bệnh nhân có khớp nhau không
+            // Đặt cho người thân -> Khóa row người thân đó lại
             const query = `
                 SELECT Ma_benh_nhan 
                 FROM nguoi_than 
                 WHERE Ma_nguoi_than = ? AND Ma_benh_nhan = ?
+                FOR UPDATE
             `;
             const [rows] = conn 
                 ? await conn.execute(query, [maNguoiThan, maBenhNhan]) 
@@ -141,11 +149,12 @@ export default class bookingModel {
                 
             return rows.length ? rows[0].Ma_benh_nhan : null;
         } else {
-            // TRƯỜNG HỢP 2: Đặt cho bản thân -> Xác thực xem mã bệnh nhân này có đúng là chính chủ không
+            // Đặt cho bản thân -> Khóa row bản thân lại
             const query = `
                 SELECT Ma_benh_nhan
                 FROM nguoi_than
                 WHERE Ma_benh_nhan = ? AND Quan_he = 'Bản thân'
+                FOR UPDATE
             `;
             const [rows] = conn 
                 ? await conn.execute(query, [maBenhNhan]) 
@@ -212,19 +221,36 @@ export default class bookingModel {
         }
     }
 
-    // Kiểm tra trùng lịch hẹn của bệnh nhân
-    static async checkPatientConflict(maBenhNhan, maKhungGio) {
+    // Kiểm tra trùng lịch cá nhân
+    static async checkPatientConflict(maBenhNhan, maNguoiThan, maKhungGio, conn = null) {
         try {
-            const query = `
-                SELECT COUNT(*) as count 
+            // Logic OVERLAPPING: (Start_Cũ < End_Mới) AND (End_Cũ > Start_Mới)
+            let query = `
+                SELECT lh.Ma_lich_hen 
                 FROM lich_hen lh
                 JOIN khung_gio_kham kg ON lh.Ma_khung_gio = kg.Ma_khung_gio
                 WHERE lh.Ma_benh_nhan = ? 
                 AND lh.Trang_thai_lich_hen IN ('pending', 'confirmed')
-                AND kg.Thoi_gian_Bdau = (SELECT Thoi_gian_Bdau FROM khung_gio_kham WHERE Ma_khung_gio = ?)
+                AND kg.Thoi_gian_Bdau < (SELECT Thoi_gian_Kthuc FROM khung_gio_kham WHERE Ma_khung_gio = ?)
+                AND kg.Thoi_gian_Kthuc > (SELECT Thoi_gian_Bdau FROM khung_gio_kham WHERE Ma_khung_gio = ?)
             `;
-            const [rows] = await execute(query, [maBenhNhan, maKhungGio]);
-            return rows[0].count > 0;
+            
+            const params = [maBenhNhan, maKhungGio, maKhungGio];
+
+            // Nếu đặt cho người thân thì chỉ xét trùng lịch của người thân đó
+            if (maNguoiThan) {
+                query += ` AND lh.Ma_nguoi_than = ?`;
+                params.push(maNguoiThan);
+            } else {
+                // Nếu đặt cho bản thân thì xét lịch của bản thân
+                query += ` AND lh.Ma_nguoi_than IS NULL`;
+            }
+
+            // Bắt buộc dùng FOR UPDATE để đọc dữ liệu mới nhất nếu có Transaction khác đang giữ
+            query += ` FOR UPDATE`;
+
+            const [rows] = conn ? await conn.execute(query, params) : await execute(query, params);
+            return rows.length > 0;
         } catch (error) {
             throw new Error("Lỗi kiểm tra trùng lịch bệnh nhân: " + error.message);
         }
