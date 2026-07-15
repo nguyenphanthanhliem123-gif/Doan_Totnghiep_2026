@@ -184,15 +184,35 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    return Scaffold(
       backgroundColor: Colors.white,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.local_hospital, size: 100, color: kPrimaryColor),
-            SizedBox(height: 24),
-            CircularProgressIndicator(color: kPrimaryColor),
+            // Logo đã được thiết kế lại dạng icon nổi
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.red.shade500,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Icon(
+                Icons.local_hospital,
+                size: 80,
+                color: Colors.white, 
+              ),
+            ),
+            const SizedBox(height: 40),
+            // Vòng quay loading vẫn giữ nguyên màu chủ đạo của App
+            const CircularProgressIndicator(color: kPrimaryColor),
           ],
         ),
       ),

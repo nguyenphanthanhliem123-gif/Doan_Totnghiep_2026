@@ -46,7 +46,25 @@ class _LoginScreenState extends State<LoginScreen> {
           children: [
             const SizedBox(height: kSpacingLarge),
             
-            const Icon(Icons.local_hospital, size: 80, color: kPrimaryColor),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.red.shade500,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 15,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Icon(
+                Icons.local_hospital,
+                size: 70,
+                color: Colors.white,
+              ),
+            ),
             const SizedBox(height: kSpacingLarge),
 
             _buildLabel('Email'),
