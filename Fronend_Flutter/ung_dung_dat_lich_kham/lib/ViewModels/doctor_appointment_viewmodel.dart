@@ -14,9 +14,6 @@ class DoctorAppointmentViewModel extends ChangeNotifier {
   double todayRevenue = 0;
   List<dynamic> revenueDetails = [];
 
-  // 🌟 Biến quản lý trạng thái hoạt động của bác sĩ
-  bool isDoctorActive = true; 
-
   List<dynamic> pendingAppointments = [];
   List<dynamic> todayAppointments = [];
 
@@ -37,10 +34,6 @@ class DoctorAppointmentViewModel extends ChangeNotifier {
       final url = Uri.parse('$_baseUrl/doctor/dashboard');
       final response = await http.get(url, headers: {"Content-Type": "application/json", "Authorization": "Bearer $token"});
 
-      // Kéo trạng thái Rảnh/Bận
-      final statusUrl = Uri.parse('$_baseUrl/doctor/active-status');
-      final statusResponse = await http.get(statusUrl, headers: {"Content-Type": "application/json", "Authorization": "Bearer $token"});
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['succeeded'] == true) {
@@ -54,14 +47,6 @@ class DoctorAppointmentViewModel extends ChangeNotifier {
           todayAppointments = payload['todayAppointments'];
         }
       }
-
-      if (statusResponse.statusCode == 200) {
-        final stData = jsonDecode(statusResponse.body);
-        if (stData['succeeded'] == true) {
-          isDoctorActive = stData['data']['status'] == 'active';
-        }
-      }
-
     } catch (e) {
       print("Lỗi load dashboard bác sĩ: $e");
     } finally {
@@ -98,40 +83,6 @@ class DoctorAppointmentViewModel extends ChangeNotifier {
     } finally {
       _isLoading = false;
       notifyListeners();
-    }
-  }
-
-  // 3. Hàm Bật/Tắt trạng thái hoạt động
-  Future<Map<String, dynamic>> toggleActiveStatus(bool value) async {
-    // Optimistic UI Update: Đổi trạng thái trên màn hình ngay lập tức cho mượt
-    final oldStatus = isDoctorActive;
-    isDoctorActive = value;
-    notifyListeners(); 
-
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('token');
-
-      final url = Uri.parse('$_baseUrl/doctor/active-status');
-      final response = await http.put(
-        url,
-        headers: {"Content-Type": "application/json", "Authorization": "Bearer $token"},
-        body: jsonEncode({"status": value ? 'active' : 'suspended'})
-      );
-
-      final data = jsonDecode(response.body);
-      if (response.statusCode == 200 && data['succeeded'] == true) {
-        return {"success": true, "message": data['message']};
-      } else {
-        // Nếu API lỗi, revert lại trạng thái cũ
-        isDoctorActive = oldStatus;
-        notifyListeners();
-        return {"success": false, "message": data['message'] ?? "Lỗi cập nhật trạng thái"};
-      }
-    } catch (e) {
-      isDoctorActive = oldStatus; // Revert
-      notifyListeners();
-      return {"success": false, "message": "Lỗi kết nối server"};
     }
   }
 }

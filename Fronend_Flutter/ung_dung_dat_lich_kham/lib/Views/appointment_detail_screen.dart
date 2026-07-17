@@ -9,6 +9,7 @@ import '../viewmodels/appointment_viewmodel.dart';
 import 'doctor_detail_screen.dart';
 import 'reschedule_bottom_sheet.dart'; 
 import '../utils/add_to_google_calendar_utils.dart';
+import '../utils/appointment_action_helper.dart';
 
 class AppointmentDetailScreen extends StatefulWidget {
   final int appointmentId;
@@ -499,14 +500,15 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
   Widget _buildStatusBadge(String generalStatus, String actualStatus) {
     Color bgColor; Color textColor; String text;
     
-    if (actualStatus == 'reschedule_pending') {
-      bgColor = Colors.orange.shade50; textColor = Colors.orange.shade900; text = 'Chờ dời lịch';
-    } else if (generalStatus == 'upcoming') { 
-      bgColor = Colors.blue.shade50; textColor = Colors.blue; text = 'Sắp tới';
-    } else if (generalStatus == 'completed') { 
-      bgColor = Colors.green.shade50; textColor = Colors.green; text = 'Đã khám';
-    } else { 
-      bgColor = Colors.red.shade100; textColor = Colors.red; text = 'Đã hủy';
+    // Hiển thị rõ 6 trạng thái từ Database
+    switch (actualStatus) {
+      case 'pending': bgColor = Colors.orange.shade50; textColor = Colors.orange; text = 'Chờ duyệt'; break;
+      case 'confirmed': bgColor = Colors.blue.shade50; textColor = Colors.blue; text = 'Đang khám'; break;
+      case 'done': bgColor = Colors.green.shade50; textColor = Colors.green; text = 'Đã hoàn thành'; break;
+      case 'cancelled': bgColor = Colors.red.shade50; textColor = Colors.red; text = 'Đã hủy'; break;
+      case 'reschedule_pending': bgColor = Colors.orange.shade50; textColor = Colors.orange.shade900; text = 'Chờ dời lịch'; break;
+      case 'absent': bgColor = Colors.grey.shade200; textColor = Colors.grey.shade700; text = 'Vắng mặt'; break;
+      default: bgColor = Colors.grey.shade200; textColor = Colors.grey.shade700; text = 'Không rõ'; break;
     }
 
     return Container(
@@ -516,196 +518,157 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
     );
   }
 
-  void _showCancelDialog(BuildContext context, dynamic appointment) {
-    final now = DateTime.now();
-    final difference = appointment.startTime.difference(now);
-
-    if (difference.inHours < 2) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Không thể hủy! Bạn chỉ được phép hủy lịch khám trước giờ bắt đầu ít nhất 2 tiếng.'),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-      return;
-    }
-
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        title: const Text('Xác nhận hủy lịch', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: const Text(
-          'Bạn có chắc chắn muốn hủy lịch hẹn khám này không? \n\n'
-          '⚠️ LƯU Ý: Nếu bạn đã thanh toán trực tuyến, số tiền sẽ KHÔNG ĐƯỢC HOÀN LẠI theo chính sách của phòng khám.',
-          style: TextStyle(height: 1.4),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Bỏ qua', style: TextStyle(color: Colors.grey)),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(dialogContext); 
-              
-              final appVM = context.read<AppointmentViewModel>();
-              final result = await appVM.cancelAppointment(appointment.id);
-
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(result['message']),
-                    backgroundColor: result['succeeded'] ? Colors.green : Colors.red,
-                  ),
-                );
-                
-                if (result['succeeded'] == true) {
-                  appVM.fetchDetail(appointment.id);
-                }
-              }
-            },
-
-            child: const Text('Đồng ý hủy', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildBottomActions(BuildContext context, dynamic appointment, String generalStatus) {
     void navigateToDoctorDetail() {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => DoctorDetailScreen(
-            doctorId: appointment.doctorId,
-          ),
-        ),
-      );
+      Navigator.push(context, MaterialPageRoute(builder: (context) => DoctorDetailScreen(doctorId: appointment.doctorId)));
     }
 
     if (generalStatus == 'upcoming') {
+      // Ca bác sĩ báo bận (Chờ dời lịch)
       if (appointment.status == 'reschedule_pending') {
-        return SizedBox(
-          width: double.infinity,
-          child: _buildSolidButton('Xếp lại lịch khám (Bác sĩ báo bận)', Icons.edit_calendar, Colors.redAccent, () {
-            showModalBottomSheet(
-              context: context,
-              isScrollControlled: true, 
-              backgroundColor: Colors.transparent,
-              builder: (ctx) => RescheduleBottomSheet(
-                appointmentId: appointment.id,
-                doctorId: appointment.doctorId,
-              ),
-            );
-          })
+        return Row(
+          children: [
+            Expanded(
+              child: AppointmentActionHelper.buildSolidButton(
+                appointment.doctorStatus == 'suspended' ? 'Bác sĩ đang khóa' : 'Xếp lại lịch', 
+                Icons.edit_calendar, 
+                appointment.doctorStatus == 'suspended' ? Colors.grey : Colors.redAccent, 
+                () {
+                  if (appointment.doctorStatus == 'suspended') {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bác sĩ này hiện đang tạm ngưng nhận bệnh nhân! Không thể dời lịch.'), backgroundColor: Colors.redAccent));
+                    return;
+                  }
+                  showModalBottomSheet(context: context, isScrollControlled: true, backgroundColor: Colors.transparent, builder: (ctx) => RescheduleBottomSheet(appointmentId: appointment.id, doctorId: appointment.doctorId));
+                }
+              )
+            ),
+            const SizedBox(width: 10),
+            Expanded(child: AppointmentActionHelper.buildOutlinedButton('Hủy lịch', Colors.red, () {
+              AppointmentActionHelper.showPatientCancelDialog(
+                context: context, startTime: appointment.startTime, currentStatus: appointment.status,
+                onConfirm: () async {
+                  final result = await context.read<AppointmentViewModel>().cancelAppointment(appointment.id);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['message']), backgroundColor: result['succeeded'] ? Colors.green : Colors.red));
+                    if (result['succeeded'] == true) context.read<AppointmentViewModel>().fetchDetail(appointment.id);
+                  }
+                }
+              );
+            })),
+          ],
         );
       }
 
-      // Nút mặc định cho trạng thái sắp tới bình thường
+      // Lịch quá giờ khám
+      final now = DateTime.now();
+      if (now.isAfter(appointment.endTime) && appointment.status == 'confirmed') {
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: kLightCyanBg1,
+            borderRadius: BorderRadius.circular(kBorderRadiusSmall),
+            border: Border.all(color: kBorderCyan)
+          ),
+          child: const Text(
+            "Đang chờ bác sĩ cập nhật kết quả khám", 
+            textAlign: TextAlign.center,
+            style: TextStyle(color: kPrimaryColor, fontWeight: FontWeight.bold, fontSize: 14)
+          ),
+        );
+      }
+
+      // Lịch bình thường (Sắp tới)
       return Row(
         children: [
           Expanded(
-            child: _buildOutlinedButton(
-              'Đổi lịch', 
-              Colors.green, 
+            child: AppointmentActionHelper.buildOutlinedButton(
+              appointment.doctorStatus == 'suspended' ? 'Bác sĩ khóa' : 'Đổi lịch', 
+              appointment.doctorStatus == 'suspended' ? Colors.grey : Colors.green, 
               () {
-                final now = DateTime.now();
-                final difference = appointment.startTime.difference(now);
+                if (appointment.doctorStatus == 'suspended') {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bác sĩ này hiện đang tạm ngưng nhận bệnh nhân! Không thể đổi lịch.'), backgroundColor: Colors.redAccent));
+                  return;
+                }
+                final difference = appointment.startTime.difference(DateTime.now());
                 if (difference.inHours < 2) {
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Không thể đổi! Bạn chỉ được dời lịch trước giờ bắt đầu ít nhất 2 tiếng.'), backgroundColor: Colors.redAccent));
                   return;
                 }
-                
-                showModalBottomSheet(
-                  context: context,
-                  isScrollControlled: true, 
-                  backgroundColor: Colors.transparent,
-                  builder: (ctx) => RescheduleBottomSheet(
-                    appointmentId: appointment.id,
-                    doctorId: appointment.doctorId,
-                  ),
-                );
+                showModalBottomSheet(context: context, isScrollControlled: true, backgroundColor: Colors.transparent, builder: (ctx) => RescheduleBottomSheet(appointmentId: appointment.id, doctorId: appointment.doctorId));
               }
             )
           ),
           const SizedBox(width: 10),
-          Expanded(
-            child: _buildOutlinedButton(
-              'Hủy lịch', 
-              Colors.red, 
-              () => _showCancelDialog(context, appointment) 
-            )
-          ),
+          Expanded(child: AppointmentActionHelper.buildOutlinedButton('Hủy lịch', Colors.red, () {
+            AppointmentActionHelper.showPatientCancelDialog(
+              context: context, startTime: appointment.startTime, currentStatus: appointment.status,
+              onConfirm: () async {
+                final result = await context.read<AppointmentViewModel>().cancelAppointment(appointment.id);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result['message']), backgroundColor: result['succeeded'] ? Colors.green : Colors.red));
+                  if (result['succeeded'] == true) context.read<AppointmentViewModel>().fetchDetail(appointment.id);
+                }
+              }
+            );
+          })),
           const SizedBox(width: 10),
-          Expanded(
-            child: _buildSolidButton(
-              'Thêm Lịch', 
-              Icons.calendar_month, 
-              Colors.black87, 
-              () => CalendarUtils.addToCalendar(context, appointment)
-            )
-          ),
+          Expanded(child: AppointmentActionHelper.buildSolidButton('Thêm Lịch', Icons.calendar_month, Colors.black87, () => CalendarUtils.addToCalendar(context, appointment))),
         ],
       );
-    } else if (generalStatus == 'completed') {
+    }
+
+    if (generalStatus == 'completed') {
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
             width: double.infinity,
-            child: _buildSolidButton('Xem lại đơn thuốc', Icons.receipt_long, kPrimaryColor, () {
+            child: AppointmentActionHelper.buildSolidButton('Xem lại đơn thuốc', Icons.receipt_long, kPrimaryColor, () {
               _showViewPrescriptionBottomSheet(context);
             })
           ),
           const SizedBox(height: 10),
           Row(
             children: [
-              Expanded(child: _buildOutlinedButton('Đặt lại lịch', kPrimaryColor, navigateToDoctorDetail)),
+              Expanded(
+                child: AppointmentActionHelper.buildOutlinedButton(
+                  appointment.doctorStatus == 'suspended' ? 'Bác sĩ đang khóa' : 'Đặt lại lịch', 
+                  appointment.doctorStatus == 'suspended' ? Colors.grey : kPrimaryColor, 
+                  () {
+                    if (appointment.doctorStatus == 'suspended') {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bác sĩ này hiện đang tạm ngưng nhận bệnh nhân!'), backgroundColor: Colors.redAccent));
+                    } else {
+                      navigateToDoctorDetail();
+                    }
+                  }
+                )
+              ),
               const SizedBox(width: 15),
-              Expanded(child: _buildSolidButton('Đánh giá', Icons.star_border, Colors.green, () { 
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (context) => ReviewScreen(appointmentId: appointment.id))
-                ); 
+              Expanded(child: AppointmentActionHelper.buildSolidButton('Đánh giá', Icons.star_border, Colors.green, () { 
+                Navigator.of(context).push(MaterialPageRoute(builder: (context) => ReviewScreen(appointmentId: appointment.id))); 
               })),
             ],
           ),
         ],
       );
-    } else {
-      return SizedBox(
-        width: double.infinity, 
-        child: _buildSolidButton('Đặt lịch mới', Icons.replay, kPrimaryColor, navigateToDoctorDetail)
-      );
-    }
-  }
-
-  Widget _buildOutlinedButton(String text, Color color, VoidCallback onTap) {
-    return OutlinedButton(
-      style: OutlinedButton.styleFrom(
-        foregroundColor: color, 
-        side: BorderSide(color: color), 
-        padding: const EdgeInsets.symmetric(vertical: 12), 
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusSmall))
-      ),
-      onPressed: onTap,
-      child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-    );
-  }
-
-  Widget _buildSolidButton(String text, IconData icon, Color bgColor, VoidCallback onTap) {
-    return ElevatedButton.icon(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: bgColor, 
-        foregroundColor: Colors.white, 
-        padding: const EdgeInsets.symmetric(vertical: 12), 
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusSmall)), 
-        elevation: 0
-      ),
-      onPressed: onTap,
-      icon: Icon(icon, size: 18),
-      label: Text(text, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+    } 
+    
+    // Tab Đã hủy
+    return SizedBox(
+      width: double.infinity, 
+      child: AppointmentActionHelper.buildSolidButton(
+        appointment.doctorStatus == 'suspended' ? 'Bác sĩ đang khóa' : 'Đặt lịch mới', 
+        Icons.replay, 
+        appointment.doctorStatus == 'suspended' ? Colors.grey : kPrimaryColor, 
+        () {
+          if (appointment.doctorStatus == 'suspended') {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bác sĩ này hiện đang tạm ngưng nhận bệnh nhân!'), backgroundColor: Colors.redAccent));
+          } else {
+            navigateToDoctorDetail();
+          }
+        }
+      )
     );
   }
 }

@@ -15,8 +15,6 @@ import 'package:ung_dung_dat_lich_kham/viewmodels/appointment_viewmodel.dart';
 import 'package:ung_dung_dat_lich_kham/views/health_record_menu_screen.dart';
 import 'package:ung_dung_dat_lich_kham/views/appointment_list_screen.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/notification_viewmodel.dart';
-
-// 🌟 THÊM IMPORT MÀN HÌNH CHAT VÀO ĐÂY
 import 'package:ung_dung_dat_lich_kham/views/chatbot_screen.dart'; 
 
 class HomeScreen extends StatefulWidget {
@@ -322,7 +320,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(width: 30),
           
-          // 🌟 THÊM LUỒNG QUA TRANG CHAT AI Ở ĐÂY
+          // THÊM LUỒNG QUA TRANG CHAT AI Ở ĐÂY
           InkWell(
             child: _buildCategoryItem('Trợ lý AI', Icons.support_agent_outlined), // Icon robot tư vấn
             onTap: () {
@@ -359,23 +357,26 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildUpcomingSchedule() {
-    // 🌟 Lấy data từ ViewModel lịch hẹn
+    // Lấy data từ ViewModel lịch hẹn
     final appointmentVM = context.watch<AppointmentViewModel>();
 
-    // 🌟 Lọc ra các lịch sắp tới (pending/confirmed) trùng với ngày đang chọn
-    final filteredAppointments = appointmentVM.upcomingList.where((app) {
-      return app.startTime.year == _selectedDate.year && 
-             app.startTime.month == _selectedDate.month && 
-             app.startTime.day == _selectedDate.day;
+    // Lọc ra các lịch sắp tới (pending/confirmed/reschedule_pending) trùng với ngày đang chọn
+    final filteredAppointments = appointmentVM.allAppointments.where((app) {
+      final isUpcomingStatus = app.status == 'pending' || app.status == 'confirmed' || app.status == 'reschedule_pending';
+      final isSameDate = app.startTime.year == _selectedDate.year && 
+                         app.startTime.month == _selectedDate.month && 
+                         app.startTime.day == _selectedDate.day;
+      
+      return isUpcomingStatus && isSameDate;
     }).toList();
     
     return Container(
       width: double.infinity,
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [primaryCyan, darkCyan],
+          colors: [kPrimaryColor, kDarkCyan], // Dùng đúng biến màu chuẩn của hẹ thống bạn
         ),
       ),
       padding: const EdgeInsets.symmetric(vertical: 20),
@@ -385,8 +386,8 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 20.0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Lịch Trình Sắp Tới', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              children: const [
+                Text('Lịch Trình Sắp Tới', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
               ],
             ),
           ),
@@ -414,7 +415,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         _selectedDate = dayData;
                       });
                       _scrollToSelectedDate();
-                      // Không gọi API ở đây nữa vì data đã tải 1 lần ở initState
                     },
                     child: _buildDayInWeek(
                       dayData.day.toString(),
@@ -478,7 +478,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 // Render List lịch hẹn sau khi lọc
                 else
                   ...filteredAppointments.take(5).map((app) {
-                    
                     String timeStr = "${app.startTime.hour.toString().padLeft(2, '0')}:${app.startTime.minute.toString().padLeft(2, '0')}";
 
                     return Column(

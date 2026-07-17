@@ -25,6 +25,7 @@ class AppointmentDetailModel {
   
   final String patientName;
   final String relation;
+  final String? doctorStatus;
 
   AppointmentDetailModel({
     required this.jitsiLink,
@@ -49,6 +50,7 @@ class AppointmentDetailModel {
     required this.paymentStatus,
     required this.patientName,
     required this.relation,
+    this.doctorStatus,
   });
 
   factory AppointmentDetailModel.fromJson(Map<String, dynamic> json) {
@@ -75,6 +77,7 @@ class AppointmentDetailModel {
       patientName: json['Ten_nguoi_kham'] ?? '',
       relation: json['Moi_quan_he'] ?? 'Bản thân',
       doctorUserId: json['Ma_nguoi_dung_bac_si'] ?? 0,
+      doctorStatus: json['Trang_thai_bac_si'],
     );
   }
 }

@@ -51,12 +51,6 @@ authAppointmentRoutes.post('/doctor/prescribe/:id', appointmentController.comple
 // API xem đơn thuốc
 authAppointmentRoutes.get('/doctor/prescription/:id', appointmentController.getPrescription);
 
-// API Lấy trạng thái hoạt động của bác sĩ
-authAppointmentRoutes.get('/doctor/active-status', appointmentController.getDoctorStatus);
-
-// API Bật/tắt trạng thái Rảnh/Bận
-authAppointmentRoutes.put('/doctor/active-status', appointmentController.toggleDoctorStatus);
-
 // Gộp cụm bảo mật vào route chính
 appointmentRoutes.use('/', authAppointmentRoutes);
 
