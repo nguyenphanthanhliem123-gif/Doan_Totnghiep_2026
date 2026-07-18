@@ -7,8 +7,10 @@ import '../../viewmodels/doctor_appointment_viewmodel.dart';
 import '../../viewmodels/profile_viewmodel.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../../Constants/ui_constants.dart';
+import '../../utils/appointment_action_helper.dart';
 import 'doctor_appointment_screen.dart';
 import 'doctor_service_screen.dart'; 
+import 'doctor_appointment_detail_screen.dart';
 
 class DoctorMainScreen extends StatefulWidget {
   const DoctorMainScreen({Key? key}) : super(key: key);
@@ -125,7 +127,7 @@ class DoctorDashboardScreen extends StatelessWidget {
                     const SizedBox(height: kSpacingLarge),
                     _buildPendingAppointments(context, doctorVM),
                     const SizedBox(height: kSpacingLarge),
-                    _buildTodayAppointments(doctorVM),
+                    _buildTodayAppointments(context, doctorVM),
                     const SizedBox(height: 30),
                   ],
                 ),
@@ -273,30 +275,18 @@ class DoctorDashboardScreen extends StatelessWidget {
                     Row(
                       children: [
                         Expanded(
-                          child: ElevatedButton(
-                            onPressed: () => _handleStatusAction(context, item['Ma_lich_hen'], 'reject'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.redAccent.withOpacity(0.1),
-                              foregroundColor: Colors.redAccent,
-                              elevation: 0,
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusSmall)), 
-                            ),
-                            child: const Text('Từ chối', style: TextStyle(fontSize: 13)),
+                          child: AppointmentActionHelper.buildActionBtn(
+                            icon: Icons.cancel_outlined, text: 'Từ chối', 
+                            color: Colors.redAccent, bgColor: Colors.redAccent.withOpacity(0.1), 
+                            onTap: () => _handleStatusAction(context, item['Ma_lich_hen'], 'reject')
                           ),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
-                          child: ElevatedButton(
-                            onPressed: () => _handleStatusAction(context, item['Ma_lich_hen'], 'confirm'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: kPrimaryColor,
-                              foregroundColor: Colors.white,
-                              elevation: 0,
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusSmall)),
-                            ),
-                            child: const Text('Xác nhận', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                          child: AppointmentActionHelper.buildActionBtn(
+                            icon: Icons.check_circle_outline, text: 'Xác nhận', 
+                            color: Colors.white, bgColor: kPrimaryColor, 
+                            onTap: () => _handleStatusAction(context, item['Ma_lich_hen'], 'confirm')
                           ),
                         ),
                       ],
@@ -311,7 +301,7 @@ class DoctorDashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildTodayAppointments(DoctorAppointmentViewModel vm) {
+  Widget _buildTodayAppointments(BuildContext context, DoctorAppointmentViewModel vm) {
     if (vm.todayAppointments.isEmpty) {
       return const Padding(
         padding: EdgeInsets.symmetric(horizontal: kDefaultPadding),
@@ -319,6 +309,40 @@ class DoctorDashboardScreen extends StatelessWidget {
       );
     }
 
+    // Tách mảng todayAppointments thành 2 mảng dựa vào thời gian kết thúc
+    final now = DateTime.now();
+    final overdueList = [];
+    final upcomingList = [];
+
+    for (var item in vm.todayAppointments) {
+      final endTime = DateTime.parse(item['Thoi_gian_Kthuc']).toLocal();
+      if (now.isAfter(endTime)) {
+        overdueList.add(item);
+      } else {
+        upcomingList.add(item);
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Bảng 1: Lịch Cần Cập Nhật Kết Quả (Quá Giờ)
+        if (overdueList.isNotEmpty) 
+          _buildAppointmentSection(context, "Cần cập nhật kết quả", overdueList, true),
+        
+        // Khoảng cách nếu có cả 2 bảng
+        if (overdueList.isNotEmpty && upcomingList.isNotEmpty) 
+          const SizedBox(height: 25),
+        
+        // Bảng 2: Lịch Khám Hôm Nay (Chưa tới giờ)
+        if (upcomingList.isNotEmpty) 
+          _buildAppointmentSection(context, "Khám Hôm Nay", upcomingList, false),
+      ],
+    );
+  }
+
+  // Hàm hỗ trợ vẽ bảng để tái sử dụng
+  Widget _buildAppointmentSection(BuildContext context, String title, List<dynamic> list, bool isWarning) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: kDefaultPadding),
       child: Column(
@@ -327,23 +351,24 @@ class DoctorDashboardScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Khám Hôm Nay', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: kTextColor)),
-              InkWell(
-                onTap: () => onNavigate(1),
-                child: const Padding(
-                  padding: EdgeInsets.all(4.0),
-                  child: Text('Xem tất cả', style: TextStyle(color: kPrimaryColor, fontSize: 13, fontWeight: FontWeight.w600)),
+              Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: isWarning ? Colors.redAccent : kTextColor)),
+              if (!isWarning) 
+                InkWell(
+                  onTap: () => onNavigate(1),
+                  child: const Padding(
+                    padding: EdgeInsets.all(4.0),
+                    child: Text('Xem tất cả', style: TextStyle(color: kPrimaryColor, fontSize: 13, fontWeight: FontWeight.w600)),
+                  ),
                 ),
-              ),
             ],
           ),
           const SizedBox(height: 15),
           ListView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: vm.todayAppointments.length,
+            itemCount: list.length,
             itemBuilder: (context, index) {
-              final item = vm.todayAppointments[index];
+              final item = list[index];
               final localTime = DateTime.parse(item['Thoi_gian_Bdau']).toLocal();
               final timeStr = "${localTime.hour.toString().padLeft(2, '0')}:${localTime.minute.toString().padLeft(2, '0')}";
               final isOnline = item['Hinh_thuc'] == 'online';
@@ -354,7 +379,7 @@ class DoctorDashboardScreen extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(kBorderRadiusLarge),
-                  border: Border.all(color: kBorderCyan),
+                  border: Border.all(color: isWarning ? Colors.red.shade200 : kBorderCyan),
                   boxShadow: [
                     BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 5, offset: const Offset(0, 2)),
                   ],
@@ -364,10 +389,10 @@ class DoctorDashboardScreen extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
-                        color: kLightCyanBg1,
+                        color: isWarning ? Colors.red.shade50 : kLightCyanBg1,
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: Text(timeStr, style: const TextStyle(color: kPrimaryColor, fontWeight: FontWeight.bold, fontSize: 16)),
+                      child: Text(timeStr, style: TextStyle(color: isWarning ? Colors.redAccent : kPrimaryColor, fontWeight: FontWeight.bold, fontSize: 16)),
                     ),
                     const SizedBox(width: 15),
                     Expanded(
@@ -403,6 +428,11 @@ class DoctorDashboardScreen extends StatelessWidget {
                         ],
                       ),
                     ),
+                    // Nút cập nhật nhanh (đi thẳng vào trang chi tiết)
+                    IconButton(
+                      icon: Icon(Icons.edit_document, color: isWarning ? Colors.redAccent : kPrimaryColor),
+                      onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DoctorAppointmentDetailScreen(appointmentId: item['Ma_lich_hen']))).then((_) => context.read<DoctorAppointmentViewModel>().loadDashboard()),
+                    )
                   ],
                 ),
               );

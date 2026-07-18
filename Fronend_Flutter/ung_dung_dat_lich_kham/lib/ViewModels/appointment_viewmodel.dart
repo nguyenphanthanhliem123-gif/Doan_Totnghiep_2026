@@ -33,25 +33,7 @@ class AppointmentViewModel extends ChangeNotifier {
 
   final String _baseUrl = "$BASE_URL/api/appointments";
 
-  List<AppointmentModel> get upcomingList {
-    return _allAppointments.where((e) {
-      return e.status == 'pending' || e.status == 'confirmed' || e.status == 'reschedule_pending';
-    }).toList();
-  }
-
-  List<AppointmentModel> get completedList {
-    return _allAppointments.where((e) {
-      return e.status == 'done';
-    }).toList();
-  }
-
-  List<AppointmentModel> get cancelledList {
-    return _allAppointments.where((e) {
-      return e.status == 'cancelled' || e.status == 'absent';
-    }).toList();
-  }
-
-  Future<void> loadMyAppointments() async {
+  Future<void> loadMyAppointments({String status = 'all', String date = 'all', String search = ''}) async {
     _isLoading = true;
     _errorMessage = '';
     notifyListeners();
@@ -60,12 +42,10 @@ class AppointmentViewModel extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token');
 
-      if (token == null) {
-        print("Lỗi: Không tìm thấy token đăng nhập");
-        return;
-      }
+      if (token == null) return;
 
-      final url = Uri.parse('$_baseUrl/my-list');
+      // Nối Query Params vào URL
+      final url = Uri.parse('$_baseUrl/my-list?status=$status&date=$date&search=$search');
       final response = await http.get(
         url,
         headers: {
@@ -82,9 +62,6 @@ class AppointmentViewModel extends ChangeNotifier {
         } else {
           _allAppointments = [];
         }
-      } else {
-        final responseData = jsonDecode(response.body);
-        print("Lỗi từ server: ${response.body}, ${responseData['message']}");
       }
     } catch (e) {
       print("Lỗi tải danh sách lịch hẹn: $e");

@@ -431,7 +431,7 @@ export default class chatbotController {
                         } catch (err) {
                             console.error("LỖI SQL KHI ĐẶT LỊCH TRỰC TIẾP:", err.message);
                             
-                            // 🌟 ĐÃ SỬA: Ép AI đọc lỗi từ Backend và diễn đạt lại thật tự nhiên
+                            // Ép AI đọc lỗi từ Backend và diễn đạt lại thật tự nhiên
                             prompt = `Lệnh đặt lịch không thành công. Lý do từ hệ thống: "${err.message}".
                             Bạn đang đóng vai trợ lý ảo MedCare, hãy thông báo lại cho 
                             người dùng bằng giọng điệu ân cần, tự nhiên và thấu hiểu. 

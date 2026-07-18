@@ -14,7 +14,7 @@ class DoctorAppointmentListViewModel extends ChangeNotifier {
   final String _baseUrl = "$BASE_URL/api/appointments";
 
   // Gọi API lấy danh sách kèm tham số Lọc
-  Future<void> loadAllAppointments({String status = 'all', String date = 'all'}) async {
+  Future<void> loadAllAppointments({String status = 'all', String date = 'all', String search = ''}) async {
     _isLoading = true;
     notifyListeners();
 
@@ -23,8 +23,8 @@ class DoctorAppointmentListViewModel extends ChangeNotifier {
       final token = prefs.getString('token');
       if (token == null) return;
 
-      // 🌟 Nối Query Parameters vào URL
-      final url = Uri.parse('$_baseUrl/doctor/all-list?status=$status&date=$date');
+      // Nối Query Params
+      final url = Uri.parse('$_baseUrl/doctor/all-list?status=$status&date=$date&search=$search');
       
       final response = await http.get(url, headers: {
         "Content-Type": "application/json",

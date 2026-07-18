@@ -81,14 +81,14 @@ export default class bookingController {
             const isConflict = await bookingModel.checkPatientConflict(maBenhNhanThat, Ma_nguoi_than, Ma_khung_gio, conn);
             if (isConflict) {
                 await rollbackTransaction(conn); 
-                // 🌟 ĐÃ SỬA KỊCH BẢN 3: Đổi câu thông báo cho chính xác và lịch sự hơn
+                // Đổi câu thông báo cho chính xác và lịch sự hơn
                 return res.status(400).json({ succeeded: false, message: "Rất tiếc, người khám này đã có một lịch hẹn khác bị trùng hoặc giao thoa thời gian!" });
             }
 
             // 5. Chặn Spam lịch (Tối đa 5 lịch/ngày TRÊN TOÀN TÀI KHOẢN)
             const todayStr = new Date().toISOString().slice(0, 10);
             
-            // 🌟 ĐÃ SỬA KỊCH BẢN 4: Truy ngược về Ma_nguoi_dung để đếm tổng lịch của cả Tài khoản (bao gồm tất cả người thân)
+            // Truy ngược về Ma_nguoi_dung để đếm tổng lịch của cả Tài khoản (bao gồm tất cả người thân)
             const [spamRows] = await conn.execute(
                 `SELECT COUNT(*) as total 
                  FROM lich_hen lh

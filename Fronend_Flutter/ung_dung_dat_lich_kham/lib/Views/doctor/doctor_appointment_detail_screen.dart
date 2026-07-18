@@ -4,6 +4,7 @@ import 'package:ung_dung_dat_lich_kham/Services/jitsi_service.dart';
 import 'package:ung_dung_dat_lich_kham/Views/report_bottom_sheet.dart';
 import '../../Constants/ui_constants.dart'; 
 import '../../viewmodels/doctor_appointment_detail_viewmodel.dart';
+import '../../utils/appointment_action_helper.dart';
 
 class DoctorAppointmentDetailScreen extends StatefulWidget {
   final int appointmentId;
@@ -741,37 +742,13 @@ class _DoctorAppointmentDetailScreenState extends State<DoctorAppointmentDetailS
     );
   }
 
-  // Hàm show Dialog xác nhận báo bận
-  void _showDoctorCancelDialog(BuildContext context, DoctorAppointmentDetailViewModel vm) {
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        title: const Text('Báo bận đột xuất', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
-        content: const Text('Bạn có chắc chắn muốn hủy ca khám này không?\n\nHệ thống sẽ tự động xử lý bảo lưu tiền (nếu có) và yêu cầu bệnh nhân dời lịch sang giờ khác.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Bỏ qua', style: TextStyle(color: Colors.grey)),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.pop(dialogContext); 
-              final res = await vm.updateStatus(widget.appointmentId, 'reject');
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(res['message']), backgroundColor: res['success'] ? Colors.green : Colors.red));
-              }
-            },
-            child: const Text('Xác nhận báo bận', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildDoctorBottomActions(BuildContext context, Map<String, dynamic> appointment) {
     String status = appointment['status'] ?? 'pending';
     final vm = context.read<DoctorAppointmentDetailViewModel>();
+
+    // Lấy thời gian kết thúc để check quá giờ
+    final endTime = DateTime.parse(appointment['endTime']).toLocal();
+    final isPastEnd = DateTime.now().isAfter(endTime);
 
     void handleUpdateStatus(String action) async {
       final res = await vm.updateStatus(widget.appointmentId, action);
@@ -787,11 +764,11 @@ class _DoctorAppointmentDetailScreenState extends State<DoctorAppointmentDetailS
       return Row(
         children: [
           Expanded(
-            child: _buildOutlinedButton('Từ chối', Colors.red, () => handleUpdateStatus('reject')),
+            child: AppointmentActionHelper.buildOutlinedButton('Từ chối', Colors.red, () => handleUpdateStatus('reject')),
           ),
           const SizedBox(width: 15),
           Expanded(
-            child: _buildSolidButton('Xác nhận', Icons.check_circle, Colors.green, () => handleUpdateStatus('confirm')),
+            child: AppointmentActionHelper.buildSolidButton('Xác nhận', Icons.check_circle, Colors.green, () => handleUpdateStatus('confirm')),
           ),
         ],
       );
@@ -804,7 +781,7 @@ class _DoctorAppointmentDetailScreenState extends State<DoctorAppointmentDetailS
           if (appointment['type'] == 'online') ...[
             SizedBox(
               width: double.infinity,
-              child: _buildSolidButton('Vào phòng khám Online', Icons.videocam, Colors.blueAccent, () {
+              child: AppointmentActionHelper.buildSolidButton('Vào phòng khám Online', Icons.videocam, Colors.blueAccent, () {
                 _handleJoinMeeting(appointment['bookingCode'] ?? '');
               })
             ),
@@ -812,12 +789,23 @@ class _DoctorAppointmentDetailScreenState extends State<DoctorAppointmentDetailS
           ],
           Row(
             children: [
+              // Chỉ hiện báo bận nếu chưa quá giờ kết thúc ca khám
+              if (!isPastEnd) ...[
+                Expanded(
+                  child: AppointmentActionHelper.buildOutlinedButton('Báo bận', Colors.red, () {
+                    AppointmentActionHelper.showDoctorCancelDialog(
+                      context: context, 
+                      onConfirm: () async {
+                        final res = await vm.updateStatus(widget.appointmentId, 'reject');
+                        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(res['message']), backgroundColor: res['success'] ? Colors.green : Colors.red));
+                      }
+                    );
+                  }),
+                ),
+                const SizedBox(width: 10),
+              ],
               Expanded(
-                child: _buildOutlinedButton('Báo bận', Colors.red, () => _showDoctorCancelDialog(context, vm)),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _buildOutlinedButton('Báo vắng', Colors.orange, () async {
+                child: AppointmentActionHelper.buildOutlinedButton('Báo vắng', Colors.orange, () async {
                   final startTime = DateTime.parse(appointment['startTime']).toLocal();
                   if (DateTime.now().isAfter(startTime.add(const Duration(minutes: 15)))) {
                     final res = await vm.updateStatusAbsent(widget.appointmentId);
@@ -842,7 +830,7 @@ class _DoctorAppointmentDetailScreenState extends State<DoctorAppointmentDetailS
           const SizedBox(height: 10),
           SizedBox(
             width: double.infinity,
-            child: _buildSolidButton('Khám & Kê đơn', Icons.edit_document, kPrimaryColor, () {
+            child: AppointmentActionHelper.buildSolidButton('Khám & Kê đơn', Icons.edit_document, kPrimaryColor, () {
               _showPrescriptionBottomSheet(context);
             }),
           )
@@ -853,7 +841,7 @@ class _DoctorAppointmentDetailScreenState extends State<DoctorAppointmentDetailS
     if (status == 'done') {
       return SizedBox(
         width: double.infinity,
-        child: _buildOutlinedButton('Xem lại đơn thuốc', kPrimaryColor, () {
+        child: AppointmentActionHelper.buildOutlinedButton('Xem lại đơn thuốc', kPrimaryColor, () {
           _showViewPrescriptionBottomSheet(context);
         })
       );
@@ -898,34 +886,6 @@ class _DoctorAppointmentDetailScreenState extends State<DoctorAppointmentDetailS
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildOutlinedButton(String text, Color color, VoidCallback onTap) {
-    return OutlinedButton(
-      style: OutlinedButton.styleFrom(
-        foregroundColor: color, 
-        side: BorderSide(color: color), 
-        padding: const EdgeInsets.symmetric(vertical: 14), 
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusSmall)) 
-      ),
-      onPressed: onTap,
-      child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-    );
-  }
-
-  Widget _buildSolidButton(String text, IconData icon, Color bgColor, VoidCallback onTap) {
-    return ElevatedButton.icon(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: bgColor, 
-        foregroundColor: Colors.white, 
-        padding: const EdgeInsets.symmetric(vertical: 14), 
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusSmall)), 
-        elevation: 0
-      ),
-      onPressed: onTap,
-      icon: Icon(icon, size: 18),
-      label: Text(text, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
     );
   }
 }
