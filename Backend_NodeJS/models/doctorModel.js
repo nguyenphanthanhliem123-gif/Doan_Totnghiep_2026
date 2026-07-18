@@ -42,7 +42,7 @@ export default class doctorModel {
             const query = `
                 SELECT Ma_dich_vu, Ten_dich_vu, Gia_tien
                 FROM dich_vu
-                WHERE Ma_bac_si = ? OR Ma_bac_si IS NULL
+                WHERE (Ma_bac_si = ? OR Ma_bac_si IS NULL) AND dich_vu.Trang_thai = 1
             `;
             const [rows] = await execute(query, [ma_bac_si]);
             return rows;

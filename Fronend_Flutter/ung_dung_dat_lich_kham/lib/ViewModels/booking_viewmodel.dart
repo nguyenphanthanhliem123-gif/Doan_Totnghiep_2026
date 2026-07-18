@@ -15,7 +15,31 @@ class BookingViewModel extends ChangeNotifier {
   List<dynamic> _schedule = [];
   List<dynamic> get schedule => _schedule;
 
+  int _todayBookingCount = 0;
+  int get todayBookingCount => _todayBookingCount;
+
   final String _baseUrl = "$BASE_URL/api/bookings";
+
+  Future<void> fetchTodayBookingCount() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('token');
+      if (token == null) return;
+
+      final url = Uri.parse("$BASE_URL/api/bookings/today-count");
+      final response = await http.get(url, headers: {"Authorization": "Bearer $token"});
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['succeeded'] == true) {
+          _todayBookingCount = data['total'] ?? 0;
+          notifyListeners();
+        }
+      }
+    } catch (e) {
+      print("Lỗi tải số lịch đặt hôm nay: $e");
+    }
+  }
 
   // Hàm gọi API lấy danh sách các ngày còn slot trống của bác sĩ
   Future<void> fetchAvailableDates(int doctorId) async {
@@ -71,8 +95,8 @@ class BookingViewModel extends ChangeNotifier {
     required int doctorId,
     required int patientId,
     int? relativeId,
-    required List<int> serviceIds, // ĐỔI THÀNH MẢNG (LIST)
-    required int slotId,
+    required List<int> serviceIds,
+    required List<int> slotIds, // Thay đổi từ int sang List<int>
     required String type,
     required String symptoms, 
     required String paymentMethod,
@@ -80,31 +104,23 @@ class BookingViewModel extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token');
-
-      if (token == null) {
-        print("Lỗi: Không tìm thấy token đăng nhập");
-        return {"succeeded": false, "message": "Phiên đăng nhập hết hạn!"};
-      }
+      if (token == null) return {"succeeded": false, "message": "Phiên đăng nhập hết hạn!"};
 
       final url = Uri.parse(_baseUrl);
       final response = await http.post(
         url,
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer $token",
-        },
+        headers: {"Content-Type": "application/json", "Authorization": "Bearer $token"},
         body: jsonEncode({
           "Ma_bac_si": doctorId,
           "Ma_benh_nhan": patientId,
           "Ma_nguoi_than": relativeId,
-          "Ma_dich_vu": serviceIds, // GỬI MẢNG LÊN BACKEND
-          "Ma_khung_gio": slotId,
+          "Ma_dich_vu": serviceIds,
+          "Ma_khung_gio": slotIds, // Gửi nguyên mảng dữ liệu xuống Backend
           "Hinh_thuc": type,
           "Trieu_chung": symptoms,
           "Phuong_thuc": paymentMethod,
         }),
       );
-
       return jsonDecode(response.body);
     } catch (e) {
       return {"succeeded": false, "message": "Lỗi kết nối Server: $e"};
@@ -187,6 +203,37 @@ class BookingViewModel extends ChangeNotifier {
       else{
         final data = jsonDecode(response.body);
         print("Lỗi check trạng thái thanh toán: ${data['message']}");
+      }
+      return 'pending'; 
+    } catch (e) {
+      return 'pending';
+    }
+  }
+
+  // 💡 HÀM MỚI 1: Gọi API hủy chuỗi gộp
+  Future<void> cancelCombinedUnpaidBooking(String bookingCode) async {
+    try {
+      await http.post(
+        Uri.parse('$_baseUrl/cancel-combined-unpaid'),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"bookingCode": bookingCode}),
+      );
+    } catch (e) {
+      print("Lỗi khi hủy chuỗi lịch chưa thanh toán: $e");
+    }
+  }
+
+  // 💡 HÀM MỚI 2: Gọi API check trạng thái chuỗi gộp
+  Future<String> checkCombinedPaymentStatus(String bookingCode) async {
+    try {
+      final url = Uri.parse('$_baseUrl/check-combined-status/$bookingCode');
+      final response = await http.get(url);
+      
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['succeeded'] == true) {
+          return data['status']; // 'paid', 'pending', hoặc 'failed'
+        }
       }
       return 'pending'; 
     } catch (e) {

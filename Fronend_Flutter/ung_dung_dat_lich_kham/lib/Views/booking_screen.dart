@@ -24,7 +24,7 @@ class _BookingScreenState extends State<BookingScreen> {
   DateTime _focusedMonth = DateTime.now(); 
   DateTime? _selectedDate; 
 
-  int? _selectedSlotId; 
+  List<int> _selectedSlotIds = [];
   bool _isForSelf = true; 
   bool _isOffline = true; 
   String _paymentMethod = 'cash'; 
@@ -50,6 +50,7 @@ class _BookingScreenState extends State<BookingScreen> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<HealthRecordViewModel>().loadHealthRecord();
+      context.read<BookingViewModel>().fetchTodayBookingCount();
     });
   }
 
@@ -65,7 +66,41 @@ class _BookingScreenState extends State<BookingScreen> {
   }
 
   double _calculateTotalPrice() {
-    return _selectedServices.fold(0, (sum, item) => sum + item.price);
+    // 1. Tính tổng tiền các dịch vụ đã chọn
+    double serviceSum = _selectedServices.fold(0, (sum, item) => sum + item.price);
+    
+    // 2. Lấy số lượng khung giờ (Nếu chưa chọn khung giờ nào thì mặc định tính là 1 để hiển thị giá gốc)
+    int slotCount = _selectedSlotIds.isEmpty ? 1 : _selectedSlotIds.length;
+    
+    // 3. Nhân tổng tiền dịch vụ với số lượng khung giờ
+    return serviceSum * slotCount;
+  }
+
+  Future<void> _reloadSlots() async {
+    if (_selectedDate == null) return;
+    String formattedDate = _formatDate(_selectedDate!);
+    setState(() => _isLoadingSlots = true);
+    
+    await context.read<BookingViewModel>().fetchDoctorSchedule(formattedDate, widget.doctor.id);
+    await context.read<BookingViewModel>().fetchTodayBookingCount();
+
+    List<DoctorTimeSlotModel> fetchedSlots = [];
+    final rawList = context.read<BookingViewModel>().schedule;
+
+    for (var s in rawList) {
+      String displayTime = s['Gio_Kham']?.toString() ?? "Lỗi"; 
+      fetchedSlots.add(DoctorTimeSlotModel(
+        id: s['Ma_khung_gio'], 
+        time: displayTime,
+        status: s['Trang_thai'] ?? 'available'
+      ));
+    }
+
+    setState(() {
+      _currentDaySlots = fetchedSlots;
+      _selectedSlotIds.removeWhere((id) => !_currentDaySlots.any((slot) => slot.id == id && slot.status == 'available'));
+      _isLoadingSlots = false;
+    });
   }
 
   @override
@@ -133,6 +168,12 @@ class _BookingScreenState extends State<BookingScreen> {
                   ),
                   const SizedBox(height: kSpacingLarge),
 
+                  // 💡 ĐÃ SỬA: Đưa khối Hạn Mức Đặt Lịch độc lập ra ngoài
+                  Consumer<BookingViewModel>(
+                    builder: (context, bookingVM, child) => _buildTodayBookingLimitCard(bookingVM.todayBookingCount),
+                  ),
+                  const SizedBox(height: 10),
+
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -150,7 +191,6 @@ class _BookingScreenState extends State<BookingScreen> {
                   ),
                   const SizedBox(height: 10),
                   
-                  // 🌟 ĐOẠN XỬ LÝ KHUNG GIỜ MỚI
                   if (_isLoadingSlots)
                     const Center(child: Padding(
                       padding: EdgeInsets.all(20.0),
@@ -165,39 +205,26 @@ class _BookingScreenState extends State<BookingScreen> {
                       spacing: 10,
                       runSpacing: 10,
                       children: _currentDaySlots.map((slot) {
-                        // Bóc tách giờ từ chuỗi (VD: "08:30" hoặc "08:00 - 08:30")
                         String timeString = slot.time.split('-')[0].trim();
                         List<String> timeParts = timeString.split(':');
                         int hour = int.parse(timeParts[0]);
                         int minute = int.parse(timeParts[1]);
 
-                        // Tạo DateTime cho khung giờ đó
-                        DateTime slotDateTime = DateTime(
-                          _selectedDate!.year,
-                          _selectedDate!.month,
-                          _selectedDate!.day,
-                          hour,
-                          minute,
-                        );
-
-                        DateTime now = DateTime.now();
-                        bool isPast = slotDateTime.isBefore(now); // Kiểm tra xem giờ này đã qua chưa
+                        DateTime slotDateTime = DateTime(_selectedDate!.year, _selectedDate!.month, _selectedDate!.day, hour, minute);
+                        bool isPast = slotDateTime.isBefore(DateTime.now());
                         bool isBooked = slot.status == 'booked';
-                        
-                        // Chỉ available khi trạng thái là available VÀ chưa qua giờ hiện tại
                         bool isAvailable = slot.status == 'available' && !isPast; 
-                        bool isSelected = _selectedSlotId == slot.id;
+                        
+                        bool isSelected = _selectedSlotIds.contains(slot.id);
 
                         Color bgColor; 
                         Color borderColor = Colors.transparent; 
                         Color textColor; 
 
                         if (isPast || isBooked) {
-                          // Đã qua giờ hoặc đã có người đặt -> Bôi xám
                           bgColor = Colors.grey.shade300; 
                           textColor = Colors.grey.shade600; 
                         } else if (isAvailable) {
-                          // Trống và có thể đặt
                           bgColor = isSelected ? kPrimaryColor : kLightCyanBg1; 
                           borderColor = kPrimaryColor.withOpacity(0.4);
                           textColor = isSelected ? Colors.white : kPrimaryColor;
@@ -208,14 +235,26 @@ class _BookingScreenState extends State<BookingScreen> {
                         }
 
                         return GestureDetector(
-                          onTap: isAvailable ? () => setState(() => _selectedSlotId = slot.id) : null,
+                          onTap: isAvailable ? () {
+                            final bookingVM = context.read<BookingViewModel>();
+                            setState(() {
+                              if (isSelected) {
+                                _selectedSlotIds.remove(slot.id);
+                              } else {
+                                if (bookingVM.todayBookingCount + _selectedSlotIds.length >= 5) {
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                                    content: Text('Bạn không được chọn vượt quá số lượng 5 lịch hẹn đặt trong ngày!'),
+                                    backgroundColor: Colors.redAccent,
+                                  ));
+                                  return;
+                                }
+                                _selectedSlotIds.add(slot.id);
+                              }
+                            });
+                          } : null,
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                            decoration: BoxDecoration(
-                              color: bgColor, 
-                              borderRadius: BorderRadius.circular(kBorderRadiusSmall), 
-                              border: Border.all(color: borderColor)
-                            ), 
+                            decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(kBorderRadiusSmall), border: Border.all(color: borderColor)), 
                             child: Text(slot.time, style: TextStyle(color: textColor, fontWeight: FontWeight.bold)),
                           ),
                         );
@@ -377,8 +416,7 @@ class _BookingScreenState extends State<BookingScreen> {
                     ],
                   ),
                   ElevatedButton(
-                    // 🌟 ĐÃ SỬA: Đổi activeSlots thành _currentDaySlots ở đây
-                    onPressed: (_selectedSlotId == null || _selectedServices.isEmpty) ? null : () => _showSummaryBottomSheet(context, _currentDaySlots),
+                    onPressed: (_selectedSlotIds.isEmpty || _selectedServices.isEmpty) ? null : () => _showSummaryBottomSheet(context, _currentDaySlots),
                     style: ElevatedButton.styleFrom(backgroundColor: kPrimaryColor, disabledBackgroundColor: Colors.grey.shade300, padding: const EdgeInsets.symmetric(horizontal: 35, vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusSmall))),
                     child: const Text("Xác nhận", style: kButtonTextStyle), 
                   )
@@ -415,23 +453,18 @@ class _BookingScreenState extends State<BookingScreen> {
           onTap: isDisabled ? null : () async {
             setState(() { 
               _selectedDate = cellDate; 
-              _selectedSlotId = null; 
-              _isLoadingSlots = true; // Bật vòng xoay loading
+              _selectedSlotIds.clear();
+              _isLoadingSlots = true; 
             });
 
             String formattedDate = _formatDate(cellDate);
-            
-            // 1. Gọi API
             await context.read<BookingViewModel>().fetchDoctorSchedule(formattedDate, widget.doctor.id);
             
-            // 2. Chuyển đổi dữ liệu siêu an toàn
             List<DoctorTimeSlotModel> fetchedSlots = [];
             final rawList = context.read<BookingViewModel>().schedule;
 
             for (var s in rawList) {
-                // Lấy trực tiếp trường 'Gio_Kham'
                 String displayTime = s['Gio_Kham']?.toString() ?? "Lỗi"; 
-                
                 fetchedSlots.add(DoctorTimeSlotModel(
                     id: s['Ma_khung_gio'], 
                     time: displayTime,
@@ -439,10 +472,9 @@ class _BookingScreenState extends State<BookingScreen> {
                 ));
             }
 
-            // 3. Cập nhật giao diện
             setState(() {
               _currentDaySlots = fetchedSlots;
-              _isLoadingSlots = false; // Tắt loading, hiện giờ ra
+              _isLoadingSlots = false; 
             });
           },
           child: Container(
@@ -458,6 +490,74 @@ class _BookingScreenState extends State<BookingScreen> {
           ),
         );
       },
+    );
+  }
+
+  // 💡 ĐÃ SỬA: Loại bỏ widget Expanded khỏi LinearProgressIndicator và thêm MainAxisSize.min
+  Widget _buildTodayBookingLimitCard(int currentCount) {
+    double progress = (currentCount / 5).clamp(0.0, 1.0);
+    bool isFull = currentCount >= 5;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: kSpacingLarge),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: isFull 
+              ? [Colors.red.shade400, Colors.red.shade700] 
+              : [kPrimaryColor.withOpacity(0.85), kPrimaryColor],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(kBorderRadiusLarge),
+        boxShadow: [
+          BoxShadow(color: (isFull ? Colors.red : kPrimaryColor).withOpacity(0.25), blurRadius: 8, offset: const Offset(0, 4))
+        ]
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                "Hạn mức đặt lịch trong ngày",
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+              ),
+              Text(
+                "$currentCount / 5 Lịch hẹn",
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: LinearProgressIndicator(
+              value: progress,
+              backgroundColor: Colors.white.withOpacity(0.25),
+              valueColor: AlwaysStoppedAnimation<Color>(isFull ? Colors.amber : Colors.white),
+              minHeight: 8,
+            ),
+          ),
+          if (isFull) ...[
+            const SizedBox(height: 8),
+            const Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.amber, size: 16),
+                SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    "Bạn đã đạt giới hạn tối đa 5 lịch trong ngày. Vui lòng quay lại vào ngày mai!",
+                    style: TextStyle(color: Colors.amber, fontSize: 11, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            )
+          ]
+        ],
+      ),
     );
   }
 
@@ -490,12 +590,10 @@ class _BookingScreenState extends State<BookingScreen> {
   void _showSummaryBottomSheet(BuildContext context, List<DoctorTimeSlotModel> activeSlots) {
     final hrVM = context.read<HealthRecordViewModel>();
     
-    // Tìm hồ sơ bản thân hoặc người thân để hiển thị tên trực quan
     HealthRecordModel? targetRecord;
     String forWhom = "";
 
     if (_isForSelf) {
-      // Tìm hồ sơ chính chủ trong danh sách đã tải từ API
       targetRecord = hrVM.listRecord?.firstWhere(
         (r) => r.relativeId == null || r.relationship == 'Bản thân',
         orElse: () => null as dynamic,
@@ -516,15 +614,16 @@ class _BookingScreenState extends State<BookingScreen> {
       forWhom = "Người thân (${targetRecord!.recordName})";
     }
 
-    final selectedSlot = activeSlots.firstWhere((slot) => slot.id == _selectedSlotId);
+    final selectedSlots = activeSlots.where((slot) => _selectedSlotIds.contains(slot.id)).toList();
+    String timeDisplay = selectedSlots.map((s) => s.time).join(", ");
     String serviceNames = _selectedServices.map((s) => s.name).join(", ");
     double totalPrice = _calculateTotalPrice();
     final String formattedPrice = "${totalPrice.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')} Đ";
     
     if (_isOffline) {
-      _paymentMethod = 'cash'; // Offline: Bắt buộc chọn tiền mặt
+      _paymentMethod = 'cash'; 
     } else {
-      _paymentMethod = 'vnpay'; // Online: Bắt buộc chọn VNPay
+      _paymentMethod = 'vnpay'; 
     }
 
     showModalBottomSheet(
@@ -558,7 +657,7 @@ class _BookingScreenState extends State<BookingScreen> {
                             children: [
                               Text("BS. ${widget.doctor.fullName}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: kPrimaryColor)),
                               const SizedBox(height: 5),
-                              Text("${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year} • ${selectedSlot.time}", style: const TextStyle(color: kTextColor, fontWeight: FontWeight.w500)),
+                              Text("${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year} • $timeDisplay", style: const TextStyle(color: kTextColor, fontWeight: FontWeight.w500)),
                             ],
                           ),
                         ),
@@ -577,11 +676,8 @@ class _BookingScreenState extends State<BookingScreen> {
                   const SizedBox(height: 10),
                   Row(
                     children: [
-                      // Nếu Offline -> Chỉ hiện nút Tiền mặt
                       if (_isOffline) 
                         _buildPaymentButton("Thanh toán tại quầy", "cash", Icons.money, setModalState),
-                        
-                      // Nếu Online -> Chỉ hiện nút VNPay
                       if (!_isOffline) 
                         _buildPaymentButton("VNPay", "vnpay", Icons.payment_rounded, setModalState),
                     ],
@@ -668,113 +764,117 @@ class _BookingScreenState extends State<BookingScreen> {
     final hrVM = context.read<HealthRecordViewModel>();
     
     final patientIdStr = await authVM.getSavedUserId();
-    if (patientIdStr == null || patientIdStr.isEmpty) {
+    if (patientIdStr == null || patientIdStr.isEmpty){ 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Vui lòng đăng nhập để đặt lịch!')));
       }
-      return;
+      return; 
     }
 
-    // Biến lưu thông tin ID chuẩn để gửi lên Backend
-    int? finalPatientId; // Mã bệnh nhân (Ma_benh_nhan)
-    int? finalRelativeId; // Mã người thân nếu có (Ma_nguoi_than)
+    int? finalPatientId;
+    int? finalRelativeId;
 
     if (_isForSelf) {
-      // Trích xuất bản ghi chính chủ từ danh sách API kết quả trả về
-      final selfRecord = hrVM.listRecord?.firstWhere(
-        (r) => r.relativeId == null || r.relationship == 'Bản thân',
-        orElse: () => null as dynamic,
-      );
-      
-      if (selfRecord != null) {
-        finalPatientId = selfRecord.id; // Trường id tương ứng Ma_benh_nhan trong hệ thống DB
-        finalRelativeId = null; // Khám chính chủ nên mã người thân bằng null
-      }
+      final selfRecord = hrVM.listRecord?.firstWhere((r) => r.relativeId == null || r.relationship == 'Bản thân', orElse: () => null as dynamic);
+      if (selfRecord != null) { finalPatientId = selfRecord.id; finalRelativeId = null; }
     } else {
-      if (_selectedRelative != null) {
-        finalPatientId = _selectedRelative!.id; // Mã bệnh nhân của người thân[cite: 12]
-        finalRelativeId = _selectedRelative!.relativeId; // Mã người thân liên kết[cite: 12]
-      }
+      if (_selectedRelative != null) { finalPatientId = _selectedRelative!.id; finalRelativeId = _selectedRelative!.relativeId; }
     }
 
-    if (finalPatientId == null || finalPatientId == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Không tìm thấy thông tin hồ sơ bệnh nhân hợp lệ!'), backgroundColor: Colors.redAccent),
-      );
-      return;
-    }
+    if (finalPatientId == null || finalPatientId == 0) return;
+
+    showDialog(context: context, barrierDismissible: false, builder: (context) => const Center(child: CircularProgressIndicator()));
+    List<int> serviceIds = _selectedServices.map((e) => e.id).toList();
+
+    // 🔴 DEBUG 1: Kiểm tra phương thức thanh toán Flutter đang giữ trước khi gửi đi
+    print("=== DEBUG: Hình thức khám: ${_isOffline ? 'Offline' : 'Online'} | Phương thức thanh toán: $_paymentMethod ===");
+
+    final result = await bookingVM.submitBooking(
+      doctorId: widget.doctor.id, 
+      patientId: finalPatientId, 
+      relativeId: finalRelativeId, 
+      serviceIds: serviceIds, 
+      slotIds: _selectedSlotIds, 
+      type: _isOffline ? "offline" : "online",
+      symptoms: _symptomController.text,
+      paymentMethod: _paymentMethod, 
+    );
+
+    if (mounted) Navigator.pop(context); // Tắt vòng xoay Loading chính
 
     if (mounted) {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(child: CircularProgressIndicator()),
-      );
-      List<int> serviceIds = _selectedServices.map((e) => e.id).toList();
+      if (result['succeeded'] == true) {
+        Navigator.pop(bottomSheetContext); // Đóng BottomSheet tổng quan
+        
+        // Lấy mã chuỗi gộp do Backend trả về
+        String bookingCode = result['combinedBookingCode']?.toString() ?? 
+                            result['data']?['combinedBookingCode']?.toString() ?? '';
+        
+        if (bookingCode.isEmpty) {
+          List<dynamic> bookingList = result['data'] is List ? result['data'] : [result['data']];
+          bookingCode = bookingList.map((b) => b['Ma_booking'].toString()).join('-');
+        }
+        
+        String amount = result['totalPrice'].toString();
 
-      final result = await bookingVM.submitBooking(
-        doctorId: widget.doctor.id, 
-        patientId: finalPatientId, 
-        relativeId: finalRelativeId, 
-        serviceIds: serviceIds, 
-        slotId: _selectedSlotId!,
-        type: _isOffline ? "offline" : "online",
-        symptoms: _symptomController.text,
-        paymentMethod: _paymentMethod, 
-      );
+        // 🔴 DEBUG 2: Xem mã đặt lịch và số tiền hệ thống nhận được
+        print("=== DEBUG: Đặt chuỗi lịch thành công! Mã hóa đơn: $bookingCode | Tổng tiền: $amount ===");
 
-      if (mounted) Navigator.pop(context);
+        context.read<AppointmentViewModel>().loadMyAppointments();
+        await _reloadSlots(); 
 
-      if (mounted) {
-        if (result['succeeded'] == true) {
-          print('result[succeeded]: ${result['succeeded']}');
-          Navigator.pop(bottomSheetContext);
+        // XỬ LÝ THANH TOÁN ONLINE VNPAY
+        if (_paymentMethod == 'vnpay') {
+          print("=== DEBUG: Đang tiến hành gọi API khởi tạo liên kết VNPay... ===");
+          final vnpayResult = await bookingVM.createVnpayPayment(bookingCode: bookingCode);
           
-          String bookingCode = result['data']['Ma_booking'];
-          String amount = result['data']['Tong_tien'].toString();
+          // 🔴 DEBUG 3: In toàn bộ cấu trúc phản hồi từ API VNPay ra Console
+          print("=== DEBUG: Phản hồi từ API VNPay: $vnpayResult ===");
 
-          // 🌟 Kích hoạt làm mới danh sách lịch hẹn trang chủ ngay lập tức trước khi pop
-          context.read<AppointmentViewModel>().loadMyAppointments();
-
-          if (_paymentMethod == 'vnpay') {
-            final vnpayResult = await bookingVM.createVnpayPayment(bookingCode: bookingCode);
-            if (mounted) {
+          if (mounted) {
+            if (vnpayResult['succeeded'] == true && vnpayResult['paymentUrl'] != null) {
+              final String cleanUrl = vnpayResult['paymentUrl'].toString().trim();
               
-              if (vnpayResult['succeeded'] == true && vnpayResult['paymentUrl'] != null) {
-                _showVNPayDialog(bookingCode, amount, vnpayResult['paymentUrl']);
-              } else {
-                if (!_isOffline) {
-                  // ❌ NẾU ONLINE: VNPay lỗi -> Tự động gọi API hủy lịch và nhả Slot
-                  await bookingVM.cancelUnpaidBooking(bookingCode);
-                  context.read<AppointmentViewModel>().loadMyAppointments();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Lỗi hệ thống thanh toán. Đã tự động hủy lịch Online."), backgroundColor: Colors.red)
-                  );
-                } else {
-                  // ✅ NẾU OFFLINE: Giữ nguyên lịch, chỉ đổi thông báo sang đóng tiền mặt
-                  _showSuccessDialog("Lỗi cổng VNPay. Vui lòng thanh toán tiền mặt tại quầy lễ tân khi đến khám.", bookingCode);
-                }
+              print("=== DEBUG: [THÀNH CÔNG] Kích hoạt hiển thị Dialog VNPay trung gian ===");
+              
+              // Gọi hàm mở Dialog hiển thị thông tin thay vì chuyển hướng ngay lập tức
+              _showVNPayDialog(bookingCode, amount, cleanUrl);
+              
+            } else {
+              // Trường hợp API VNPay trả về thất bại (Sai cấu hình file .env backend, vnp_TmnCode...)
+              String vnpayError = vnpayResult['message'] ?? "Không thể khởi tạo cổng thanh toán VNPay từ máy chủ.";
+              print("=== DEBUG: [THẤT BẠI] API VNPay báo lỗi: $vnpayError ===");
+              _showErrorDialog(vnpayError);
+
+              if (!_isOffline) {
+                print("=== DEBUG: Đang tự động giải phóng chuỗi khung giờ do VNPay lỗi... ===");
+                await bookingVM.cancelCombinedUnpaidBooking(bookingCode);
+                await _reloadSlots(); 
+                context.read<AppointmentViewModel>().loadMyAppointments();
               }
             }
-          } else {
-            // Thanh toán tiền mặt thành công -> Trả về true báo hiệu cho trang trước reload
-            _showSuccessDialog(result['message'], bookingCode);
           }
         } else {
-          Navigator.pop(bottomSheetContext);
-
-          // Lấy thông báo lỗi sinh động từ Backend truyền qua
-          String errorMsg = result['message'] ?? "Khung giờ này vừa có người nhanh tay hơn đặt trước mất rồi! Vui lòng chọn khung giờ khác.";
-
-          // Gọi hàm Dialog cảnh báo lỗi rõ ràng trực quan giữa màn hình thay vì SnackBar ngầm
-          _showErrorDialog(errorMsg);
+          // Nếu lọt vào nhánh Tiền mặt (offline)
+          print("=== DEBUG: Luồng chạy rẽ vào nhánh thanh toán tại quầy (Cash) ===");
+          _showSuccessDialog(result['message'] ?? "Đặt lịch thành công!", bookingCode);
         }
+      } else {
+        Navigator.pop(bottomSheetContext);
+        String errorMsg = result['message'] ?? "Có lỗi xảy ra trong quá trình đặt lịch.";
+        print("=== DEBUG: Gọi API đặt lịch thất bại hoàn toàn: $errorMsg ===");
+
+        if (result['requiresReload'] == true) {
+          await _reloadSlots(); 
+        }
+        _showErrorDialog(errorMsg);
       }
     }
   }
 
   void _showVNPayDialog(String bookingCode, String amount, String paymentUrl) {
     final String formattedAmount = "${amount.replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')} VNĐ";
+    String displayCodes = bookingCode.replaceAll('-', ', ');
 
     showDialog(
       context: context, barrierDismissible: false, 
@@ -793,11 +893,13 @@ class _BookingScreenState extends State<BookingScreen> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text("Nhấn nút dưới đây để mở website cổng thanh toán VNPay ảo để tiến hành thanh toán.", textAlign: TextAlign.center, style: TextStyle(color: kGreyTextColor, fontSize: 13)),
+            const Text("Nhấn nút dưới đây để mở website cổng thanh toán VNPay để tiến hành thanh toán.", textAlign: TextAlign.center, style: TextStyle(color: kGreyTextColor, fontSize: 13)),
             const SizedBox(height: 20),
             Text("Số tiền: $formattedAmount", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.redAccent)),
+            const SizedBox(height: 10),
+            const Text("Mã lịch hẹn cần thanh toán:", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: kGreyTextColor)),
             const SizedBox(height: 4),
-            Text("Nội dung: $bookingCode", style: const TextStyle(fontWeight: FontWeight.w500, color: kTextColor)),
+            Text(displayCodes, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold, color: kTextColor, fontSize: 14)),
           ],
         ),
         actions: [
@@ -812,12 +914,19 @@ class _BookingScreenState extends State<BookingScreen> {
                     final String cleanUrl = paymentUrl.trim();
                     final Uri url = Uri.parse(cleanUrl);
                     try {
+                      // 🛠️ TỐI ƯU UX: Đóng Dialog trung gian này trước khi chuyển hướng ứng dụng
+                      Navigator.pop(ctx); 
+                      
                       bool launched = await launchUrl(url, mode: LaunchMode.externalApplication);
                       if (!launched) await launchUrl(url, mode: LaunchMode.inAppWebView);
+                      
                       if (!mounted) return;
+                      // Kích hoạt ngay cổng tự động check trạng thái hóa đơn
                       _showAutoCheckPaymentDialog(bookingCode);
                     } catch (e) {
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Không thể mở cổng thanh toán. Lỗi: $e')));
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Không thể mở cổng thanh toán. Lỗi: $e')));
+                      }
                     }
                   },
                   style: ElevatedButton.styleFrom(backgroundColor: kPrimaryColor, padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
@@ -828,22 +937,21 @@ class _BookingScreenState extends State<BookingScreen> {
                 width: double.infinity,
                 child: TextButton(
                   onPressed: () async {
-                    Navigator.pop(ctx); // Đóng hộp thoại hiển thị VNPay hiện tại
+                    Navigator.pop(ctx); 
                     
-                    // ✨ ĐÃ SỬA CHỮA ĐỒNG BỘ LOGIC: Khi người dùng nhấn nút hủy bỏ thanh toán VNPay,
-                    // bất kể hình thức là online hay offline, tiến hành kích hoạt API giải phóng slot trống lập tức trên Server.
                     showDialog(
                       context: context, 
                       barrierDismissible: false, 
                       builder: (context) => const Center(child: CircularProgressIndicator(color: kPrimaryColor))
                     );
                     
-                    await context.read<BookingViewModel>().cancelUnpaidBooking(bookingCode);
-                    if (mounted) Navigator.pop(context); // Tắt hiệu ứng vòng xoay Loading
+                    await context.read<BookingViewModel>().cancelCombinedUnpaidBooking(bookingCode);
+                    await _reloadSlots();
+                    if (mounted) Navigator.pop(context); 
 
                     if (mounted) {
-                      context.read<AppointmentViewModel>().loadMyAppointments(); // Làm mới lịch sử cuộc hẹn ở trang chính
-                      _showErrorDialog("Giao dịch VNPay đã bị hủy. Lịch hẹn tạm thời của bạn đã được giải phóng để người khác chọn. Vui lòng thực hiện đặt lại lịch mới và chọn thanh toán 'Tiền mặt' nếu có nhu cầu!");
+                      context.read<AppointmentViewModel>().loadMyAppointments(); 
+                      _showErrorDialog("Giao dịch VNPay đã bị hủy. Lịch hẹn tạm thời của bạn đã được giải phóng.");
                     }
                   },
                   child: const Text("Hủy bỏ giao dịch", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w600)),
@@ -857,20 +965,22 @@ class _BookingScreenState extends State<BookingScreen> {
   }
 
   void _showSuccessDialog(String message, String bookingCode) {
+    // 🛠️ ĐÃ SỬA: Chuyển dấu '-' thành dấu ', ' để hiển thị đẹp mắt cho người dùng
+    String displayCodes = bookingCode.replaceAll('-', ', ');
+
     showDialog(
       context: context, barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(kBorderRadiusLarge)),
         icon: const Icon(Icons.check_circle, color: Colors.green, size: 60),
-        title: const Text("Tuyệt vời!"),
-        content: Text("$message\n\nMã vé của bạn là: $bookingCode", textAlign: TextAlign.center),
+        title: const Text("Tuyệt vời!", style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Text("$message\n\nMã lịch hẹn của bạn:\n$displayCodes", textAlign: TextAlign.center, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
         actions: [
           Center(
             child: TextButton(
               onPressed: () { 
                 Navigator.pop(ctx); 
                 Navigator.pop(ctx); 
-                // 🌟 QUAN TRỌNG: Trả về kết quả true thay vì pop trống để trang DoctorDetail biết mà reload
                 Navigator.pop(context, true); 
               },
               child: const Text("Quay về", style: TextStyle(color: kPrimaryColor, fontWeight: FontWeight.bold)),
@@ -903,19 +1013,18 @@ class _BookingScreenState extends State<BookingScreen> {
           Center(
             child: TextButton(
               onPressed: () async {
-                // ✨ ĐÃ SỬA CHỮA LOGIC TREO SLOT: Người dùng chủ động huỷ khi đang chờ kiểm tra trạng thái
-                _pollingTimer?.cancel(); // Ngắt luồng Polling tự động kiểm tra trạng thái
-                Navigator.pop(ctx); // Đóng hộp thoại Polling hiện tại
+                _pollingTimer?.cancel(); 
+                Navigator.pop(ctx); 
                 
-                // Hiển thị vòng quay xử lý giải phóng ô dữ liệu bên dưới Server
                 showDialog(
                   context: context, 
                   barrierDismissible: false, 
                   builder: (context) => const Center(child: CircularProgressIndicator(color: kPrimaryColor))
                 );
                 
-                await context.read<BookingViewModel>().cancelUnpaidBooking(bookingCode);
-                if (mounted) Navigator.pop(context); // Tắt vòng xoay xử lý
+                await context.read<BookingViewModel>().cancelCombinedUnpaidBooking(bookingCode);
+                await _reloadSlots();
+                if (mounted) Navigator.pop(context); 
                 
                 context.read<AppointmentViewModel>().loadMyAppointments();
                 _showErrorDialog("Bạn đã hủy quá trình đợi phản hồi thanh toán. Khung giờ khám hiện tại đã được giải phóng thành công.");
@@ -930,12 +1039,12 @@ class _BookingScreenState extends State<BookingScreen> {
     final bookingVM = context.read<BookingViewModel>();
 
     _pollingTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
-      final status = await bookingVM.checkPaymentStatus(bookingCode);
+      final status = await bookingVM.checkCombinedPaymentStatus(bookingCode);
 
       if (status == 'paid') {
         timer.cancel(); 
         if (mounted) {
-          Navigator.pop(context); // Đóng giao diện thông báo chờ kết quả Polling
+          Navigator.pop(context); // Tắt loading dialog tự động check
           _showSuccessDialog("Thanh toán điện tử thành công!", bookingCode); 
         }
       } else if (status == 'failed' || status == 'cancelled') {
@@ -954,7 +1063,7 @@ class _BookingScreenState extends State<BookingScreen> {
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         icon: const Icon(Icons.error_outline_rounded, color: Colors.redAccent, size: 50),
-        title: const Text("Thông báo", style: TextStyle(fontWeight: FontWeight.bold)), // Đổi từ "Thanh toán không thành công"
+        title: const Text("Thông báo", style: TextStyle(fontWeight: FontWeight.bold)), 
         content: Text(message, textAlign: TextAlign.center, style: const TextStyle(fontSize: 14)),
         actions: [
           Center(
@@ -968,5 +1077,4 @@ class _BookingScreenState extends State<BookingScreen> {
       ),
     );
   }
-
 }
