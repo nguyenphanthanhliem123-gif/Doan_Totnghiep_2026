@@ -55,7 +55,7 @@ class _AdminSpecialtyScreenState extends State<AdminSpecialtyScreen> {
                     const SizedBox(height: 20),
 
                     // Chọn ảnh
-                    GestureDetector(
+                    /*GestureDetector(
                       onTap: () async {
                         final pickedFile = await ImagePicker().pickImage(source: ImageSource.gallery);
                         if (pickedFile != null) {
@@ -77,7 +77,7 @@ class _AdminSpecialtyScreenState extends State<AdminSpecialtyScreen> {
                                 : const Icon(Icons.add_photo_alternate, color: kPrimaryColor, size: 30),
                       ),
                     ),
-                    const SizedBox(height: 15),
+                    const SizedBox(height: 15),*/
 
                     // Tên chuyên khoa
                     TextField(

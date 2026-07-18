@@ -22,8 +22,6 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen>{
     'Thành công',
     'Đang chờ',
     'Thất bại',
-    'Đã hoàn tiền',
-    'Hoàn tiền thất bại'
   ];
 
   @override
@@ -161,7 +159,6 @@ class TransactionCard extends StatelessWidget {
 
   const TransactionCard({Key? key, required this.transaction}) : super(key: key);
 
-  // Đã cập nhật thêm màu cho các trạng thái hoàn tiền
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
       case 'thành công':
@@ -170,10 +167,6 @@ class TransactionCard extends StatelessWidget {
         return Colors.orange;
       case 'thất bại':
         return Colors.red;
-      case 'đã hoàn tiền':
-        return Colors.purple; // Màu tím cho hoàn tiền thành công
-      case 'hoàn tiền thất bại':
-        return Colors.deepOrange; // Màu cam đậm cho hoàn tiền thất bại
       default:
         return Colors.grey;
     }

@@ -282,7 +282,7 @@ class _BookingScreenState extends State<BookingScreen> {
                               items: relatives.map((relative) {
                                 return DropdownMenuItem<HealthRecordModel>(
                                   value: relative,
-                                  child: Text("${relative.recordName} - Mã BN: ${relative.relativeId} (${relative.roll})", style: const TextStyle(fontWeight: FontWeight.bold, color: kTextColor)),
+                                  child: Text("${relative.recordName} - Mã BN: ${relative.id} (${relative.roll})", style: const TextStyle(fontWeight: FontWeight.bold, color: kTextColor)),
                                 );
                               }).toList(),
                               onChanged: (val) => setState(() => _selectedRelative = val),

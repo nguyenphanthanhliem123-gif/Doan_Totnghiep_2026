@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:ung_dung_dat_lich_kham/Constants/ui_constants.dart';
 import 'package:ung_dung_dat_lich_kham/Models/schedule_config_model.dart';
 import 'package:ung_dung_dat_lich_kham/viewmodels/schedule_config_viewmodel.dart';
-import '../../Constants/ui_constants.dart'; // 🌟 Import đồng bộ UI Constants chữ viết hoa
+import '../../Constants/ui_constants.dart';
 
 class DoctorScheduleScreen extends StatefulWidget {
   const DoctorScheduleScreen({super.key});
@@ -41,11 +41,11 @@ class _DoctorScheduleScreenState extends State<DoctorScheduleScreen> {
             icon: const Icon(Icons.auto_awesome_motion),
             onPressed: () => _showGenerateSlotsPicker(context, viewModel),
           ),
-          IconButton(
+          /*IconButton(
             tooltip: 'Báo nghỉ / Khóa lịch ca khám',
             icon: const Icon(Icons.event_busy, color: Colors.amberAccent),
             onPressed: () => _openLeaveDialog(context, viewModel),
-          ),
+          ),*/
         ],
       ),
       body: viewModel.isLoading

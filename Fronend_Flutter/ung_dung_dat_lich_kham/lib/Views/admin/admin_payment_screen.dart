@@ -149,7 +149,6 @@ class _AdminPaymentScreenState extends State<AdminPaymentScreen> {
                     DropdownMenuItem(value: 'all', child: Text("Tất cả")),
                     DropdownMenuItem(value: 'pending', child: Text("Chờ TT")),
                     DropdownMenuItem(value: 'paid', child: Text("Đã thanh toán")),
-                    DropdownMenuItem(value: 'refunded', child: Text("Đã hoàn tiền")),
                     DropdownMenuItem(value: 'failed', child: Text("Thất bại")),
                   ],
                   onChanged: (val) {
@@ -168,9 +167,7 @@ class _AdminPaymentScreenState extends State<AdminPaymentScreen> {
     switch (status) {
       case 'pending': return 'Chờ thanh toán';
       case 'paid': return 'Đã thanh toán';
-      case 'refunded': return 'Đã hoàn tiền';
       case 'failed': return 'Thất bại';
-      case 'refund_fail': return 'Hoàn tiền lỗi';
       default: return status;
     }
   }
@@ -200,7 +197,6 @@ class _AdminPaymentScreenState extends State<AdminPaymentScreen> {
                   items: const [
                     DropdownMenuItem(value: 'pending', child: Text("Chờ thanh toán (pending)")),
                     DropdownMenuItem(value: 'paid', child: Text("Đã thanh toán (paid)")),
-                    DropdownMenuItem(value: 'refunded', child: Text("Đã hoàn tiền (refunded)")),
                     DropdownMenuItem(value: 'failed', child: Text("Thất bại (failed)")),
                   ],
                   onChanged: (val) => selectedStatus = val!,
