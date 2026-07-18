@@ -113,7 +113,7 @@ export default class ChatbotModel {
     }
 
     // 6. Tìm lịch trống đích danh theo tên bác sĩ
-    static async checkDoctorSchedule(doctorName, targetDate = null) {
+    static async checkDoctorSchedule(doctorName, targetDate = null, specialty = null, doctorCode = null) {
         let query = `
             SELECT 
                 bs.Ma_bac_si, nd.Ten_nguoi_dung AS ten_bac_si, ck.Ten_chuyen_khoa, kg.Ma_khung_gio,
@@ -134,6 +134,16 @@ export default class ChatbotModel {
         if (targetDate) {
             query += ` AND DATE(kg.Thoi_gian_Bdau) = ?`;
             params.push(targetDate);
+        }
+
+        if (specialty) {
+            query += ` AND ck.Ten_chuyen_khoa = ?`;
+            params.push(specialty);
+        }
+
+        if (doctorCode) {
+            query += ` AND Ma_bac_si = ?`;
+            params.push(doctorCode);
         }
 
         query += ` ORDER BY kg.Thoi_gian_Bdau ASC LIMIT 10;`;
@@ -367,7 +377,7 @@ export default class ChatbotModel {
     }
 
     // 12: Tìm ID khung giờ chính xác dựa vào Tên BS, Ngày và Giờ
-    static async findExactSlotId(doctorName, targetDate, targetTime) {
+    static async findExactSlotId(doctorName, targetDate, targetTime, doctorCode = null) {
         // targetTime từ AI gửi về sẽ luôn có định dạng "HH:mm" (VD: "08:30", "09:00")
         // Dùng '%H:%i' để MySQL đối chiếu chính xác từng phút, không cắt chuỗi.
         
@@ -382,8 +392,14 @@ export default class ChatbotModel {
               AND kg.Trang_thai = 'available'
             LIMIT 1;
         `;
+        let params = [`%${doctorName}%`, targetDate, targetTime];
+
+        if (doctorCode) {
+            query += ` AND Ma_bac_si = ?`;
+            params.push(doctorCode);
+        }
         // Truyền thẳng targetTime vào thay vì hourPrefix như code cũ
-        const [rows] = await execute(query, [`%${doctorName}%`, targetDate, targetTime]);
+        const [rows] = await execute(query, params);
         return rows.length > 0 ? rows[0] : null;
     }
 
@@ -397,4 +413,5 @@ export default class ChatbotModel {
             return [];
         }
     }
+    
 }

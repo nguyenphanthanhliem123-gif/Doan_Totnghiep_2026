@@ -53,8 +53,18 @@ const SYSTEM_INSTRUCTION =`Bạn là trợ lý AI ảo của App Hẹn Đặt L�
         - Nếu không có dịch vụ nào được chọn, tự truyền {ma_dich_vu: 25, gia_tien: 150000}.
         
         10. DUY TRÌ NGỮ CẢNH VÀ TRÍ NHỚ (CỰC KỲ QUAN TRỌNG):
-        - Khi người dùng đưa ra yêu cầu tiếp nối (ví dụ: "Tôi muốn đặt lịch ngày mai", "Tìm giờ trống lúc 10h") mà KHÔNG nhắc lại tên Bác sĩ hoặc Chuyên khoa, bạn BẮT BUỘC phải tự động đọc lại tin nhắn ngay phía trên của chính bạn để lấy tên Bác sĩ/Chuyên khoa vừa thảo luận và điền vào tham số gọi hàm.
-        - Tuyệt đối không tự đoán mò sai lệch.
+        - Khi người dùng đưa ra yêu cầu tiếp nối cực ngắn (ví dụ: "có", "ok", "tìm đi", "đặt lịch ngày mai") mà KHÔNG nhắc lại tên Bác sĩ hoặc Chuyên khoa, bạn BẮT BUỘC phải đọc tin nhắn ngay phía trên MỚI NHẤT của chính bạn để lấy đúng Chuyên khoa/Bác sĩ vừa thảo luận ở bước gần nhất.
+        - TUYỆT ĐỐI KHÔNG được nhảy ngược lên các tầng lịch sử cũ hơn để lấy chuyên khoa đã khép lại ở luồng chat phía trên.
+
+        11. XỬ LÝ TRÙNG TÊN BÁC SĨ (CỰC KỲ NGUY HIỂM):
+        - Trường hợp hệ thống có nhiều bác sĩ trùng tên (kể cả trùng cả chuyên khoa): Bạn TUYỆT ĐỐI KHÔNG ĐƯỢC tự ý chốt lịch bằng tên thô.
+        - Bạn BẮT BUỘC phải đọc dữ liệu hệ thống trả về, lấy ra "Mã số bác sĩ" (Ví dụ: MS101, MS102) và hiển thị công khai mã số này để bệnh nhân lựa chọn.
+        - Ví dụ phản hồi: "MedCare hiện có 2 bác sĩ tên Lê Minh Hoàng cùng thuộc khoa Nội Tổng Quát: 1. Bác sĩ Lê Minh Hoàng (Mã số: MS101) và 2. Bác sĩ Lê Minh Hoàng (Mã số: MS102). Bạn muốn đặt lịch với mã số nào ạ?"
+        - Khi người dùng đã chọn hoặc cung cấp mã số bác sĩ, bạn phải tự động găm mã số này vào tham số 'doctor_code' khi gọi các tool kiểm tra hoặc đặt lịch.
+
+        12. DỰ TRỮ NGỮ CẢNH CHUYÊN KHOA GẦN NHẤT (CHỐNG LỆCH KHOA):
+        - Nếu ở tin nhắn ngay trước, bạn vừa định hướng người bệnh vào một chuyên khoa cụ thể (Ví dụ: Nhi Khoa), thì ở tin nhắn yêu cầu đặt lịch tiếp theo (bằng các từ như "có", "chốt", "tìm lịch"), bạn BẮT BUỘC phải kế thừa chuyên khoa MỚI NHẤT này.
+        - QUY TẮC NÀY ÁP DỤNG CHO TẤT CẢ CÁC HÀM TÌM KIẾM VÀ ĐẶT LỊCH bao gồm: 'shortcut_book_earliest', 'search_doctor_available_slots', 'check_doctor_schedule', và 'direct_book_specific_time'. Tuyệt đối không để hệ thống tự ý dùng lại chuyên khoa cũ hoặc tự động trả về dịch vụ mặc định "Khám lâm sàn".
         `;
 
 // HÀM PHỤ TRỢ: Trích xuất đối tượng bệnh nhân từ câu hỏi trước khi gọi AI
@@ -141,6 +151,8 @@ function getActiveModel() {
                         type: "OBJECT",
                         properties: { 
                             doctor_name: { type: "STRING", description: "Tên bác sĩ" },
+                            specialty: { type: "STRING", description: "Tên chuyên khoa của bác sĩ (VD: Nội Tổng Quát, Nhi Khoa)." },
+                            doctor_code: { type: "STRING", description: "Mã số định danh công khai của bác sĩ (VD: MS101, MS102). Bắt buộc truyền nếu lịch sử trò chuyện cho thấy có sự trùng tên." }, // ĐÃ THÊM TRƯỜNG NÀY
                             target_date: { type: "STRING", description: "Ngày khám người dùng muốn định dạng YYYY-MM-DD. Hôm nay là " + vnTime }
                         },
                         required: ["doctor_name"]
@@ -161,21 +173,23 @@ function getActiveModel() {
                 // TOOL: ĐẶT LỊCH THẲNG KHI CÓ ĐỦ THÔNG TIN
                 {
                     name: "direct_book_specific_time",
-                    description: "Dùng khi người dùng ngay từ đầu đã cung cấp ĐẦY ĐỦ Tên bác sĩ + Ngày + Giờ cụ thể. AI không cần biết Mã ID, chỉ cần truyền text.",
+                    description: "Dùng khi người dùng cung cấp Tên bác sĩ + Ngày + Giờ cụ thể. AI không cần biết Mã ID, chỉ cần truyền text.",
                     parameters: {
                         type: "OBJECT",
                         properties: { 
                             doctor_name: { type: "STRING", description: "Tên bác sĩ (VD: Alery)" },
+                            specialty: { type: "STRING", description: "Tên chuyên khoa bắt buộc (VD: Nhi Khoa, Nội tổng quát). Hãy đọc từ lịch sử tư vấn triệu chứng phía trên để điền vào đây, tránh đặt lệch khoa hoặc trùng tên bác sĩ." },
+                            doctor_code: { type: "STRING", description: "Mã số định danh công khai của bác sĩ (VD: MS101, MS102). Hãy bốc từ ngữ cảnh chat nếu người dùng đã lựa chọn mã số này trước đó." },
                             target_date: { type: "STRING", description: "Ngày khám định dạng YYYY-MM-DD. Nếu không nhắc ngày, dùng: " + vnTime },
                             target_time: { type: "STRING", description: "Giờ khám định dạng HH:mm (VD: 08:00)" },
                             danh_sach_dich_vu: { 
                                 type: "ARRAY", 
-                                description: "Danh sách các dịch vụ người dùng chọn. Bỏ trống nếu không chọn dịch vụ nào.",
+                                description: "Danh sách các dịch vụ người dùng chọn...",
                                 items: {
                                     type: "OBJECT",
                                     properties: {
-                                        ma_dich_vu: { type: "INTEGER", description: "Mã dịch vụ tự bốc từ [Mã DV: X]" },
-                                        gia_tien: { type: "NUMBER", description: "Giá tiền của dịch vụ đó" }
+                                        ma_dich_vu: { type: "INTEGER" },
+                                        gia_tien: { type: "NUMBER" }
                                     }
                                 }
                             }
@@ -366,7 +380,7 @@ export default class chatbotController {
 
                 else if (call.name === "check_doctor_schedule") {
                     console.log("AI GỌI HÀM: check_doctor_schedule ->", call.args.doctor_name, "Ngày:", call.args.target_date);
-                    dbData = await ChatbotModel.checkDoctorSchedule(call.args.doctor_name, call.args.target_date);
+                    dbData = await ChatbotModel.checkDoctorSchedule(call.args.doctor_name, call.args.target_date, call.args.specialty, call.args.doctor_code);
 
                     prompt = `Người dùng đang hỏi lịch của bác sĩ.
                     Dựa vào dữ liệu lịch trống: ${JSON.stringify(dbData)}.
@@ -413,7 +427,7 @@ export default class chatbotController {
                     }
 
                     // 3. Backend ngầm dịch Text thành ID
-                    const exactSlot = await ChatbotModel.findExactSlotId(call.args.doctor_name, call.args.target_date, call.args.target_time);
+                    const exactSlot = await ChatbotModel.findExactSlotId(call.args.doctor_name, call.args.target_date, call.args.target_time, call.args.doctor_code);
                     
                     if (exactSlot) {
                         try {
