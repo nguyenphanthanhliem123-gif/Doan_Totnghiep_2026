@@ -251,9 +251,10 @@ export default class appointmentModel {
         try {
             conn = await beginTransaction();
 
+            // 1. Lấy thông tin ca khám cũ
             const oldSql = `
                 SELECT lh.Ma_khung_gio, lh.Trang_thai_lich_hen, lh.So_lan_doi_lich, 
-                       lh.Ma_benh_nhan, lh.Ma_nguoi_than, kg.Thoi_gian_Bdau 
+                       lh.Ma_benh_nhan, lh.Ma_nguoi_than, kg.Thoi_gian_Bdau, kg.Ma_bac_si 
                 FROM lich_hen lh
                 JOIN khung_gio_kham kg ON lh.Ma_khung_gio = kg.Ma_khung_gio
                 WHERE lh.Ma_lich_hen = ?
@@ -264,10 +265,12 @@ export default class appointmentModel {
             const appt = oldRows[0];
             const now = new Date();
 
+            // 2. Kiểm tra giới hạn số lần dời lịch (Trừ trường hợp bác sĩ báo bận)
             if (appt.So_lan_doi_lich >= 1 && appt.Trang_thai_lich_hen !== 'reschedule_pending') {
                 throw new Error("Bạn đã hết lượt đổi lịch cho ca khám này.");
             }
 
+            // 3. Kiểm tra điều kiện 2 tiếng (Trừ trường hợp bác sĩ báo bận)
             if (appt.Trang_thai_lich_hen !== 'reschedule_pending') {
                 const startTime = new Date(appt.Thoi_gian_Bdau);
                 if ((startTime - now) / (1000 * 60 * 60) < 2) {
@@ -275,8 +278,9 @@ export default class appointmentModel {
                 }
             }
 
+            // 4. Khóa slot mới và kiểm tra tính hợp lệ
             const checkNewSlot = await conn.execute(
-                `SELECT Trang_thai, Thoi_gian_Bdau FROM khung_gio_kham WHERE Ma_khung_gio = ? FOR UPDATE`, 
+                `SELECT Trang_thai, Thoi_gian_Bdau, Ma_bac_si FROM khung_gio_kham WHERE Ma_khung_gio = ? FOR UPDATE`, 
                 [newSlotID]
             );
             if (checkNewSlot[0].length === 0 || checkNewSlot[0][0].Trang_thai !== 'available') {
@@ -287,22 +291,31 @@ export default class appointmentModel {
                 throw new Error("Không thể đổi sang khung giờ trong quá khứ.");
             }
 
+            // 5. Chặn thao túng API đổi sang bác sĩ khác
+            if (checkNewSlot[0][0].Ma_bac_si !== appt.Ma_bac_si) {
+                throw new Error("Dữ liệu không hợp lệ. Chỉ có thể dời lịch với cùng một bác sĩ.");
+            }
+
+            // 6. Kiểm tra trùng lịch cá nhân (Cross-Doctor, Self-Conflict)
             let conflictSql = `
                 SELECT lh.Ma_lich_hen 
                 FROM lich_hen lh
                 JOIN khung_gio_kham kg ON lh.Ma_khung_gio = kg.Ma_khung_gio
                 WHERE lh.Ma_benh_nhan = ? 
-                AND lh.Trang_thai_lich_hen IN ('pending', 'confirmed')
+                AND lh.Ma_lich_hen != ? /* 🌟 ĐÃ FIX: Loại trừ chính ca khám đang muốn dời */
+                AND lh.Trang_thai_lich_hen IN ('pending', 'confirmed', 'reschedule_pending') /* 🌟 ĐÃ FIX: Tính cả ca đang chờ dời */
                 AND kg.Thoi_gian_Bdau < (SELECT Thoi_gian_Kthuc FROM khung_gio_kham WHERE Ma_khung_gio = ?)
                 AND kg.Thoi_gian_Kthuc > (SELECT Thoi_gian_Bdau FROM khung_gio_kham WHERE Ma_khung_gio = ?)
             `;
-            const conflictParams = [appt.Ma_benh_nhan, newSlotID, newSlotID];
+            const conflictParams = [appt.Ma_benh_nhan, appointmentID, newSlotID, newSlotID];
+            
             if (appt.Ma_nguoi_than) {
                 conflictSql += ` AND lh.Ma_nguoi_than = ?`;
                 conflictParams.push(appt.Ma_nguoi_than);
             } else {
                 conflictSql += ` AND lh.Ma_nguoi_than IS NULL`;
             }
+            
             conflictSql += ` FOR UPDATE`;
             const [conflictRows] = await conn.execute(conflictSql, conflictParams);
             
@@ -310,13 +323,15 @@ export default class appointmentModel {
                 throw new Error("Người khám này đã có một lịch hẹn khác bị trùng hoặc giao thoa với giờ bạn vừa chọn!");
             }
 
+            // 7. Nhả slot cũ (Chỉ nhả nếu slot cũ chưa bị hệ thống nhả do quá hạn / bác sĩ báo bận)
             if (appt.Trang_thai_lich_hen !== 'reschedule_pending') {
                 await conn.execute(`UPDATE khung_gio_kham SET Trang_thai = 'available' WHERE Ma_khung_gio = ?`, [appt.Ma_khung_gio]);
             }
             
+            // 8. Chiếm slot mới
             await conn.execute(`UPDATE khung_gio_kham SET Trang_thai = 'booked' WHERE Ma_khung_gio = ?`, [newSlotID]);
             
-            // Xử lý động Update Lịch hẹn: Chỉ cộng lượt đổi nếu bệnh nhân TỰ Ý ĐỔI
+            // 9. Cập nhật lại lịch hẹn (Tự động cộng lượt đổi nếu tự nguyện đổi)
             let updateLichHenSql = `UPDATE lich_hen SET Ma_khung_gio = ?, Trang_thai_lich_hen = 'pending'`;
             if (appt.Trang_thai_lich_hen !== 'reschedule_pending') {
                 updateLichHenSql += `, So_lan_doi_lich = So_lan_doi_lich + 1`;
@@ -324,6 +339,7 @@ export default class appointmentModel {
             updateLichHenSql += ` WHERE Ma_lich_hen = ?`;
             await conn.execute(updateLichHenSql, [newSlotID, appointmentID]);
 
+            // 10. Ghi lịch sử
             await conn.execute(
                 `INSERT INTO lich_su_trang_thai_lich_hen (Ma_lich_hen, Trang_thai_cu, Trang_thai_moi, Nguoi_thay_doi) VALUES (?, ?, 'pending', 'patient')`, 
                 [appointmentID, appt.Trang_thai_lich_hen]
@@ -375,7 +391,7 @@ export default class appointmentModel {
             const pendingSql = `
                 SELECT 
                     lh.Ma_lich_hen, nd.Ten_nguoi_dung AS Ten_benh_nhan, 
-                    kg.Thoi_gian_Bdau, lh.Trieu_chung,
+                    kg.Thoi_gian_Bdau, lh.Trieu_chung, lh.Hinh_thuc,
                     GROUP_CONCAT(dv.Ten_dich_vu SEPARATOR ', ') AS Ten_dich_vu
                 FROM lich_hen lh
                 JOIN khung_gio_kham kg ON lh.Ma_khung_gio = kg.Ma_khung_gio
@@ -394,7 +410,7 @@ export default class appointmentModel {
             const todaySql = `
                 SELECT 
                     lh.Ma_lich_hen, nd.Ten_nguoi_dung AS Ten_benh_nhan, 
-                    kg.Thoi_gian_Bdau, lh.Hinh_thuc,
+                    kg.Thoi_gian_Bdau, kg.Thoi_gian_Kthuc, lh.Hinh_thuc,
                     GROUP_CONCAT(dv.Ten_dich_vu SEPARATOR ', ') AS Ten_dich_vu
                 FROM lich_hen lh
                 JOIN khung_gio_kham kg ON lh.Ma_khung_gio = kg.Ma_khung_gio

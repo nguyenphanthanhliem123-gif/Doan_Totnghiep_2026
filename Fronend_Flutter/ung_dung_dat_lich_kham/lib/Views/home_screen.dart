@@ -360,9 +360,9 @@ class _HomeScreenState extends State<HomeScreen> {
     // Lấy data từ ViewModel lịch hẹn
     final appointmentVM = context.watch<AppointmentViewModel>();
 
-    // Lọc ra các lịch sắp tới (pending/confirmed/reschedule_pending) trùng với ngày đang chọn
+    // Lọc ra các lịch sắp tới (pending/confirmed)
     final filteredAppointments = appointmentVM.allAppointments.where((app) {
-      final isUpcomingStatus = app.status == 'pending' || app.status == 'confirmed' || app.status == 'reschedule_pending';
+      final isUpcomingStatus = app.status == 'pending' || app.status == 'confirmed'; 
       final isSameDate = app.startTime.year == _selectedDate.year && 
                          app.startTime.month == _selectedDate.month && 
                          app.startTime.day == _selectedDate.day;
@@ -376,17 +376,17 @@ class _HomeScreenState extends State<HomeScreen> {
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [kPrimaryColor, kDarkCyan], // Dùng đúng biến màu chuẩn của hẹ thống bạn
+          colors: [kPrimaryColor, kDarkCyan], 
         ),
       ),
       padding: const EdgeInsets.symmetric(vertical: 20),
       child: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20.0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: const [
+              children: [
                 Text('Lịch Trình Sắp Tới', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
               ],
             ),
@@ -457,25 +457,21 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 10),
 
-                // Hiển thị trạng thái Loading
                 if (appointmentVM.isLoading)
                   const Padding(
                     padding: EdgeInsets.all(20.0),
                     child: CircularProgressIndicator(color: Colors.white),
                   )
-                // Hiển thị Lỗi nếu có
                 else if (appointmentVM.errorMessage.isNotEmpty && appointmentVM.allAppointments.isEmpty)
                   Padding(
                     padding: const EdgeInsets.all(10.0),
                     child: Text(appointmentVM.errorMessage, style: const TextStyle(color: Colors.redAccent)),
                   )
-                // Hiển thị thông báo trống
                 else if (filteredAppointments.isEmpty)
                   const Padding(
                     padding: EdgeInsets.all(20.0),
                     child: Text('Bạn không có lịch khám nào trong ngày này', style: TextStyle(color: Colors.white70)),
                   )
-                // Render List lịch hẹn sau khi lọc
                 else
                   ...filteredAppointments.take(5).map((app) {
                     String timeStr = "${app.startTime.hour.toString().padLeft(2, '0')}:${app.startTime.minute.toString().padLeft(2, '0')}";
