@@ -108,10 +108,10 @@ export default class ServiceModel{
         try {
             const sql = `
                 SELECT * FROM danh_muc_dich_vu 
-                WHERE Ma_chuyen_khoa = ? 
+                WHERE Ma_chuyen_khoa = ?
                 AND Trang_thai = 1
                 AND id NOT IN (
-                    SELECT IFNULL(Ma_dv_goc, 0) FROM dich_vu WHERE Ma_bac_si = ?
+                    SELECT IFNULL(Ma_dv_goc, 0) FROM dich_vu WHERE Ma_bac_si = ? AND Trang_thai = 1
                 )
             `;
             const [rows] = await execute(sql, [specId, doctorId]);

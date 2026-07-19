@@ -138,7 +138,7 @@ class DoctorMenuScreenState extends State<DoctorMenuScreen> {
                     physics: const BouncingScrollPhysics(), 
                     children: [
                       const Text(
-                        'Quản lý phòng khám',
+                        'Cài đặt chung',
                         style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: kTextColor),
                       ),
                       const SizedBox(height: 15),
@@ -190,19 +190,6 @@ class DoctorMenuScreenState extends State<DoctorMenuScreen> {
                         style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: kTextColor),
                       ),
                       const SizedBox(height: 15),
-
-                      _buildMenuCard(
-                        context: context,
-                        title: 'Cơ sở y tế / Bệnh viện',
-                        subtitle: 'Thông tin nơi bạn đang công tác',
-                        icon: Icons.local_hospital_outlined,
-                        iconColor: Colors.teal,
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(builder: (context) => DoctorClinicSelectionScreen())
-                          );
-                        },
-                      ),
 
                       _buildMenuCard(
                         context: context,
