@@ -27,10 +27,8 @@ class DoctorAppointmentViewModel extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('token');
-
       if (token == null) return;
 
-      // Kéo dữ liệu Dashboard
       final url = Uri.parse('$_baseUrl/doctor/dashboard');
       final response = await http.get(url, headers: {"Content-Type": "application/json", "Authorization": "Bearer $token"});
 
@@ -38,17 +36,23 @@ class DoctorAppointmentViewModel extends ChangeNotifier {
         final data = jsonDecode(response.body);
         if (data['succeeded'] == true) {
           final payload = data['data'];
-          pendingCount = payload['stats']['pendingCount'];
-          todayCount = payload['stats']['todayCount'];
-          cancelledCount = payload['stats']['cancelledCount'];
-          todayRevenue = double.tryParse(payload['stats']['todayRevenue'].toString()) ?? 0; 
+          
+          // 🌟 Dùng ?? để chống sập khi Backend thiếu dữ liệu
+          pendingCount = payload['stats']?['pendingCount'] ?? 0;
+          todayCount = payload['stats']?['todayCount'] ?? 0;
+          cancelledCount = payload['stats']?['cancelledCount'] ?? 0;
+          todayRevenue = double.tryParse(payload['stats']?['todayRevenue']?.toString() ?? '0') ?? 0; 
+          
           revenueDetails = payload['revenueDetails'] ?? [];
-          pendingAppointments = payload['pendingAppointments'];
-          todayAppointments = payload['todayAppointments'];
+          pendingAppointments = payload['pendingAppointments'] ?? [];
+          todayAppointments = payload['todayAppointments'] ?? [];
         }
+      } else {
+        // 🌟 BẮT BUỘC PHẢI CÓ DÒNG NÀY ĐỂ BẮT LỖI 500 TỪ BACKEND
+        print("🔥 LỖI API TRANG CHỦ BÁC SĨ (Mã ${response.statusCode}): ${response.body}");
       }
     } catch (e) {
-      print("Lỗi load dashboard bác sĩ: $e");
+      print("🔥 Lỗi Crash trong Flutter (Dashboard Bác sĩ): $e");
     } finally {
       _isLoading = false;
       notifyListeners();
