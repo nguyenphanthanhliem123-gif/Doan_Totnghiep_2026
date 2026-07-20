@@ -206,14 +206,24 @@ export default class adminModel {
                 [status, maBacSi]
             );
 
-            // 2. Ghi lịch sử hành động vào bảng admin_logs
+            // 2. Nếu duyệt thành công, thêm bác sĩ vào phòng khám mặc định (Ma_phong_kham = 1)
+            if (status === 'active') {
+                // Dùng INSERT IGNORE để tránh lỗi sập server nếu dữ liệu vô tình đã tồn tại
+                await execute(
+                    `INSERT IGNORE INTO bac_si_phong_kham (Ma_phong_kham, Ma_bac_si, Noi_chinh) 
+                     VALUES (1, ?, 1)`, 
+                    [maBacSi]
+                );
+            }
+
+            // 3. Ghi lịch sử hành động vào bảng admin_logs
             await execute(
                 `INSERT INTO admin_logs (Admin_id, Target_type, Target_id, Action, Reason) 
                  VALUES (?, 'BAC_SI', ?, ?, ?)`,
                 [adminId, maBacSi, status === 'active' ? 'APPROVE' : 'REJECT', reason]
             );
 
-            // 3. Lấy ra thông tin email và tên bác sĩ phục vụ gửi thư thông báo
+            // 4. Lấy ra thông tin email và tên bác sĩ phục vụ gửi thư thông báo
             const [info] = await execute(`
                 SELECT n.Ten_nguoi_dung, n.Email 
                 FROM bac_si b 
