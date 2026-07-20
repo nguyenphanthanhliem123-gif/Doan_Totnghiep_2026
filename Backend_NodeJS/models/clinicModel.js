@@ -101,7 +101,7 @@ export default class clinicModel {
 
     static async addClinicImage(maPhongKham, linkAnh) {
         const query = `INSERT INTO anh_phong_kham (Ma_phong_kham, Link_anh) VALUES (?, ?)`;
-        const [result] = await execute(query, [maPhongKham, 'http://localhost:3001' + linkAnh]);
+        const [result] = await execute(query, [maPhongKham, linkAnh]);
         return result.insertId;
     }
 }

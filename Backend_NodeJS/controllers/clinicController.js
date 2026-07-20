@@ -94,20 +94,29 @@ export default class clinicController {
     static async updateClinic(req, res) {
         try {
             const { id } = req.params;
-            const { Ten_phong_kham } = req.body;
+            // 📥 Lấy toàn bộ thông tin cập nhật từ body
+            const { 
+                Ten_phong_kham, 
+                Mo_ta_phong_kham, 
+                Vi_tri, 
+                Dien_thoai, 
+                Email, 
+                Link_trang_web, 
+                Tien_ich,
+            } = req.body;
 
             if (!Ten_phong_kham) {
                 return res.status(400).json({ succeeded: false, message: "Tên phòng khám là bắt buộc!" });
             }
 
             const clinicData = {
-                Ten_phong_kham: Ten_phong_kham,
-                Vi_tri: "136 Hoàng Hoa Thám, Phường 12, Tân Bình, TP. HCM",
-                Dien_thoai: "0933459578",
-                Email: "contact@tamanhhospital.vn",
-                Mo_ta_phong_kham: req.body.Mo_ta_phong_kham || null,
-                Link_trang_web: "https://tamanhhospital.vn",
-                Tien_ich: "Wifi, Giữ xe ô tô, Máy lạnh, Khu vui chơi trẻ em"
+                Ten_phong_kham,
+                Vi_tri: Vi_tri || null,
+                Dien_thoai: Dien_thoai || null,
+                Email: Email || null,
+                Mo_ta_phong_kham: Mo_ta_phong_kham || null,
+                Link_trang_web: Link_trang_web || null,
+                Tien_ich: Tien_ich || null,
             };
 
             const success = await clinicModel.updateClinic(id, clinicData);

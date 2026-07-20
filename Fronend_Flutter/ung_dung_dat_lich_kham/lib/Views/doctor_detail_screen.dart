@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:ung_dung_dat_lich_kham/Config/BASE_URL.dart';
 import 'package:ung_dung_dat_lich_kham/Views/report_bottom_sheet.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../viewmodels/doctor_viewmodel.dart';
@@ -312,7 +313,7 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
                                         },
                                         itemBuilder: (context, index) {
                                           return Image.network(
-                                            clinic.images[index],
+                                            '$BASE_URL${clinic.images[index]}',
                                             fit: BoxFit.cover,
                                             width: double.infinity,
                                             errorBuilder: (context, error, stackTrace) => Container(color: Colors.grey.shade200, child: const Icon(Icons.broken_image, color: Colors.grey)),

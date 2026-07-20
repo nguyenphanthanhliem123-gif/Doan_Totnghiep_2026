@@ -8,6 +8,7 @@ class ClinicModel {
   final String? phone;
   final String? website;
   final String? email;
+  final String? util;
   final List<String> images;
 
   ClinicModel({
@@ -20,6 +21,7 @@ class ClinicModel {
     this.phone,
     this.website,
     this.email,
+    this.util,
     required this.images,
   });
 
@@ -38,6 +40,7 @@ class ClinicModel {
       phone: json['Dien_thoai'] ?? '',
       website: json['Link_trang_web']?? '',
       email: json['Email'] ?? '',
+      util: json['Tien_ich'] ?? '',
       images: parsedImages,
     );
   }

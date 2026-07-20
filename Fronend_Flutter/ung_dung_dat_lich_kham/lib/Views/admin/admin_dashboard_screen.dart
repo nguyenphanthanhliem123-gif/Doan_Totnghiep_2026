@@ -195,6 +195,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminServiceScreen()));
             }),
             const Divider(),
+            _buildDrawerItem(icon: Icons.medical_services, title: 'Phòng khám', onTap: () {
+              Navigator.pop(context);
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminClinicListScreen()));
+            }),
             _buildDrawerItem(icon: Icons.gavel, title: 'Xử Lý Khiếu Nại', onTap: () {
               Navigator.pop(context);
               Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminReportScreen()));
