@@ -23,7 +23,7 @@ export default class SearchModel {
             const [specialties] = await execute(`
                 SELECT Ma_chuyen_khoa, Ten_chuyen_khoa, Icon
                 FROM chuyen_khoa
-                WHERE Ten_chuyen_khoa LIKE ?
+                WHERE Ten_chuyen_khoa LIKE ? AND Trang_thai = 1
                 LIMIT 5
             `, [searchPattern]);
 

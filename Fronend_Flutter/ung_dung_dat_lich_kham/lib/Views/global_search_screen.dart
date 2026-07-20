@@ -111,20 +111,6 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
                       const Divider(height: 30),
                     ],
 
-                    // --- HIỂN THỊ KẾT QUẢ PHÒNG KHÁM ---
-                    if (results['clinics'].isNotEmpty) ...[
-                      const Text('🏥 Phòng khám', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.grey)),
-                      const SizedBox(height: 10),
-                      ...results['clinics'].map((clinic) => ListTile(
-                        leading: const Icon(Icons.business_rounded, color: Colors.blueGrey, size: 30),
-                        title: Text(clinic['Ten_phong_kham'], style: const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Text(clinic['Dia_chi'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis),
-                        onTap: () {
-                          // Điều hướng tới chi tiết phòng khám
-                        },
-                      )).toList(),
-                    ],
-
                     // --- KHÔNG CÓ KẾT QUẢ NÀO ---
                     if (results['doctors'].isEmpty && results['specialties'].isEmpty && results['clinics'].isEmpty)
                       const Center(
